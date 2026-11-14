@@ -15,7 +15,8 @@ function frame(property: MotionProperty, value: number): Keyframe {
   }
 }
 /** Independent property wrappers compose transforms without WAAPI additive-composition differences. */
-export function playKeyframeSequence(elements: Record<MotionProperty, HTMLElement>, sequence: MotionSequence, phase: MotionPhase, window: MotionWindow, total: number, reduced: boolean) {
+/** `stop` is when the object is gone (its `end`, or the alert's end); a reduced-motion exit fades out right before it. */
+export function playKeyframeSequence(elements: Record<MotionProperty, HTMLElement>, sequence: MotionSequence, phase: MotionPhase, window: MotionWindow, total: number, reduced: boolean, stop = total) {
   const animations: Animation[] = [];
   let clockStart = performance.now(), clockOffset = 0, clockPaused = false;
   if (window.span > 0) for (const track of sequence.tracks) {
@@ -23,7 +24,7 @@ export function playKeyframeSequence(elements: Record<MotionProperty, HTMLElemen
     const duration = reduced ? Math.min(.15, window.duration) : window.duration;
     const points = reduced ? [track.points[0], track.points.at(-1)!].map((p, i) => ({...p, offset: i, easing: 'smooth' as const})) : track.points;
     const animation = elements[track.property].animate(points.map(p => ({...frame(track.property, p.value), offset: p.offset, easing: MOTION_CURVES[p.easing]})), {
-      duration: duration * 1000, delay: (phase === 'exit' && reduced ? total - duration : window.start) * 1000,
+      duration: duration * 1000, delay: (phase === 'exit' && reduced ? stop - duration : window.start) * 1000,
       iterations: phase === 'loop' ? window.iterations : 1, fill: phase === 'loop' ? 'none' : 'both', easing: 'linear'
     });
     animation.id = `alert-keyframe-${phase}-${track.property}`; animations.push(animation);

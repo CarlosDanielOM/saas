@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, ElementRef, afterRenderEffect, inject, input, untracked } from '@angular/core';
 import type { AlertMotion } from './overlay.model';
 import type { AlertKeyframes, MotionPhase, MotionProperty } from './overlay-keyframes.model';
-import { motionWindows } from './overlay-motion-timing';
+import { motionStop, motionWindows } from './overlay-motion-timing';
 import { playKeyframeSequence } from './overlay-keyframe-player';
 @Component({
   selector: 'app-overlay-keyframe-phase', changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,7 +23,7 @@ export class OverlayKeyframePhaseComponent {
       const nodes = [...this.host.querySelectorAll<HTMLElement>('.kf-property')].slice(0, 5);
       const elements = Object.fromEntries(nodes.map(node => [node.dataset['kfProperty'], node])) as Record<MotionProperty, HTMLElement>;
       const preference = matchMedia('(prefers-reduced-motion: reduce)');
-      const play = () => playKeyframeSequence(elements, sequence, phase, motionWindows(motion, total, keyframes)[phase], total, preference.matches);
+      const play = () => playKeyframeSequence(elements, sequence, phase, motionWindows(motion, total, keyframes)[phase], total, preference.matches, motionStop(motion, total));
       let player = play(); this.player = player;
       const time = untracked(this.seekTime); if (time !== null) player.seek(time);
       const changed = () => { const elapsed = untracked(this.seekTime) ?? player.time(); player.cancel(); player = play(); this.player = player; player.seek(elapsed, untracked(this.seekTime) !== null); };

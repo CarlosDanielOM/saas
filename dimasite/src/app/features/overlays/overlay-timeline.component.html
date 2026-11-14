@@ -9,24 +9,28 @@
   <div class="ruler" aria-hidden="true">@for (tick of ticks(); track $index) { <span>{{ tick }}s</span> }</div>
   <div class="tracks">
     @for (w of layout().widgets; track w.id) {
+      @let row = timing(w.id);
       <div class="row" [class.selected]="!soundSelected() && selectedId() === w.id" [class.hidden-row]="!w.visible" [attr.data-track]="w.id">
         <button type="button" class="name" [attr.aria-pressed]="!soundSelected() && selectedId() === w.id" (click)="select(w.id)">{{ name(w) }}@if (!w.visible) { <small>{{ t('timelineHidden') }}</small> }</button>
-        <div class="track">
-          <div class="bar" [style.left.%]="percent(delay(w.id))" [style.width.%]="100 - percent(delay(w.id))"></div>
-          <div class="phase entrance" [style.left.%]="percent(delay(w.id))" [style.width.%]="phases(w).enter"></div>
-          <div class="phase exit" [style.right.%]="0" [style.width.%]="phases(w).exit"></div>
+        <div class="track" [style.--s]="percent(row.start)" [style.--e]="percent(row.stop)" [class.dragging]="!!dragging() && dragging()!.id === w.id">
+          <div class="bar" [style.left.%]="percent(row.start)" [style.width.%]="percent(row.stop) - percent(row.start)"></div>
+          <div class="phase entrance" [style.left.%]="percent(row.start)" [style.width.%]="percent(row.enter)"></div>
+          <div class="phase exit" [style.right.%]="100 - percent(row.stop)" [style.width.%]="percent(row.exit)"></div>
           <span class="playhead" [style.left.%]="percent(transport()?.time ?? 0)"></span>
-          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="delay(w.id) > layout().duration ? layout().duration : delay(w.id)" [attr.aria-valuetext]="delay(w.id) + ' s'" [attr.aria-label]="name(w) + ' · ' + t('timelineDelay')" [style.left]="'min(' + percent(delay(w.id)) + '%, calc(100% - 44px))'" (pointerdown)="down($event, w.id)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, w.id)" (keyup)="editEnded.emit()">↔</button>
+          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="row.startMax" [attr.aria-valuenow]="within(row.start, 0, row.startMax)" [attr.aria-valuetext]="row.start + ' s'" [attr.aria-label]="name(w) + ' · ' + t('timelineDelay')" (pointerdown)="down($event, w.id)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, w.id)" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge(w.id, 'start')) { <span class="readout" aria-hidden="true">{{ seconds(row.start) }}</span> }</button>
+          <button type="button" class="end-handle" role="slider" [attr.aria-valuemin]="row.endMin" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="within(row.end ?? layout().duration, row.endMin, layout().duration)" [attr.aria-valuetext]="endText(w.id)" [attr.aria-label]="name(w) + ' · ' + t('timelineEnd')" (pointerdown)="down($event, w.id, 'end')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, w.id, 'end')" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge(w.id, 'end')) { <span class="readout" aria-hidden="true">{{ seconds(row.end ?? layout().duration) }}</span> }</button>
         </div>
       </div>
     }
     @if (layout().sound; as sound) {
+      @let row = timing('$sound');
       <div class="row" [class.selected]="soundSelected()" data-track="$sound">
         <span class="name">{{ t('alertSound') }}<small>{{ sound.name || t('soundSelected') }}</small></span>
-        <div class="track sound-track">
-          <div class="bar" [style.left.%]="percent(delay('$sound'))" [style.width.%]="100 - percent(delay('$sound'))"></div>
+        <div class="track sound-track" [style.--s]="percent(row.start)" [style.--e]="percent(row.stop)" [class.dragging]="!!dragging() && dragging()!.id === '$sound'">
+          <div class="bar" [style.left.%]="percent(row.start)" [style.width.%]="percent(row.stop) - percent(row.start)"></div>
           <span class="playhead" [style.left.%]="percent(transport()?.time ?? 0)"></span>
-          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="delay('$sound') > layout().duration ? layout().duration : delay('$sound')" [attr.aria-valuetext]="delay('$sound') + ' s'" [attr.aria-label]="t('soundDelay')" [style.left]="'min(' + percent(delay('$sound')) + '%, calc(100% - 44px))'" (pointerdown)="down($event, '$sound')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, '$sound')" (keyup)="editEnded.emit()">↔</button>
+          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="row.startMax" [attr.aria-valuenow]="within(row.start, 0, row.startMax)" [attr.aria-valuetext]="row.start + ' s'" [attr.aria-label]="t('soundDelay')" (pointerdown)="down($event, '$sound')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, '$sound')" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge('$sound', 'start')) { <span class="readout" aria-hidden="true">{{ seconds(row.start) }}</span> }</button>
+          <button type="button" class="end-handle" role="slider" [attr.aria-valuemin]="row.endMin" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="within(row.end ?? layout().duration, row.endMin, layout().duration)" [attr.aria-valuetext]="endText('$sound')" [attr.aria-label]="t('alertSound') + ' · ' + t('timelineEnd')" (pointerdown)="down($event, '$sound', 'end')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, '$sound', 'end')" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge('$sound', 'end')) { <span class="readout" aria-hidden="true">{{ seconds(row.end ?? layout().duration) }}</span> }</button>
         </div>
       </div>
     }

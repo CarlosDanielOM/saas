@@ -31,14 +31,34 @@ button:disabled,input:disabled { opacity:.55; cursor:default }
 .name { border:0; background:transparent; border-radius:.5rem; text-align:left; padding:.4rem; overflow-wrap:anywhere; font-size:.8rem; min-width:0 }
 .name { display:block; line-height:1.3 } button.name { display:block }
 .name small { display:block; font-size:.65rem; color:var(--muted); max-width:100%; overflow:hidden; text-overflow:ellipsis }
-.track { height:44px; position:relative; min-width:0; background:repeating-linear-gradient(to right,var(--line) 0 1px,transparent 1px 25%); border-bottom:1px solid var(--line) }
+.track { height:44px; position:relative; min-width:0; background:repeating-linear-gradient(to right,var(--line) 0 1px,transparent 1px 25%); border-bottom:1px solid var(--line);
+  /* The grips are positioned in track widths (cqw) so they can follow the bar's edges while never overlapping each
+     other or leaving the track: the start grip leaves room for the end grip on its right. --s/--e are 0-100. */
+  container-type:inline-size; --grip:44px; --mark:9px; --edge:var(--accent) }
 .bar,.phase { position:absolute; top:12px; height:20px; pointer-events:none }
 .bar { background:var(--accent-soft); border:1px solid var(--accent); border-radius:.3rem }
 .phase.entrance { background:var(--accent); opacity:.6; border-radius:.3rem 0 0 .3rem }
 .phase.exit { background:var(--muted); opacity:.65; border-radius:0 .3rem .3rem 0 }
 .sound-track .bar { border-color:var(--ok); background:var(--ok-soft) }
-.handle { position:absolute; top:0; width:44px; padding:0; border:0; border-radius:.5rem; background:transparent; color:var(--fg); touch-action:none; cursor:ew-resize; z-index:2; font-size:1.25rem; text-shadow:0 0 4px var(--tile) }
-.handle:hover,.handle:focus-visible { background:var(--btn) }
+.sound-track { --edge:var(--ok) }
+.handle,.end-handle { position:absolute; top:0; width:var(--grip); height:44px; padding:0; border:0; border-radius:.5rem; background:transparent; color:var(--fg); touch-action:none; cursor:ew-resize; z-index:2;
+  --a:clamp(0px, calc(var(--s) * 1cqw - var(--grip) / 2), calc(100cqw - 2 * var(--grip)));
+  --b:max(calc(var(--a) + var(--grip)), min(calc(var(--e) * 1cqw - var(--grip) / 2), calc(100cqw - var(--grip)))) }
+.handle { left:var(--a) }
+.end-handle { left:var(--b) }
+.handle:hover,.handle:focus-visible,.end-handle:hover,.end-handle:focus-visible,.dragging .handle:active,.dragging .end-handle:active { background:color-mix(in srgb, var(--edge) 18%, transparent) }
+/* "[" and "]" marks: they sit on the bar's edges and move inside their grip only when the grip has to step aside. */
+.grip { position:absolute; top:9px; height:26px; width:var(--mark); border:3px solid var(--edge); pointer-events:none }
+.handle .grip { border-right:0; border-radius:6px 0 0 6px; left:clamp(0px, calc(var(--s) * 1cqw - var(--a)), calc(var(--grip) - var(--mark))) }
+.end-handle .grip { border-left:0; border-radius:0 6px 6px 0; left:clamp(0px, calc(var(--e) * 1cqw - var(--b) - var(--mark)), calc(var(--grip) - var(--mark))) }
+/* When a grip has to step aside on a very short bar, a dashed line ties its mark back to the bar's real edge. */
+.handle::after,.end-handle::after { content:''; position:absolute; top:21px; height:0; border-top:2px dashed var(--edge); opacity:.7; pointer-events:none }
+.handle::after { left:var(--grip); width:max(0px, calc(var(--s) * 1cqw - var(--a) - var(--grip))) }
+.end-handle::after { left:calc(var(--e) * 1cqw - var(--b)); width:max(0px, calc(var(--b) - var(--e) * 1cqw)) }
+/* The dragged grip's time, above it and on its inner side so it never leaves the track. */
+.readout { position:absolute; bottom:calc(100% - 4px); padding:.1rem .4rem; border-radius:.4rem; background:var(--fg); color:var(--tile); font-size:.72rem; font-weight:700; line-height:1.3; font-variant-numeric:tabular-nums; white-space:nowrap; pointer-events:none; z-index:3 }
+.handle .readout { left:0 } .end-handle .readout { right:0 }
+@media (hover:hover) and (pointer:fine) { .track { --grip:24px } }
 .playhead { position:absolute; top:0; bottom:0; border-left:2px solid var(--accent); pointer-events:none; z-index:1 }
 .hidden-row .bar,.hidden-row .phase { opacity:.3 }
 .legend { display:flex; flex-wrap:wrap; gap:.75rem; font-size:.7rem }

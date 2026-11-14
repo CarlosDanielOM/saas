@@ -24,6 +24,8 @@ export function object(value: unknown): Record<string, unknown> { if (!value || 
 export function string(value: unknown, max = 100): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new OverlayError('Invalid text'); return value; }
 function id(value: unknown) { const result = string(value); if (!/^[a-zA-Z0-9_-]+$/.test(result)) throw new OverlayError('Invalid ID'); return result; }
 function number(value: unknown, min: number, max: number) { if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw new OverlayError('Invalid dimension or duration'); return value; }
+/** Optional end time (seconds from the alert's start); an absent key stays absent so older data is unchanged. */
+const endTime = (value: Record<string, unknown>) => value.end !== undefined ? { end: number(value.end, .1, 120) } : {};
 function boolean(value: unknown) { if (typeof value !== 'boolean') throw new OverlayError('Expected a boolean'); return value; }
 function list(value: unknown, max: number): unknown[] { if (!Array.isArray(value) || value.length > max) throw new OverlayError('Too many or invalid items'); return value; }
 function unique<T extends { id: string }>(items: T[]): T[] { if (new Set(items.map(x => x.id)).size !== items.length) throw new OverlayError('Duplicate ID'); return items; }
@@ -47,7 +49,7 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
       const motion = object(w.motion);
       if (!ALERT_TRANSITIONS.includes(motion.enter as never) || !ALERT_TRANSITIONS.includes(motion.exit as never) || !ALERT_LOOPS.includes(motion.loop as never)) throw new OverlayError('Invalid object animation');
       item.motion = { enter: motion.enter as NonNullable<OverlayWidget['motion']>['enter'], exit: motion.exit as NonNullable<OverlayWidget['motion']>['exit'], loop: motion.loop as NonNullable<OverlayWidget['motion']>['loop'],
-        delay: number(motion.delay, 0, 120), enterDuration: number(motion.enterDuration, .1, 5), exitDuration: number(motion.exitDuration, .1, 5), loopDuration: number(motion.loopDuration, .2, 10) };
+        delay: number(motion.delay, 0, 120), enterDuration: number(motion.enterDuration, .1, 5), exitDuration: number(motion.exitDuration, .1, 5), loopDuration: number(motion.loopDuration, .2, 10), ...endTime(motion) };
     }
     if (w.name !== undefined) item.name = typeof w.name === 'string' && w.name.length <= 80 ? w.name : string(w.name, 80);
     if (w.showTtsText !== undefined) {
@@ -98,7 +100,7 @@ function alertLayout(raw: unknown): AlertLayout {
     const sound = object(layout.sound);
     if (typeof sound.assetId !== 'string' || !/^[a-f0-9]{24}$/.test(sound.assetId)) throw new OverlayError('Invalid alert sound');
     result.sound = { assetId: sound.assetId, ...(sound.name === undefined ? {} : { name: string(sound.name, 120) }),
-      volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10) };
+      volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10), ...endTime(sound) };
   }
   return result;
 }

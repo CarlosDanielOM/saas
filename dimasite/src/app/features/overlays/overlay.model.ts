@@ -9,6 +9,8 @@ export const ALERT_LOOPS = ['none', 'pulse', 'float', 'sway', 'spin'] as const;
 export interface AlertMotion {
   enter: typeof ALERT_TRANSITIONS[number]; exit: typeof ALERT_TRANSITIONS[number]; loop: typeof ALERT_LOOPS[number];
   delay: number; enterDuration: number; exitDuration: number; loopDuration: number;
+  /** Seconds from the alert's start at which the object is gone (its exit finishes then). Omitted = stays until the alert ends. */
+  end?: number;
 }
 export interface OverlayWidget {
   id: string; kind: WidgetKind; name?: string;
@@ -31,7 +33,12 @@ export interface OverlayWidget {
   triggerPlacement?: { mode: 'fixed' | 'random'; margin: number };
 }
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
-export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number }
+/** `end`: seconds from the alert's start at which the sound has stopped (its fade-out finishes then). Omitted = plays until its file or the alert ends. */
+export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
+/** When the sound has stopped: `end` capped at the alert length. At or before `delay` the sound stays silent. */
+export function soundStop(sound: AlertSound, duration: number): number {
+  return typeof sound.end === 'number' && Number.isFinite(sound.end) ? Math.min(duration, sound.end) : duration;
+}
 export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sound?: AlertSound }
 /** Sub variants match a tier and raid variants an amount; Bits variants are looks for a shared Bits rule (`ruleId`). */
 export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; ruleId?: string; layout: AlertLayout }

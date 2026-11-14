@@ -137,4 +137,95 @@ try {
   await context.close();
  }
  assert.deepEqual(errors,[]);console.log('PASS visual timeline: real animation/audio seeking, silent scrub, pause/resume/end/replay, keyboard/pointer timing, grouped undo/redo, per-event save/reload/publish, switch cleanup, EN/ES responsive layouts and axe');
+ // End grips: each bar has a start and an end; the end is stored only when earlier than the alert (5 s here).
+ const endShots=process.env.SAAS_END_SHOTS;
+ for(const options of [{width:1280,height:800,dark:true},{width:390,height:844,dark:true,touch:true},{width:320,lang:'es',touch:true}]){
+  const {context,page,ctx}=await fixture(options),es=options.lang==='es',tag=options.width+(options.touch?'-touch':'');
+  await page.locator('.design-row__actions button').first().click();
+  const timeline=page.locator('app-overlay-timeline');await timeline.waitFor();
+  const row=timeline.locator('[data-track=follow-text]'),start=row.locator('.handle'),end=row.locator('.end-handle');
+  const soundEnd=timeline.locator('[data-track="$sound"] .end-handle');
+  const now=l=>l.getAttribute('aria-valuenow'),text=l=>l.getAttribute('aria-valuetext');
+  const undo=()=>page.getByRole('button',{name:es?'Deshacer':'Undo',exact:true}).click(),redo=()=>page.getByRole('button',{name:es?'Rehacer':'Redo',exact:true}).click();
+  const shot=async name=>{if(endShots){await mkdir(endShots,{recursive:true});await timeline.screenshot({path:`${endShots}/timeline-${name}-${tag}.png`});}};
+  await end.evaluate(e=>e.scrollIntoView({block:'center',behavior:'instant'}));
+  assert.equal(await end.getAttribute('role'),'slider');
+  assert.equal(await end.getAttribute('aria-label'),(es?'Texto':'Text')+(es?' · termina en':' · ends at'),'end grip label');
+  assert.equal(await soundEnd.getAttribute('aria-label'),es?'Sonido de la alerta · termina en':'Alert sound · ends at','sound end label');
+  assert.equal(await text(end),es?'cuando termina la alerta':'when the alert ends','unset end text');assert.equal(await now(end),'5');
+  assert.equal(await timeline.locator('header p').getAttribute('title'),es?'Arrastra los bordes de una barra para definir cuándo empieza y cuándo termina. Los tiempos exactos están en Tiempos y velocidad del objeto.':"Drag a bar's edges to set when it starts and ends. Exact times are in the object's Timing & speed.");
+  await shot('default');
+  // Keyboard: arrows 0.1 s, Shift 1 s, Home = start + 0.1 s, End = the alert's end (removes it).
+  await end.focus();await end.press('ArrowLeft');await until(()=>now(end).then(v=>v==='4.9'),'end ArrowLeft');assert.equal(await text(end),'4.9 s');
+  await end.press('Shift+ArrowLeft');await until(()=>now(end).then(v=>v==='3.9'),'end Shift+ArrowLeft');
+  await end.press('ArrowRight');await until(()=>now(end).then(v=>v==='4'),'end ArrowRight');
+  await end.press('Home');await until(()=>now(end).then(v=>v==='1.1'),'end Home = start + 0.1');
+  await end.press('ArrowLeft');await page.waitForTimeout(100);assert.equal(await now(end),'1.1','end never closer than 0.1 s to the start');
+  await end.press('End');await until(()=>text(end).then(v=>v===(es?'cuando termina la alerta':'when the alert ends')),'end End removes');
+  // Pointer drag (mouse or touch) shows a readout and is one undo step.
+  const drag=async(grip,dx,during)=>{
+    await grip.evaluate(e=>e.scrollIntoView({block:'center',behavior:'instant'}));const box=await grip.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;
+    if(options.touch){const cdp=await context.newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});for(let i=1;i<=6;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx*i/6,y}]});if(during)await during();await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}
+    else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y,{steps:8});if(during)await during();await page.mouse.up();}
+    await until(()=>timeline.locator('.readout').count().then(n=>n===0),'drag finished');
+  };
+  const trackWidth=(await row.locator('.track').boundingBox()).width;
+  await drag(end,-trackWidth*.4,async()=>{await until(()=>end.locator('.readout').count().then(n=>n===1),'readout while dragging');await until(()=>end.locator('.readout').innerText().then(v=>v==='3 s'),'readout shows the dragged time');await shot('dragging');});
+  await until(()=>end.locator('.readout').count().then(n=>n===0),'readout gone after drop');assert.equal(await now(end),'3','end drag');
+  await shot('text-ends-early');
+  await undo();await until(()=>now(end).then(v=>v==='5'),'one-step end drag undo');
+  await redo();await until(()=>now(end).then(v=>v==='3'),'end drag redo');
+  // Minimum gap in both directions.
+  await drag(end,-trackWidth);await until(()=>now(end).then(v=>v==='1.1'),'end drag stops at start + 0.1');
+  await start.focus();await start.press('Home');await until(()=>now(start).then(v=>v==='0'),'start Home');
+  await drag(start,trackWidth);await until(()=>now(start).then(v=>v==='1'),'start drag stops at end - 0.1');
+  const grips=async label=>{
+    const [s,e,t]=await Promise.all([start.boundingBox(),end.boundingBox(),row.locator('.track').boundingBox()]);
+    assert(s.x>=t.x-.5 && e.x+e.width<=t.x+t.width+.5,`${label}: grips inside the track`);
+    assert(s.x+s.width<=e.x+.5,`${label}: grips do not overlap`);
+    const size=options.touch?44:24;assert(Math.abs(s.width-size)<1 && Math.abs(e.width-size)<1 && s.height>=43.5,`${label}: grip size ${s.width}x${s.height}`);
+    for(const [grip,box] of [[start,s],[end,e]])assert.equal(await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.closest('button')?.className,{x:box.x+box.width/2,y:box.y+box.height/2}),await grip.getAttribute('class'),`${label}: grip on top`);
+  };
+  await grips('short bar');
+  await start.focus();await start.press('Home');await until(()=>now(start).then(v=>v==='0'),'start Home again');await end.focus();await end.press('Home');
+  await until(()=>Promise.all([now(start),now(end)]).then(([a,b])=>a==='0' && b==='0.1'),'short bar at the left edge');await grips('left edge');await shot('short-left');
+  await end.press('End');await until(()=>now(end).then(v=>v==='5'),'end End');await start.focus();await start.press('End');
+  await until(()=>Promise.all([now(start),now(end)]).then(([a,b])=>a==='4.9' && b==='5'),'short bar at the right edge');await grips('right edge');await shot('short-right');
+  // Start the text at 1 s and end it at 3 s; stop the sound at 4 s. Save carries the ends.
+  await start.press('Home');await until(()=>now(start).then(v=>v==='0'),'start Home before 1 s');await start.press('Shift+ArrowRight');
+  await until(()=>now(start).then(v=>v==='1'),'start back at 1 s');
+  await end.focus();await end.press('Shift+ArrowLeft');await until(()=>now(end).then(v=>v==='4'),'end 4 s');await end.press('Shift+ArrowLeft');await until(()=>now(end).then(v=>v==='3'),'end 3 s');
+  await soundEnd.focus();await soundEnd.press('Shift+ArrowLeft');await until(()=>now(soundEnd).then(v=>v==='4'),'sound end 4 s');
+  await page.locator('.save-button').click();await until(()=>ctx.writes===1,'save ends');
+  let follow=ctx.state.designs[0].events.follow;assert.equal(follow.widgets[1].motion.end,3);assert.equal(follow.sound.end,4);assert.equal('end' in (follow.widgets[0].motion??{}),false,'untouched object has no end');
+  // Exact fields: "Ends at" / "Stops at", clamped to start + 0.1, unset at or past the alert's end and when cleared.
+  await row.locator('.name').click();const timing=page.locator('details.motion-timing');await timing.evaluate(d=>{d.open=true;});
+  const endsAt=timing.getByLabel(es?'Termina en (segundos)':'Ends at (seconds)',{exact:true});
+  assert.equal(await endsAt.getAttribute('placeholder'),es?'Cuando termina la alerta':'When the alert ends');assert.equal(await endsAt.inputValue(),'3');
+  await endsAt.fill('2.5');await endsAt.press('Tab');await until(()=>now(end).then(v=>v==='2.5'),'typed end');
+  await endsAt.fill('0.3');await endsAt.press('Tab');await until(()=>now(end).then(v=>v==='1.1'),'typed end clamped after the start');assert.equal(await endsAt.inputValue(),'1.1');
+  await endsAt.fill('9');await endsAt.press('Tab');await until(()=>text(end).then(v=>v===(es?'cuando termina la alerta':'when the alert ends')),'typed end past the alert is unset');assert.equal(await endsAt.inputValue(),'');
+  await endsAt.fill('2');await endsAt.press('Tab');await until(()=>now(end).then(v=>v==='2'),'typed end 2');
+  // A start typed past the end is clamped, and the field shows what was kept even when the clamp repeats the stored value.
+  const startAt=timing.getByLabel(es?'Retraso inicial (segundos)':'Start delay (seconds)',{exact:true}),startWas=await startAt.inputValue();
+  for(let i=0;i<2;i++){await startAt.fill('5');await startAt.press('Tab');await until(()=>startAt.inputValue().then(v=>v==='1.9'),'typed start clamped before the end');}
+  await startAt.fill(startWas);await startAt.press('Tab');await until(()=>startAt.inputValue().then(v=>v===startWas),'start restored');
+  await endsAt.fill('');await endsAt.press('Tab');await until(()=>now(end).then(v=>v==='5'),'cleared end');
+  const soundTiming=page.locator('.alert-sound details');await soundTiming.evaluate(d=>{d.open=true;});
+  const stopsAt=soundTiming.getByLabel(es?'Se detiene en (s)':'Stops at (s)',{exact:true});
+  assert.equal(await stopsAt.inputValue(),'4');await stopsAt.fill('3');await stopsAt.press('Tab');await until(()=>now(soundEnd).then(v=>v==='3'),'typed sound stop');
+  await stopsAt.fill('0.2');await stopsAt.press('Tab');await until(()=>now(soundEnd).then(v=>v==='0.6'),'typed sound stop clamped after its delay');
+  await stopsAt.fill('2');await stopsAt.press('Tab');await until(()=>now(soundEnd).then(v=>v==='2'),'typed sound stop 2');
+  await endsAt.fill('2.4');await endsAt.press('Tab');await until(()=>now(end).then(v=>v==='2.4'),'typed end for the fields shot');
+  if(endShots){await timing.scrollIntoViewIfNeeded();await timing.screenshot({path:`${endShots}/field-ends-at-${tag}.png`});await soundTiming.scrollIntoViewIfNeeded();await soundTiming.screenshot({path:`${endShots}/field-stops-at-${tag}.png`});}
+  // Back to the alert's end with the grips: the saved payload omits `end` (the API rejects null).
+  await end.focus();await end.press('End');await until(()=>now(end).then(v=>v==='5'),'end removed');await soundEnd.focus();await soundEnd.press('End');
+  await until(()=>Promise.all([now(end),now(soundEnd)]).then(([a,b])=>a==='5' && b==='5'),'ends removed');
+  await page.locator('.save-button').click();await until(()=>ctx.writes===2,'save without ends');
+  follow=ctx.state.designs[0].events.follow;assert.equal('end' in follow.widgets[1].motion,false,'removed end key omitted from PUT');assert.equal('end' in follow.sound,false,'removed sound end key omitted from PUT');
+  assert.equal(follow.widgets[1].motion.delay,1);
+  await axe(page,'end grips '+tag);assert.equal(await overflow(page),false,'no horizontal overflow '+tag);
+  await context.close();
+ }
+ assert.deepEqual(errors,[]);console.log('PASS timeline end grips: keyboard/drag/readout, one undo step, removal at the alert end, 0.1 s gap both ways, grips inside/apart at both edges (mouse 24px, touch 44px), Ends at/Stops at fields, saved ends and omitted keys, EN/ES and axe');
 } finally {await browser.close();}

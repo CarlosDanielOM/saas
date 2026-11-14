@@ -23,12 +23,14 @@ export interface OverlayRecovery { key: string; serialized: string; draft: Local
 const PREFIX = 'domdimabot-overlay-draft:';
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+/** Optional object/sound end, the same range the API accepts. */
+const validEnd = (value: unknown): boolean => value === undefined || finite(value) && value >= .1 && value <= 120;
 function validMotion(value: unknown): boolean {
   if (value === undefined) return true;
   if (!record(value) || !ALERT_TRANSITIONS.includes(value['enter'] as never) || !ALERT_TRANSITIONS.includes(value['exit'] as never) || !ALERT_LOOPS.includes(value['loop'] as never)) return false;
   return ([['delay', 0, 120], ['enterDuration', .1, 5], ['exitDuration', .1, 5], ['loopDuration', .2, 10]] as [string, number, number][]).every(([key, min, max]) => {
     const n = value[key]; return finite(n) && n >= Number(min) && n <= Number(max);
-  });
+  }) && validEnd(value['end']);
 }
 function validWidgets(value: unknown, placement: WidgetPlacement): value is OverlayWidget[] {
   return Array.isArray(value) && value.length <= 1000 && value.every(w => record(w)
@@ -49,7 +51,7 @@ function validSound(value: unknown): boolean {
   if (value === undefined) return true;
   if (!record(value) || typeof value['assetId'] !== 'string' || !/^[a-f0-9]{24}$/.test(value['assetId'])) return false;
   if (value['name'] !== undefined && (typeof value['name'] !== 'string' || !value['name'].trim() || value['name'].length > 120)) return false;
-  return ([['volume', 1], ['delay', 120], ['fadeIn', 10], ['fadeOut', 10]] as [string, number][]).every(([key, max]) => finite(value[key]) && value[key] >= 0 && value[key] <= max);
+  return ([['volume', 1], ['delay', 120], ['fadeIn', 10], ['fadeOut', 10]] as [string, number][]).every(([key, max]) => finite(value[key]) && value[key] >= 0 && value[key] <= max) && validEnd(value['end']);
 }
 function validStyle(w: Record<string, unknown>): boolean {
   if (Object.entries({fontFamily:['sans','serif','mono'],fontWeight:[400,700],textAlign:['left','center','right'],shape:['rectangle','ellipse']}).some(([key, values]) => w[key] !== undefined && !(values as unknown[]).includes(w[key]))) return false;

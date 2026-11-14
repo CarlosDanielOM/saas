@@ -27,5 +27,24 @@ const invalid=structuredClone(state);invalid.scenes[0].widgets[0].motion=motion;
 assert.equal((await request('GET',channel)).revision,state.revision,'failed validation never mutates the draft');
 state.designs[0].events.follow.widgets[0].motion.delay=2;state=await request('PUT',channel,state);assert.deepEqual(state.scenes[0].published,published,'live publication remains frozen');
 const recovered=await request('POST',channel+'/recover',{...state,recoveryId:crypto.randomUUID()});assert.deepEqual(recovered.designs.find(d=>d.id.startsWith('recovered-')).events.follow.widgets[0].motion,state.designs[0].events.follow.widgets[0].motion);
-console.log('PASS all object types and presets, legacy defaults, owner API persistence, immutable publication, rendered event contract, strict motion validation and recovered copies');
+// Optional object end time (motion.end, seconds from the alert's start): only type and 0.1-120 range are validated.
+const hasEnd=m=>Object.prototype.hasOwnProperty.call(m,'end');
+state=recovered;assert(state.designs[0].events.follow.widgets.every(w=>!hasEnd(w.motion)),'motion saved without end has no end key');
+state.designs[0].events.follow.widgets[0].motion.end=2.5;state.designs[0].events.follow.widgets[1].motion.end=120;state.designs[0].events.follow.widgets[2].motion.end=.1;
+state=await request('PUT',channel,state);
+assert.deepEqual(state.designs[0].events.follow.widgets.map(w=>w.motion.end),[2.5,120,.1,undefined]);assert(!hasEnd(state.designs[0].events.follow.widgets[3].motion),'an unset end stays absent next to set ones');
+const withEnd=state;assert.deepEqual((await request('GET',channel)).designs[0].events.follow.widgets.map(w=>w.motion),withEnd.designs[0].events.follow.widgets.map(w=>w.motion),'end is read back');
+for(const end of [0,.05,-1,120.01,1000,'2',true,null,{},[]]){const invalid=structuredClone(withEnd);invalid.designs[0].events.follow.widgets[0].motion.end=end;await request('PUT',channel,invalid,400);}
+const afterBad=await request('GET',channel);assert.equal(afterBad.revision,withEnd.revision,'a rejected end never mutates the draft');assert.equal(afterBad.designs[0].events.follow.widgets[0].motion.end,2.5);
+const sceneEnd=structuredClone(withEnd);sceneEnd.scenes[0].widgets[0].motion={...motion,end:2};await request('PUT',channel,sceneEnd,400);
+state=await request('POST',`${channel}/scenes/${withEnd.scenes[0].id}/publish`,{revision:withEnd.revision});
+const publicEnd=(await request('GET','public/'+state.scenes[0].publicId)).snapshot.designs.find(d=>d.id===state.designs[0].id).events.follow.widgets;
+assert.deepEqual(publicEnd.map(w=>w.motion.end),[2.5,120,.1,undefined]);assert(!hasEnd(publicEnd[3].motion),'the public snapshot has no end key for an unset end');
+assert.equal((await renderLayout(state.designs[0].events.follow,channel,{user_name:'End viewer'})).widgets[0].motion.end,2.5,'rendered alert layouts keep end');
+const recoveredEnd=await request('POST',channel+'/recover',{...state,recoveryId:crypto.randomUUID()});
+assert.deepEqual(recoveredEnd.designs.find(d=>d.id.startsWith('recovered-')&&d.events.follow.widgets[0].motion.end!==undefined).events.follow.widgets.map(w=>w.motion.end),[2.5,120,.1,undefined],'recovered copies keep end');
+state=recoveredEnd;for(const w of state.designs[0].events.follow.widgets)delete w.motion.end;
+state=await request('PUT',channel,state);assert(state.designs[0].events.follow.widgets.every(w=>!hasEnd(w.motion)),'removing end saves no end key');
+assert.equal(state.scenes[0].published.designs[0].events.follow.widgets[0].motion.end,2.5,'live publication keeps its end until published again');
+console.log('PASS all object types and presets, legacy defaults, owner API persistence, immutable publication, rendered event contract, strict motion validation and recovered copies; optional motion end saved, read back, published, rendered, recovered, range/type checked (400, draft unchanged) and absent when unset');
 process.exit(0);

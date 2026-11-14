@@ -22,14 +22,14 @@ const wave=Buffer.alloc(44+16000*20);wave.write('RIFF');wave.writeUInt32LE(wave.
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const errors = [];
 async function until(predicate, label, tries = 200) { for (let i = 0; i < tries; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error('Timed out: ' + label); }
-async function fixture({ width = 1280, height = 900, dark = false, touch = false, lang = 'en' } = {}) {
-  const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, permissions: ['clipboard-read', 'clipboard-write'] });
+async function fixture({ width = 1280, height = 900, dark = false, touch = false, lang = 'en', state, reducedMotion = 'no-preference' } = {}) {
+  const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, reducedMotion, permissions: ['clipboard-read', 'clipboard-write'] });
   await context.addInitScript(({ user, app, dark, lang }) => {
     localStorage.setItem('dimasite.session.v1', JSON.stringify({ version: 2, token: 'fixture-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: user, appUser: app, permissions: {} }));
     localStorage.setItem('userLanguage', lang); localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, { user, app: {...app,language:lang}, dark, lang });
   await context.routeWebSocket('**/*', ws => ws.close());
-  const ctx = { state: initialState(), writes: 0, sources: 1, tests: [], conflict: false, recoveries: [], failRecovery: false };
+  const ctx = { state: state ?? initialState(), writes: 0, sources: 1, tests: [], conflict: false, recoveries: [], failRecovery: false };
   await context.route('**/*', route => {
     const req = route.request(), url = new URL(req.url());
     if (url.origin === new URL(base).origin) return route.continue();
@@ -153,4 +153,43 @@ try {
   await context.close();
  }
  assert.deepEqual(errors,[]);console.log('PASS OBS renderer: all object types, independent real keyframes, bounded timing, reduced-motion support and skip cleanup');
+ // Object end times: scrub the real timeline and read the opacity the viewer sees (through every ancestor).
+ {
+  const kfExit={tracks:[{property:'x',points:[{offset:0,value:0,easing:'linear'},{offset:1,value:60,easing:'linear'}]}]};
+  const base={enter:'none',exit:'none',loop:'none',delay:0,enterDuration:.5,exitDuration:1,loopDuration:2};
+  const ending=[
+   layer('none-text','text',0,0,180,60,{text:'No exit',motion:{...base,delay:.5,end:2}}),
+   layer('fade-text','text',200,0,180,60,{text:'Fade exit',motion:{...base,exit:'fade',end:3}}),
+   layer('kf-text','text',400,0,180,60,{text:'Custom exit',motion:{...base,end:3.5},keyframes:{exit:kfExit}}),
+   layer('stay-text','text',600,0,180,60,{text:'No end',motion:{...base,exit:'fade',exitDuration:.5}})
+  ];
+  for(const reducedMotion of ['no-preference','reduce']){
+   const state=initialState();state.designs[0].events.follow={duration:5,widgets:ending};
+   const {context,page}=await fixture({width:1280,reducedMotion,state});const reduced=reducedMotion==='reduce';
+   await page.locator('.design-row__actions button').first().click();
+   const timeline=page.locator('app-overlay-timeline');await timeline.waitFor();const scrub=timeline.locator('input[type=range]');
+   const seen=()=>page.evaluate(()=>Object.fromEntries(['none-text','fade-text','kf-text','stay-text'].map(id=>{
+    const content=document.querySelector(`.stage app-overlay-scene-renderer .placement[data-widget-id="${id}"] .layer-content`);let o=1;
+    for(let e=content;e && !e.matches('app-overlay-scene-renderer');e=e.parentElement)o*=Number(getComputedStyle(e).opacity);
+    return [id,Math.round(o*1000)/1000];})));
+   const at=async t=>{await scrub.fill(String(t));await until(()=>page.locator('.stage app-overlay-scene-renderer .placement[data-widget-id="stay-text"] app-overlay-layer').evaluate((e,ms)=>e.getAnimations({subtree:true}).length>0 && e.getAnimations({subtree:true}).every(a=>a.playState==='paused' && Math.abs(a.currentTime-ms)<.5),t*1000),'seek '+t);return seen();};
+   const label=reduced?' (reduced motion)':'';
+   assert.deepEqual(await at(.2),{'none-text':0,'fade-text':1,'kf-text':1,'stay-text':1},'before the start'+label);
+   assert.deepEqual(await at(1),{'none-text':1,'fade-text':1,'kf-text':1,'stay-text':1},'all visible'+label);
+   let v=await at(2.5);assert.equal(v['none-text'],0,'exit none: gone after its end'+label);assert.equal(v['kf-text'],1,'custom exit still visible'+label);
+   if(reduced)assert.equal(v['fade-text'],1,'reduced motion: no fade, visible until its end');else assert(v['fade-text']>0 && v['fade-text']<1,'built-in exit partially transparent mid-exit: '+v['fade-text']);
+   v=await at(2.98);assert(v['fade-text']>0,'still there just before its end'+label);
+   v=await at(3);assert.equal(v['fade-text'],0,'built-in exit finishes exactly at its end'+label);assert.equal(v['kf-text'],1);
+   v=await at(3.6);assert.equal(v['kf-text'],0,'custom exit keyframes: gone after its end'+label);
+   if(!reduced){const x=await page.locator('.stage .placement[data-widget-id="kf-text"] app-overlay-layer').evaluate(e=>e.getAnimations({subtree:true}).find(a=>a.id==='alert-keyframe-exit-x').effect.getComputedTiming());assert(Math.abs(x.endTime-3500)<1,'custom exit ends at end: '+x.endTime);}
+   assert.deepEqual(await at(4.2),{'none-text':0,'fade-text':0,'kf-text':0,'stay-text':1},'hidden for the rest of the alert; no end = unchanged'+label);
+   v=await at(4.75);if(reduced)assert.equal(v['stay-text'],1);else assert(v['stay-text']>0 && v['stay-text']<1,'object without end still exits with the alert');
+   assert.deepEqual(await at(1.5),{'none-text':1,'fade-text':1,'kf-text':1,'stay-text':1},'seeking back before the ends shows them again'+label);
+   assert.equal(await page.locator('.stage .placement[data-widget-id="stay-text"] app-overlay-layer').evaluate(e=>e.getAnimations({subtree:true}).some(a=>a.id==='alert-object-gone')),false,'no extra animation without an end');
+   const exit=await page.locator('.stage .placement[data-widget-id="fade-text"] app-overlay-layer').evaluate(e=>e.getAnimations({subtree:true}).find(a=>a.id==='alert-object-exit').effect.getComputedTiming());
+   assert(Math.abs(exit.endTime-3000)<1,'built-in exit ends at end: '+exit.endTime);
+   await context.close();
+  }
+  assert.deepEqual(errors,[]);console.log('PASS object end times: hidden after end under scrub/seek for exit none, built-in exit (finishes at end), custom exit keyframes and reduced motion; seeking back shows them; no end = unchanged');
+ }
 } finally {await browser.close();}

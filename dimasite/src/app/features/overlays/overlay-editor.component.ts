@@ -69,6 +69,14 @@ const PALETTE_GROUPS: { id: 'events' | 'interact' | 'media'; kinds: WidgetKind[]
 ];
 interface MediaJob { cancel?: () => void; timers: Map<string, ReturnType<typeof setTimeout>>; pending: Set<string>; started: Set<string> }
 
+/** Sets one timing field; `end: undefined` deletes the key (the API rejects `end: null`, and absent = follows the alert). */
+function withTime<T extends object>(target: T, field: string, value: number | undefined): T {
+  const next = { ...target, [field]: value } as Record<string, unknown>;
+  if (value === undefined) delete next[field];
+  return next as T;
+}
+const tenthsUp = (n: number) => Math.ceil(n * 10 - 1e-6) / 10;
+const tenthsDown = (n: number) => Math.floor(n * 10 + 1e-6) / 10;
 @Component({
   selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
@@ -726,8 +734,27 @@ export class OverlayEditorComponent {
   setMotionTime(field: 'delay' | 'enterDuration' | 'exitDuration' | 'loopDuration', event: Event): void {
     const value = Number(this.value(event)); if (!Number.isFinite(value)) return;
     const min = field === 'delay' ? 0 : field === 'loopDuration' ? .2 : .1;
-    const max = field === 'delay' ? 120 : field === 'loopDuration' ? 10 : 5;
-    this.patchSelected({ motion: { ...this.selectedMotion(), [field]: Math.max(min, Math.min(max, value)) } });
+    // A start never passes 0.1 s before a set end.
+    const end = this.selectedMotion().end, max = field === 'delay' ? (end === undefined ? 120 : Math.max(0, tenthsDown(end - .1))) : field === 'loopDuration' ? 10 : 5;
+    const next = Math.max(min, Math.min(max, value));
+    this.patchSelected({ motion: { ...this.selectedMotion(), [field]: next } });
+    // A clamped value can equal the stored one, which leaves the binding untouched: write it back so the field
+    // never shows a time that was not kept.
+    (event.target as HTMLInputElement).value = String(next);
+  }
+  /** "Ends at": empty, or at/after the alert's end, removes `end`; otherwise at least 0.1 s after the start. */
+  setMotionEnd(event: Event): void {
+    const motion = this.selectedMotion(), end = this.typedEnd(event, motion.delay); if (end === null) return;
+    this.patchSelected({ motion: withTime(motion, 'end', end) });
+    (event.target as HTMLInputElement).value = end === undefined ? '' : String(end);
+  }
+  /** Reads an end field: null = not a number (ignored), undefined = remove the end. */
+  private typedEnd(event: Event, start: number): number | undefined | null {
+    const raw = this.value(event).trim(), duration = this.editingLayout()?.duration ?? 5;
+    if (raw === '') return undefined;
+    const value = Number(raw); if (!Number.isFinite(value)) return null;
+    const end = Math.min(120, Math.max(.1, tenthsUp(start + .1), Math.round(value * 10) / 10));
+    return end >= duration ? undefined : end;
   }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
   useSound(asset: DesignAsset): void {
@@ -740,7 +767,18 @@ export class OverlayEditorComponent {
   }
   soundValue(field: 'volume' | 'delay' | 'fadeIn' | 'fadeOut', event: Event): void {
     const sound = this.alertSound(), value = Number(this.value(event)); if (!sound || !Number.isFinite(value)) return;
-    this.setSound({ ...sound, [field]: Math.max(0, Math.min(field === 'volume' ? 1 : field === 'delay' ? 120 : 10, field === 'volume' ? value / 100 : value)) });
+    const max = field === 'volume' ? 1 : field === 'delay' ? (sound.end === undefined ? 120 : Math.max(0, tenthsDown(sound.end - .1))) : 10;
+    const next = Math.max(0, Math.min(max, field === 'volume' ? value / 100 : value));
+    this.setSound({ ...sound, [field]: next });
+    // Same as object times: a clamped number field shows what was kept (the volume slider is its own readout).
+    if (field !== 'volume') (event.target as HTMLInputElement).value = String(next);
+  }
+  /** "Stops at": same rules as an object's "Ends at". */
+  soundEnd(event: Event): void {
+    const sound = this.alertSound(); if (!sound) return;
+    const end = this.typedEnd(event, sound.delay); if (end === null) return;
+    this.setSound(withTime(sound, 'end', end));
+    (event.target as HTMLInputElement).value = end === undefined ? '' : String(end);
   }
   useAsset(asset: DesignAsset): void {
     if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });
@@ -1212,8 +1250,8 @@ export class OverlayEditorComponent {
   editTimeline(change: TimelineEdit): void {
     this.resetSimulation();
     this.edit(() => this.updateLayout(layout => change.id === '$sound'
-      ? { ...layout, sound: layout.sound ? { ...layout.sound, [change.field]: change.value } : undefined }
-      : { ...layout, widgets: layout.widgets.map(w => w.id === change.id ? { ...w, motion: { ...(w.motion ?? defaultMotion(w.kind)), [change.field]: change.value } } : w) }), 'timeline:' + change.id + ':' + change.field);
+      ? { ...layout, sound: layout.sound ? withTime(layout.sound, change.field, change.value) : undefined }
+      : { ...layout, widgets: layout.widgets.map(w => w.id === change.id ? { ...w, motion: withTime(w.motion ?? defaultMotion(w.kind), change.field, change.value) } : w) }), 'timeline:' + change.id + ':' + change.field);
   }
   async testDesign(): Promise<void> {
     const request = ++this.designRequest;

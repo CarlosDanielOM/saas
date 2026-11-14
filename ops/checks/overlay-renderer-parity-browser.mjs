@@ -13,7 +13,7 @@ const track = (property,values) => ({property,points:values.map((v,i)=>point(i/(
 const motion = {enter:'none',loop:'none',exit:'none',delay:.2,enterDuration:1,loopDuration:1.7,exitDuration:1};
 const keyframes = {enter:{tracks:[track('x',[-100,0]),track('opacity',[0,1])]},loop:{tracks:[track('y',[0,-20,0]),track('scale',[1,1.2,1])]},exit:{tracks:[track('x',[0,100]),track('opacity',[1,0])]}};
 const layer = (id,kind,x,y,width,height,extra={}) => ({id,kind,x,y,width,height,visible:true,locked:false,...extra});
-const parts = [layer('shape','shape',20,30,180,150,{shape:'rectangle',color:'#123456',radius:12,opacity:.65,motion,keyframes}),layer('image','image',220,30,160,150,{assetId}),layer('text','text',400,30,360,150,{text:'Parity fixture',color:'#fff',fontFamily:'serif',fontSize:42,fontWeight:700,italic:true})];
+const parts = [layer('shape','shape',20,30,180,150,{shape:'rectangle',color:'#123456',radius:12,opacity:.65,motion,keyframes}),layer('image','image',220,30,160,150,{assetId}),layer('text','text',400,30,360,150,{text:'Parity fixture',color:'#fff',fontFamily:'serif',fontSize:42,fontWeight:700,italic:true}),layer('ending','image',400,190,120,40,{assetId,motion:{enter:'fade',exit:'fade',loop:'none',delay:.5,enterDuration:.5,exitDuration:.5,loopDuration:1,end:3.5}})];
 const layout = {duration:6,widgets:parts};
 const design = {id:'starter',name:'Parity design',width:800,height:240,revision:1,events:Object.fromEntries(['follow','sub','bits','raid'].map(k=>[k,layout]))};
 const box = layer('alert','alert',100,80,800,240,{designId:'starter',events:['follow']});
@@ -85,6 +85,16 @@ try {
    await editor.locator('.stage').scrollIntoViewIfNeeded();
    await editor.bringToFront();await editor.waitForTimeout(100);const a=await sample(editor,e,t);await source.bringToFront();await source.waitForTimeout(100);const b=await sample(source,o,t);
    assert(a.animations.length>0,'fixture must produce motion');assert.deepEqual(a,b,`motion/style parity at ${t}s, viewport ${width}`);
+  }
+  // An object with an end leaves at the same moment in the editor and in OBS, and stays gone.
+  for(const t of [1,3.2,3.5,4.5,6]) {
+   const eEnd='app-overlay-scene-renderer [data-widget-id="ending"] app-overlay-layer', oEnd='[data-event="follow"] [data-layer-id="ending"] app-overlay-layer';
+   await editor.getByLabel('Preview position (seconds)').fill(String(t));
+   await editor.bringToFront();await editor.waitForTimeout(100);const a=await sample(editor,eEnd,t);await source.bringToFront();await source.waitForTimeout(100);const b=await sample(source,oEnd,t);
+   assert.deepEqual(a,b,`end parity at ${t}s, viewport ${width}`);
+   const gone=a.animations.find(x=>x.id==='alert-object-gone');
+   if(t>=3.5)assert.equal(gone?.style.opacity,'0',`hidden after its end at ${t}s`);else assert.equal(gone,undefined,`not hidden before its end at ${t}s`);
+   if(t===3.2)assert(Number(a.animations.find(x=>x.id==='alert-object-exit').style.opacity)<1,'mid-exit fading');
   }
   await editor.bringToFront();
   for(const part of parts) {

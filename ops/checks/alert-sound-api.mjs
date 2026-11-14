@@ -41,4 +41,30 @@ await req('GET',assetPath+clips[1].asset.id,null,404,'');await req('GET',assetPa
 state.designs[0].events.follow.sound={...sound,volume:.2};state=await data('PUT',path,state);assert.deepEqual(state.scenes[0].published.designs[0].events.follow.sound,sound);
 delete state.designs[0].events.follow.sound;state=await data('PUT',path,state);await req('DELETE','/asset-library/'+owner+'/'+sound.assetId,null,409);
 state=await data('POST',path+'/scenes/'+scene.id+'/publish',{revision:state.revision});await req('GET',assetPath+sound.assetId,null,404,'');await req('DELETE','/asset-library/'+owner+'/'+sound.assetId);
-console.log('PASS MP3/WAV/Ogg uploads and duration/quota; invalid/overlong files; sound settings validation, owner isolation, rendered sound, immutable publication, scoped range playback and deletion guards');process.exit(0);
+// Optional end times: sound.end (sound has stopped) and an object's motion.end, seconds from the alert's start, 0.1-120.
+const hasEnd=o=>Object.prototype.hasOwnProperty.call(o,'end');
+assert(!hasEnd(sound),'the sound saved above had no end');
+state=await data('GET',path);
+const endingSound={assetId:clips[1].asset.id,name:'Chime.mp3',volume:.5,delay:.2,fadeIn:0,fadeOut:.5,end:3};
+const endingMotion={enter:'fade',exit:'fade',loop:'none',delay:0,enterDuration:.5,exitDuration:.5,loopDuration:2,end:2.5};
+state.designs[0].events.follow.sound=endingSound;state.designs[0].events.follow.widgets[0].motion=endingMotion;
+state=await data('PUT',path,state);
+assert.deepEqual(state.designs[0].events.follow.sound,endingSound);assert.deepEqual(state.designs[0].events.follow.widgets[0].motion,endingMotion);
+const readBack=await data('GET',path);assert.deepEqual(readBack.designs[0].events.follow.sound,endingSound);assert.deepEqual(readBack.designs[0].events.follow.widgets[0].motion,endingMotion);
+for(const end of [0,.05,-1,120.01,'3',true,null,{}])for(const target of ['sound','motion']){
+ const copy=structuredClone(state),layout=copy.designs[0].events.follow;(target==='sound'?layout.sound:layout.widgets[0].motion).end=end;await req('PUT',path,copy,400);
+}
+const unchanged=await data('GET',path);assert.equal(unchanged.revision,state.revision,'a rejected end never mutates the draft');
+assert.deepEqual(unchanged.designs[0].events.follow.sound,endingSound);assert.deepEqual(unchanged.designs[0].events.follow.widgets[0].motion,endingMotion);
+assert.equal((await renderLayout(state.designs[0].events.follow,owner,{user_name:'Listener'})).sound.end,3,'rendered alert layouts keep the sound end');
+state=await data('POST',path+'/scenes/'+scene.id+'/publish',{revision:state.revision});
+const publicFollow=(await data('GET','/overlay-studio/public/'+scene.publicId)).snapshot.designs.find(d=>d.id===state.designs[0].id).events.follow;
+assert.deepEqual(publicFollow.sound,endingSound,'the public overlay state has the sound end');assert.deepEqual(publicFollow.widgets[0].motion,endingMotion,'the public overlay state has the object end');
+const {end:_soundEnd,...plainSound}=endingSound,{end:_motionEnd,...plainMotion}=endingMotion;
+state.designs[0].events.follow.sound=plainSound;state.designs[0].events.follow.widgets[0].motion=plainMotion;state=await data('PUT',path,state);
+assert(!hasEnd(state.designs[0].events.follow.sound)&&!hasEnd(state.designs[0].events.follow.widgets[0].motion),'a save without end returns no end key');
+assert.deepEqual(state.designs[0].events.follow.sound,plainSound);assert.deepEqual(state.scenes[0].published.designs[0].events.follow.sound,endingSound,'live publication keeps its end until published again');
+state=await data('POST',path+'/scenes/'+scene.id+'/publish',{revision:state.revision});
+const publicPlain=(await data('GET','/overlay-studio/public/'+scene.publicId)).snapshot.designs.find(d=>d.id===state.designs[0].id).events.follow;
+assert(!hasEnd(publicPlain.sound)&&!hasEnd(publicPlain.widgets[0].motion),'republishing without end serves no end key');
+console.log('PASS MP3/WAV/Ogg uploads and duration/quota; invalid/overlong files; sound settings validation, owner isolation, rendered sound, immutable publication, scoped range playback and deletion guards; optional sound/object end saved, read back, published to the public state, range/type checked (400, draft unchanged) and absent when unset');process.exit(0);

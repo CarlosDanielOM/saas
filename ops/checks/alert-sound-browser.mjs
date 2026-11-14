@@ -27,7 +27,7 @@ function waveResponse(route) {
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const errors = [];
 async function until(predicate, label, tries = 200) { for (let i = 0; i < tries; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error('Timed out: ' + label); }
-async function fixture({ width = 1280, height = 900, dark = false, touch = false, lang = 'en' } = {}) {
+async function fixture({ width = 1280, height = 900, dark = false, touch = false, lang = 'en', state } = {}) {
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, permissions: ['clipboard-read', 'clipboard-write'] });
   await context.addInitScript(({ user, app, dark, lang }) => {
     localStorage.setItem('dimasite.session.v1', JSON.stringify({ version: 2, token: 'fixture-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: user, appUser: app, permissions: {} }));
@@ -35,7 +35,7 @@ async function fixture({ width = 1280, height = 900, dark = false, touch = false
   }, { user, app: {...app,language:lang}, dark, lang });
   await context.routeWebSocket('**/*', ws => ws.close());
   const assets=[{id:'1'.repeat(24),name:'Chime.wav',kind:'audio',mime:'audio/wav',duration:20,bytes:wave.length,width:0,height:0},{id:'2'.repeat(24),name:'Picture.png',kind:'image',mime:'image/png',bytes:100,width:10,height:10}];
-  const ctx = { assets, uploads:0, state: initialState(), writes: 0, sources: 1, tests: [], conflict: false, recoveries: [], failRecovery: false };
+  const ctx = { assets, uploads:0, state: state ?? initialState(), writes: 0, sources: 1, tests: [], conflict: false, recoveries: [], failRecovery: false };
   await context.route('**/*', route => {
     const req = route.request(), url = new URL(req.url());
     if (url.origin === new URL(base).origin) return route.continue();
@@ -112,6 +112,43 @@ const exactValue = (page, key) => page.locator('.properties').getByLabel(key, { 
   await context.close();
  }
  console.log('PASS sound picker/filter/upload, manual library preview, volume/delay, real preview playback and replay cleanup, save/reload/publish, per-event settings, mobile/desktop EN/ES and axe');
+ // Sound end: it has stopped (fade-out finished) at `end`, in the timeline transport and in a design preview.
+ {
+  const withSound=sound=>{const state=initialState();state.designs[0].events.follow.sound={assetId:'1'.repeat(24),name:'Chime.wav',volume:.8,...sound};return state;};
+  const {context,page}=await fixture({state:withSound({delay:.5,fadeIn:0,fadeOut:.6,end:2})});
+  await page.locator('.design-row__actions button').first().click();
+  const timeline=page.locator('app-overlay-timeline');await timeline.waitFor();const audio=page.locator('app-overlay-sound audio');
+  const clock=async()=>parseFloat(await timeline.locator('output').innerText());
+  // Start the timeline transport at 0 (as scrubbing does), then play it.
+  await timeline.locator('input[type=range]').fill('0');await audio.waitFor({state:'attached'});await until(()=>audio.evaluate(a=>a.readyState>0),'timeline audio ready');
+  await timeline.locator('.primary').click();await until(()=>audio.evaluate(a=>!a.paused),'timeline plays the sound',400);
+  await until(()=>clock().then(t=>t>=1.75),'timeline near the end',400);const fading=await audio.evaluate(a=>a.volume);
+  assert(fading<.8*.6,'fade-out ramps toward the end: '+fading);
+  await until(()=>audio.evaluate(a=>a.paused),'timeline sound stops at its end',400);const stoppedAt=await clock();
+  assert(stoppedAt>=1.95 && stoppedAt<2.3,'timeline stops at end: '+stoppedAt);
+  assert(await clock()<5,'alert still playing');await page.waitForTimeout(300);assert.equal(await audio.evaluate(a=>a.paused),true,'stays stopped after its end');
+  await timeline.locator('.primary').click();
+  // Scrubbing past the end and playing stays silent; before the end it plays again.
+  await timeline.locator('input[type=range]').fill('2.5');await timeline.locator('.primary').click();await page.waitForTimeout(400);assert.equal(await audio.evaluate(a=>a.paused),true,'silent after its end');
+  await timeline.locator('.primary').click();await timeline.locator('input[type=range]').fill('1');await timeline.locator('.primary').click();await until(()=>audio.evaluate(a=>!a.paused),'plays again before its end',400);
+  await timeline.locator('.primary').click();await timeline.locator('.primary').waitFor();
+  // Design preview (the same component OBS uses, without the timeline clock).
+  await timeline.locator('button').filter({hasText:'Exit timeline preview'}).click().catch(()=>{});
+  await openStudio(page,'test');const preview=page.locator('.tester').getByRole('button',{name:'Preview',exact:false}).last();
+  await preview.click();await until(()=>audio.evaluate(a=>!a.paused && a.currentTime>.2),'design preview plays the sound',400);
+  const began=Date.now()-await audio.evaluate(a=>a.currentTime*1000)-500;
+  await until(()=>audio.evaluate(a=>a.paused),'design preview sound stops at its end',400);const live=(Date.now()-began)/1000;
+  assert(live>1.8 && live<2.5,'design preview stops near its end: '+live);
+  assert(await page.locator('.stage app-overlay-scene-renderer .placement[data-kind=text]').count()>0,'alert still showing');
+  await context.close();
+  // A sound whose start is at or after its end stays silent.
+  const silent=await fixture({state:withSound({delay:1,fadeIn:0,fadeOut:0,end:1})});
+  await silent.page.locator('.design-row__actions button').first().click();const t2=silent.page.locator('app-overlay-timeline');await t2.waitFor();
+  await t2.locator('input[type=range]').fill('0');const a2=silent.page.locator('app-overlay-sound audio');await a2.waitFor({state:'attached'});await until(()=>a2.evaluate(a=>a.readyState>0),'silent audio ready');
+  await t2.locator('.primary').click();await silent.page.waitForTimeout(1800);assert.equal(await a2.evaluate(a=>a.paused),true,'start at its end: silent');
+  await silent.context.close();
+ }
+ console.log('PASS sound end: fade-out ramp, stops at end in the timeline transport (play, scrub past, replay before) and in a design preview while the alert plays; start at end is silent');
  const publicId='d'.repeat(48),sound={assetId:'1'.repeat(24),volume:.8,delay:.3,fadeIn:.8,fadeOut:1.5};
  const snapshot={width:1280,height:720,waitFor:['follow'],widgets:['one','duplicate'].map((id,i)=>layer(id,'alert',i*400,0,400,120,{designId:'sound',events:['follow']})),designs:[{id:'sound',width:800,height:240,events:{}}]};
  const context=await browser.newContext({viewport:{width:1280,height:720}});let socket;const ended=[],health=[];let fail=false;

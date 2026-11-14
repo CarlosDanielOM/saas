@@ -1,4 +1,4 @@
-import { motionWindows } from './overlay-motion-timing';
+import { motionStop, motionWindows } from './overlay-motion-timing';
 import type { AlertKeyframes } from './overlay-keyframes.model';
 import type { AlertMotion, WidgetKind } from './overlay.model';
 
@@ -22,6 +22,8 @@ function loopFrames(name: AlertMotion['loop']): Keyframe[] {
 /** Separate wrappers keep entrance, idle and exit transforms independent of layout scaling. */
 export function playObjectMotion(elements: { entrance: HTMLElement; exit: HTMLElement; loop: HTMLElement }, motion: AlertMotion, seconds: number, reduced: boolean, keyframes?: AlertKeyframes): { cancel: () => void; time: () => number; seek: (seconds: number, paused?: boolean) => void } {
   const total = Math.max(1, seconds * 1000), windows = motionWindows(motion, seconds, keyframes);
+  // With `end` set, the exit finishes at the object's own end instead of the alert's (omitted: exactly as before).
+  const stop = motionStop(motion, seconds) * 1000, early = stop < total, exitEnd = early ? stop : total;
   const delay = windows.enter.start * 1000, enterTime = windows.enter.duration * 1000, exitTime = windows.exit.duration * 1000;
   const idleTime = windows.loop.span * 1000;
   const animations: Animation[] = [];
@@ -31,7 +33,11 @@ export function playObjectMotion(elements: { entrance: HTMLElement; exit: HTMLEl
   };
   const enter = !!keyframes?.enter || motion.enter === 'none' || reduced ? [{ opacity: 0 }, { opacity: 1 }] : transition(motion.enter);
   animate(elements.entrance, enter, { duration: reduced || keyframes?.enter ? 1 : enterTime, delay, fill: 'both', easing: keyframes?.enter || motion.enter === 'none' || reduced ? 'steps(1, end)' : 'ease-out' }, 'enter');
-  if (!keyframes?.exit && motion.exit !== 'none') animate(elements.exit, reduced ? [{ opacity: 1 }, { opacity: 0 }] : transition(motion.exit).reverse().map(frame => ({ ...frame, ...(frame.offset == null ? {} : { offset: 1 - frame.offset }) })), { duration: reduced ? 1 : exitTime, delay: total - (reduced ? 1 : exitTime), fill: 'both', easing: reduced ? 'steps(1, end)' : 'ease-in' }, 'exit');
+  if (!keyframes?.exit && motion.exit !== 'none') animate(elements.exit, reduced ? [{ opacity: 1 }, { opacity: 0 }] : transition(motion.exit).reverse().map(frame => ({ ...frame, ...(frame.offset == null ? {} : { offset: 1 - frame.offset }) })), { duration: reduced ? 1 : exitTime, delay: exitEnd - (reduced ? 1 : exitTime), fill: 'both', easing: reduced ? 'steps(1, end)' : 'ease-in' }, 'exit');
   if (!keyframes?.loop && !reduced && motion.loop !== 'none' && idleTime > 0) animate(elements.loop, loopFrames(motion.loop), { duration: motion.loopDuration * 1000, delay: delay + enterTime, iterations: idleTime / (motion.loopDuration * 1000), fill: 'none', easing: motion.loop === 'spin' ? 'linear' : 'ease-in-out' }, 'loop');
+  // Gone after its end in every mode (no exit, built-in or custom exit, reduced motion): the last-created animation
+  // on the outermost wrapper wins over the entrance's opacity, and it is seeked with the others, so scrubbing back
+  // before the end shows the object again.
+  if (early) animate(elements.entrance, [{ opacity: 0 }, { opacity: 0 }], { duration: Math.max(1, total - stop), delay: stop, fill: 'forwards' }, 'gone');
   return { cancel: () => animations.forEach(animation => animation.cancel()), time: () => clockOffset + (clockPaused ? 0 : (performance.now() - clockStart) / 1000), seek: (seconds, paused = true) => { clockOffset = Math.max(0, Math.min(seconds, total / 1000)); clockStart = performance.now(); clockPaused = paused; animations.forEach(animation => { if (paused) animation.pause(); else animation.play(); animation.currentTime = clockOffset * 1000; }); } };
 }
