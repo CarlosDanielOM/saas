@@ -46,6 +46,7 @@ import { oauthRoute, oauthApiRoute, oauthMetadata } from './oauth/routes.js';
 import { petRoute } from './routes/pet.route.js';
 import { docsAssistantRoute } from './routes/docs-assistant.route.js';
 import { siteAgentRoute } from './routes/site-agent.route.js';
+import { mcpHostBoundary } from './mcp/mcp.route.js';
 
 const __dirname = getDirname(import.meta.url);
 
@@ -53,6 +54,8 @@ export const server = async (): Promise<Express.Application> => {
     try {
         let app = express();
         app.use(httpTelemetry);
+        // MCP host (mcp.domdimabot.com): its own router, ahead of every webhook, parser and CORS policy.
+        app.use(mcpHostBoundary);
 
         // Setup webhooks first (raw body required for signature validation)
         app.use('/polar/webhook', polarshWebhook);
@@ -69,7 +72,7 @@ export const server = async (): Promise<Express.Application> => {
         // OAuth has its own origin policy; keep it ahead of legacy permissive CORS.
         app.use('/oauth', oauthRoute);
         app.use('/v1', oauthApiRoute);
-        app.get('/.well-known/oauth-authorization-server', oauthMetadata);
+        app.all('/.well-known/oauth-authorization-server', oauthMetadata);
         app.use(express.static(path.join(__dirname, 'routes', 'public')));
         app.use(cors());
         app.use('/observability', observabilityRoute);
