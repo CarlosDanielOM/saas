@@ -21,11 +21,18 @@ globalThis.fetch = async (input, options = {}) => {
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
   if (url.hostname === '127.0.0.1') return original(input, options);
   const raw = options.body ?? (input instanceof Request ? await input.clone().text() : '');
+  // Browser (website) Twitch tokens: OAuth consent sends "OAuth <t>", the website API "Bearer <t>".
+  const users = { 'mcp-browser-owner': '99004101', 'mcp-browser-admin': '99004102', 'mcp-browser-stranger': '99004103',
+    'mcp-browser-creator': '533538623' };
+  const browserToken = () => new Headers(options.headers).get('authorization')?.replace(/^(OAuth|Bearer) /, '');
   if (url.hostname === 'id.twitch.tv' && url.pathname === '/oauth2/validate') {
-    const token = new Headers(options.headers).get('authorization')?.replace(/^OAuth /, '');
-    const users = { 'mcp-browser-owner': '99004101', 'mcp-browser-admin': '99004102', 'mcp-browser-stranger': '99004103' };
+    const token = browserToken();
     if (!users[token]) return Response.json({ status: 401 }, { status: 401 });
     return Response.json({ client_id: 'oauth-beta-test-client', user_id: users[token], expires_in: 3600 });
+  }
+  if (url.hostname === 'api.twitch.tv' && url.pathname === '/helix/users' && (options.method ?? 'GET') === 'GET' && users[browserToken()]) {
+    const id = users[browserToken()];
+    return Response.json({ data: [{ id, login: `login_${id}`, display_name: `Login_${id}`, profile_image_url: '' }] });
   }
   if (url.hostname === 'api.polar.sh' && url.pathname.replace(/\/$/, '') === '/v1/events/ingest') {
     const { events = [] } = JSON.parse(String(raw || '{}'));

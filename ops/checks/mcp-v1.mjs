@@ -133,7 +133,19 @@ assert.equal(result.body.error, 'channel_access_required');
 await AdminSchema.updateOne({ channelID: OWNER, adminID: ADMIN }, { $set: { permissions: ['*'] } });
 result = await api('GET', '/oauth/browser-session', undefined, 'mcp-browser-admin');
 assert.deepEqual(result.body.channels.map(channel => channel.id), [ADMIN]);
-await AdminSchema.updateOne({ channelID: OWNER, adminID: ADMIN }, { $set: { permissions: ['dashboard:view', 'commands:view', 'commands:manage', 'mcp:admin'] } });
+// Only the channel owner grants AI apps: platform staff (the creator account) can manage admins but not grant it.
+const grant = (token, permissions) => http('PUT', `/admins/${OWNER}/${ADMIN}/permissions`, { body: { permissions },
+  headers: { Authorization: `Bearer ${token}` } });
+const withMcp = ['dashboard:view', 'commands:view', 'commands:manage', 'mcp:admin'];
+result = await grant('mcp-browser-creator', withMcp);
+assert.equal(result.status, 403, result.text);
+assert.equal(result.body.type, 'mcp_owner_only');
+result = await http('POST', `/admins/${OWNER}`, { body: { channelName: 'mcp_owner', adminName: 'mcp_stranger', permissions: ['*', 'mcp:admin'] },
+  headers: { Authorization: 'Bearer mcp-browser-creator' } });
+assert.equal(result.status, 403, 'staff cannot add a new admin with AI apps either');
+result = await grant('mcp-browser-owner', withMcp);
+assert.equal(result.status, 200, result.text);
+assert.equal((await grant('mcp-browser-creator', withMcp)).status, 200, 'staff may keep an existing grant while editing');
 result = await api('GET', '/oauth/browser-session', undefined, 'mcp-browser-admin');
 assert.deepEqual(result.body.channels.map(channel => [channel.id, channel.role]), [[ADMIN, 'owner'], [OWNER, 'admin']]);
 result = await api('POST', `/oauth/requests/${requestId}/decision`, { approve: true }, 'mcp-browser-admin');
@@ -266,7 +278,7 @@ result = await mcp(reader, 'tools/list');
 assert.equal(result.status, 401);
 await redis.sRem('oauth:cimd:deny', CIMD);
 
-console.log('PASS MCP v1: CIMD sign-in + admin channel choice (explicit mcp:admin, not *), audience, PRM/challenges/step-up, host boundary, tool list, '
+console.log('PASS MCP v1: CIMD sign-in + admin channel choice (explicit mcp:admin, not *, owner-only grant), audience, PRM/challenges/step-up, host boundary, tool list, '
   + 'reads/writes charged once, free credit balance, safe-body guard, undo, credits exhaustion, live rights, denylist');
 await mongo.disconnect();
 await redis.quit();
