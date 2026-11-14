@@ -240,7 +240,8 @@ assert.doesNotMatch(credits.description, /Costs/);
 const billedBeforeBalance = (await billing()).length;
 call = await tool(reader, 'get_ai_credits');
 assert.equal(call.error, false, call.text);
-assert.equal(call.json.result.balance, 500);
+// The live balance: the 500 seeded minus every credit billed so far in this check (the local projection debits them).
+assert.equal(call.json.result.balance, 500 - (await billing()).reduce((sum, event) => sum + event.metadata.credits, 0));
 assert.equal(call.json.result.buyMoreAt, 'https://domdimabot.com/mcp_owner/credits');
 assert.equal(call.json.charged, 0);
 assert.equal((await billing()).length, billedBeforeBalance, 'reading the balance is never billed');
