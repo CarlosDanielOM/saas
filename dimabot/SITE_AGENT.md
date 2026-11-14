@@ -262,6 +262,10 @@ the same context. Events are saved before they are sent; reconnect = snapshot + 
     chat (`!cct`), which the Commands page does not list: reads mark them (`command: null`), their cards say so.
     `create_timer` is kept undo-only (`registry.getUndoTool`) for changes already in the log.
 
+## MCP surface
+
+The tool registry is shared with MCP. `surfaces` controls where a tool is available; `executableFields` identifies command-language text that MCP must check before applying a write. A read result may set `billable: false` when it should not be charged. Add every new site tool to `MCP_ALLOWLIST` or `MCP_EXCLUDED` in `tools/mcp.ts`; a test enforces the classification. See [MCP.md](./MCP.md) for execution, safety and billing.
+
 ## Frontend (dimasite `src/app/features/assistant/`)
 
 - `assistant-root` is mounted once in `AuthenticatedLayoutComponent` (hidden in Overlay Studio focus mode); shows

@@ -12,6 +12,8 @@ This guide describes the current Dima OAuth beta contract for a native desktop c
 - Authorization-server metadata: `https://api.domdimabot.com/.well-known/oauth-authorization-server`
 - Browser connection management: `https://domdimabot.com/oauth/connections`
 
+Token, revocation, and authorization-server metadata endpoints allow public CORS (`Access-Control-Allow-Origin: *`). Metadata advertises `client_id_metadata_document_supported: true`. See [MCP.md](./MCP.md) for the other audience.
+
 Set `User-Agent: DimaDesktop/<app-version>` on HTTP requests and the WebSocket handshake. The web edge may treat generic automated-client user agents differently, so identify the native client explicitly.
 
 Start a system-browser authorization-code flow. Bind a loopback listener before opening the browser, on an ephemeral, non-default port, and use exactly `/oauth/callback` as the path. The supported redirect hosts are `127.0.0.1` and `[::1]`; the URI must be plain HTTP and contain no user info, query, or fragment. Preserve the exact selected URI for the token exchange, including host and port. For example: `http://127.0.0.1:49152/oauth/callback`.
@@ -27,11 +29,16 @@ state=<optional, fresh random value>
 code_challenge=<S256 challenge>
 code_challenge_method=S256
 device_name=<optional, up to 80 characters>
+resource=<optional; defaults to https://api.domdimabot.com/v1>
 ```
 
 The browser lands on the Dima site for consent. The user must sign in to a registered Dima account; approving redirects to the exact loopback URI with `code` and `iss=https://api.domdimabot.com`. Denial returns `error=access_denied` and `iss`. Both callbacks include `state` only if the client sent it. The desktop app must handle error callbacks, verify `iss` against the expected issuer, and, if it sent `state`, compare the returned value exactly before exchanging the code. Reject callbacks with missing or mismatched expected values. Authorization requests expire after 10 minutes; authorization codes are single-use and expire after 60 seconds.
 
-Once `client_id` and `redirect_uri` are valid, authorization request errors redirect to the loopback callback with `error`, `error_description`, `iss`, and `state` if valid. Error codes are `invalid_request`, `unsupported_response_type`, and `invalid_scope`. An unknown or disabled client, invalid redirect URI, or duplicated `client_id` or `redirect_uri` instead returns JSON 400 `{ "error": "..." }` in the browser and never redirects. HTTP 429 and 503 responses also remain JSON.
+Once `client_id` and `redirect_uri` are valid, authorization request errors redirect to the loopback callback with `error`, `error_description`, `iss`, and `state` if valid. Error codes include `invalid_request`, `unsupported_response_type`, `invalid_scope`, and `invalid_target`. An unknown or disabled client, invalid redirect URI, or duplicated `client_id` or `redirect_uri` instead returns JSON 400 `{ "error": "..." }` in the browser and never redirects. HTTP 429 and 503 responses also remain JSON.
+
+Scopes belong to an audience and cannot be mixed across resources. Desktop access tokens do not work on MCP; MCP tokens do not work on `/v1`. The desktop consent decision must not send `channel_id`.
+
+The browser `GET /oauth/browser-session` response includes `user_id`, `channel_id`, `name`, and `channels` (entries have `id`, `name`, `role`). `GET /oauth/connections` returns `sessions` with `client_name` and `resource` alongside the session, grant, channel, device, scope and time fields; legacy sessions default to the desktop resource and registry client name.
 
 ## Exchange, refresh, and sign-out
 
@@ -68,6 +75,8 @@ grant_type=refresh_token
 client_id=dima-desktop
 refresh_token=<latest refresh token>
 ```
+
+The exchange and refresh may include `resource`; if present it must match the authorized resource or the server returns `invalid_target`. A disabled client makes existing access tokens fail with 401 `invalid_token`; authorization for an unknown or disabled client still returns JSON 400.
 
 The optional `scope` field may be omitted or must exactly match the originally issued scope string; this beta rejects any other value. As a desktop storage recommendation, keep access tokens in memory and persist refresh credentials only in the platform credential store. This guide makes no Windows or Linux app changes.
 

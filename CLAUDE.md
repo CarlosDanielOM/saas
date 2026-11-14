@@ -131,6 +131,7 @@ How to work with it:
 - HTTP routes: `dimabot/src/server/routes/*.route.ts`
 - Route registration: `dimabot/src/server/server.ts`
 - WebSocket events/contracts: `dimabot/src/server/websocket.ts`
+- MCP architecture and operations: `dimabot/MCP.md`
 - Bot commands/handlers: `dimabot/src/commands/**`, `dimabot/src/handlers/**`, `dimabot/src/functions/**`
 - Cron workers: `dimabot/src/workers/*.worker.ts` (register in `cron.index.ts`)
 
@@ -275,6 +276,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 
 - `dimasite/AGENTS.md` – Angular patterns, design system, component guidelines, styling details, hybrid CSS policy.
 - `dimabot/AGENTS.md` – Backend architecture, command patterns, worker guidelines, API entry points.
+- `dimabot/MCP.md` – MCP architecture and operations.
 - `admin/AGENTS.md` – Internal admin panel patterns and access control.
 - `dimadocs/AGENTS.md` – Astro + MDX documentation authoring guidelines.
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
