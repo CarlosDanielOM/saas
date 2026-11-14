@@ -1,59 +1,242 @@
 <div class="lf">
   <header class="lf-nav">
-    <a routerLink="/" class="brand" aria-label="DomDimaBot"><app-brand-logo /></a>
-    <div class="tools">
-      <button type="button" (click)="language.toggleLanguage()" [attr.aria-label]="t('oauth.language')">{{ language.currentLanguage().toUpperCase() }}</button>
-      <button type="button" (click)="theme.toggleTheme()">{{ t(theme.isDarkMode() ? 'landing.theme.dark' : 'landing.theme.light') }}</button>
+    <a routerLink="/" class="lf-brand" aria-label="DomDimaBot"><app-brand-logo /></a>
+    <div class="lf-tools">
+      <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" (click)="language.toggleLanguage()" [attr.aria-label]="t('oauth.language')">{{ language.currentLanguage().toUpperCase() }}</button>
+      <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" (click)="theme.toggleTheme()">{{ t(theme.isDarkMode() ? 'landing.theme.dark' : 'landing.theme.light') }}</button>
     </div>
   </header>
-  <main class="lf-main">
-    <section class="lf-tile" aria-labelledby="oauth-title" [attr.aria-busy]="loading() || busy()">
-      <p class="kicker">{{ t('oauth.beta') }}</p>
-      <h1 id="oauth-title">{{ t(management ? 'oauth.connectionsTitle' : 'oauth.title') }}</h1>
-      @if (error()) { <p role="alert" class="error">{{ t(error()) }}</p> }
-      @if (loading()) {
-        <p role="status">{{ t('oauth.loading') }}</p>
-      } @else if (completed()) {
-        <p role="status">{{ t('oauth.completed') }}</p>
-      } @else if (management || details()) {
-        @if (!signedIn()) {
-          <p>{{ t('oauth.signInDescription') }}</p>
-          <button type="button" class="primary" (click)="signIn()">{{ t('oauth.signIn') }}</button>
-        } @else {
-          <div class="account">
-            <p>{{ t('oauth.signedIn', { name: accountName() }) }}</p>
-            <button type="button" (click)="signOut()" [disabled]="busy()">{{ t('oauth.signOut') }}</button>
+
+  <main class="lf-main" [class.lf-main--wide]="management()">
+    @if (management()) {
+      <!-- Connected applications -->
+      <header class="lf-tile lf-head" aria-labelledby="oauth-title" [attr.aria-busy]="loading() || busy()">
+        <p class="lf-kicker">{{ t('oauth.connections.kicker') }}</p>
+        <h1 id="oauth-title">{{ t('oauth.connectionsTitle') }}</h1>
+        <p class="lf-sub">{{ t('oauth.connectionsDescription') }}</p>
+        @if (!loading() && signedIn()) {
+          <div class="lf-account">
+            <span class="lf-account__name">{{ t('oauth.signedIn', { name: accountName() }) }}</span>
+            <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="signOut()" [disabled]="busy()">{{ t('oauth.signOut') }}</button>
           </div>
-          @if (management) {
-            <p>{{ t('oauth.connectionsDescription') }}</p>
-            @for (connection of connections(); track connection._id) {
-              <article class="connection">
-                <h2>{{ connection.device_name }}</h2>
-                <p>{{ connection.client_id }}</p>
-                <ul>@for (scope of connection.scopes; track scope) { <li>{{ t('oauth.scopes.' + scope) }}</li> }</ul>
-                <div class="actions">
-                  <button type="button" (click)="revoke(connection)" [disabled]="busy()">{{ t('oauth.disconnect') }}</button>
-                  <button type="button" (click)="revoke(connection, true)" [disabled]="busy()">{{ t('oauth.disconnectApp') }}</button>
-                </div>
-              </article>
-            } @empty { <p>{{ t('oauth.noConnections') }}</p> }
+        }
+      </header>
+
+      @if (loading()) {
+        <p class="lf-tile lf-status" role="status">{{ t('oauth.loading') }}</p>
+      } @else if (!signedIn()) {
+        <section class="lf-tile lf-signin">
+          @if (error()) { <p role="alert" class="lf-alert"><app-lf-icon name="alert" [size]="18" aria-hidden="true" /><span>{{ t(error()) }}</span></p> }
+          @if (hasToken()) {
+            <div class="lf-actions"><button type="button" class="lf-btn" (appThrottleClick)="load()">{{ t('oauth.retry') }}</button></div>
           } @else {
-            <p>{{ t('oauth.request', { app: details()!.client_name, device: details()!.device_name }) }}</p>
-            <ul class="permissions">
-              @for (scope of details()!.scopes; track scope) {
-                <li><strong>{{ t('oauth.scopes.' + scope) }}</strong><p>{{ t('oauth.descriptions.' + scope) }}</p></li>
-              }
-            </ul>
-            <p class="note">{{ t('oauth.ownAccount') }}</p>
-            <p class="note">{{ t('oauth.initiated') }}</p>
-            <div class="actions">
-              <button type="button" (click)="decide(false)" [disabled]="busy()">{{ t('oauth.deny') }}</button>
-              <button type="button" class="primary" (click)="decide(true)" [disabled]="busy()">{{ t(busy() ? 'oauth.working' : 'oauth.allow') }}</button>
-            </div>
-            <a routerLink="/oauth/connections" class="manage">{{ t('oauth.manage') }}</a>
+            <p class="lf-copy">{{ t('oauth.connections.signInDescription') }}</p>
+            <div class="lf-actions"><button type="button" class="lf-btn lf-btn--primary" (appThrottleClick)="signIn()">{{ t('oauth.signIn') }}</button></div>
+          }
+        </section>
+      } @else {
+        @for (app of apps(); track app.key; let appIndex = $index) {
+          <article class="lf-tile lf-appcard" [attr.aria-labelledby]="'oauth-app-' + appIndex">
+            <header class="lf-appcard__head">
+              <span class="lf-mark" aria-hidden="true">{{ initial(app.name) }}</span>
+              <div class="lf-appcard__text">
+                <h2 class="lf-appcard__name" [id]="'oauth-app-' + appIndex">{{ app.name }}</h2>
+                <p class="lf-appcard__meta">{{ sessionCount(app.sessionCount) }}</p>
+              </div>
+              @if (resourceLabel(app); as label) { <span class="lf-chip lf-chip--accent">{{ label }}</span> }
+            </header>
+
+            @for (grant of app.grants; track grant.grantId) {
+              <section class="lf-grant" [attr.aria-label]="t('oauth.connections.onChannel', { app: app.name, channel: grant.channelName })">
+                <p class="lf-grant__title">
+                  <span class="lf-grant__label">{{ t('oauth.connections.channel') }}</span>
+                  <strong>{{ grant.channelName }}</strong>
+                  @if (grant.role) { <span class="lf-chip" [class.lf-chip--accent]="grant.role === 'owner'">{{ roleLabel(grant.role) }}</span> }
+                </p>
+                <ul class="lf-rows">
+                  @for (session of grant.sessions; track session._id) {
+                    <li class="lf-row">
+                      <div class="lf-row__text">
+                        <span class="lf-row__name">{{ deviceLabel(app, session) }}</span>
+                        <span class="lf-row__meta">
+                          {{ relativeTime(session.last_used_at) }}@if (date(session.createdAt); as connected) { · {{ t('oauth.connections.connectedOn', { date: connected }) }} }
+                        </span>
+                      </div>
+                      <button type="button" class="lf-btn lf-btn--compact" (appThrottleClick)="revoke(app, grant, session)" [disabled]="busy()"
+                        [attr.aria-label]="t('oauth.connections.disconnectOneLabel', { device: deviceLabel(app, session), channel: grant.channelName })">{{ t('oauth.connections.disconnectOne') }}</button>
+                    </li>
+                  }
+                </ul>
+                @if (grant.scopes.length) {
+                  <details class="lf-more">
+                    <summary><span>{{ t('oauth.connections.permissions', { count: grant.scopes.length }) }}</span><app-lf-icon name="chevron-down" [size]="16" aria-hidden="true" /></summary>
+                    <ul class="lf-scopes">
+                      @for (scope of grant.scopes; track scope) { <li><app-lf-icon [name]="scopeIcon(scope)" [size]="15" aria-hidden="true" /><span>{{ scopeText('scopes', scope) }}</span></li> }
+                    </ul>
+                  </details>
+                }
+                @if (confirmGrant() === grant.grantId) {
+                  <div class="lf-confirm" role="group" [attr.aria-labelledby]="'oauth-confirm-' + grant.grantId">
+                    <p class="lf-confirm__title" [id]="'oauth-confirm-' + grant.grantId">{{ t('oauth.connections.confirmTitle', { app: app.name, channel: grant.channelName }) }}</p>
+                    <p class="lf-confirm__body">{{ t(app.resource === 'desktop' ? 'oauth.connections.confirmBodyDesktop' : 'oauth.connections.confirmBody') }}</p>
+                    <div class="lf-actions">
+                      <button type="button" class="lf-btn" (click)="cancelRevokeGrant(grant)" [disabled]="busy()">{{ t('oauth.connections.cancel') }}</button>
+                      <button type="button" class="lf-btn lf-btn--danger" [attr.data-confirm-grant]="grant.grantId" (appThrottleClick)="revoke(app, grant)" [disabled]="busy()">{{ t('oauth.connections.confirm') }}</button>
+                    </div>
+                  </div>
+                } @else {
+                  <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost lf-btn--danger-text" [attr.data-ask-grant]="grant.grantId" (appThrottleClick)="askRevokeGrant(grant)" [disabled]="busy()">
+                    <app-lf-icon name="trash" [size]="15" aria-hidden="true" />{{ t('oauth.connections.disconnectApp', { app: app.name, channel: grant.channelName }) }}
+                  </button>
+                }
+              </section>
+            }
+          </article>
+        } @empty {
+          @if (!error()) {
+            <section class="lf-tile lf-empty">
+              <span class="lf-empty__icon" aria-hidden="true"><app-lf-icon name="shield" [size]="22" /></span>
+              <h2>{{ t('oauth.connections.emptyTitle') }}</h2>
+              <p class="lf-copy">{{ t('oauth.noConnections') }}</p>
+            </section>
           }
         }
+
+        @if (error()) {
+          <div class="lf-toast lf-toast--error" role="alert">
+            <app-lf-icon name="alert" [size]="18" aria-hidden="true" /><span>{{ t(error()) }}</span>
+            <button type="button" class="lf-btn lf-btn--compact" (appThrottleClick)="load()" [disabled]="busy() || loading()">{{ t('oauth.connections.reload') }}</button>
+          </div>
+        }
+        <p class="lf-toast" role="status" [class.lf-toast--hidden]="!notice()">
+          @if (notice()) { <app-lf-icon name="check" [size]="18" aria-hidden="true" /><span>{{ notice() }}</span> }
+        </p>
       }
-    </section>
+    } @else {
+      <!-- Consent -->
+      <section class="lf-tile lf-consent" aria-labelledby="oauth-title" [attr.aria-busy]="loading() || busy()">
+        @if (details() && cimd()) {
+          <p class="lf-kicker">{{ t('oauth.app.kicker') }}</p>
+          <div class="lf-app">
+            <span class="lf-mark lf-mark--lg" aria-hidden="true">{{ appInitial() }}</span>
+            <div class="lf-app__text">
+              <h1 id="oauth-title">{{ t('oauth.app.title', { app: details()!.client_name }) }}</h1>
+              @if (details()!.recognized) {
+                <span class="lf-chip lf-chip--ok"><app-lf-icon name="check" [size]="13" aria-hidden="true" />{{ t('oauth.app.recognized') }}</span>
+              } @else {
+                <span class="lf-chip lf-chip--warn"><app-lf-icon name="alert" [size]="13" aria-hidden="true" />{{ t('oauth.app.unverified') }}</span>
+              }
+            </div>
+          </div>
+          <dl class="lf-facts">
+            @if (publisher()) {
+              <div class="lf-facts__row"><dt>{{ t('oauth.app.publishedBy') }}</dt><dd><span class="lf-host">{{ publisher() }}</span></dd></div>
+            }
+            <div class="lf-facts__row">
+              <dt>{{ t('oauth.app.returnsTo') }}</dt>
+              <dd><span class="lf-host">{{ callbackHost() }}</span>@if (callbackLocal()) { <span class="lf-facts__hint">{{ t('oauth.app.thisComputer') }}</span> }</dd>
+            </div>
+          </dl>
+          @if (!details()!.recognized && !terminal()) {
+            <p class="lf-caution"><app-lf-icon name="alert" [size]="16" aria-hidden="true" /><span>{{ t('oauth.app.unverifiedNote') }}</span></p>
+          }
+        } @else {
+          <p class="lf-kicker">{{ t(details() ? 'oauth.beta' : 'oauth.genericKicker') }}</p>
+          <h1 id="oauth-title">{{ t(details() ? 'oauth.title' : 'oauth.genericTitle') }}</h1>
+        }
+
+        @if (loading()) {
+          <p class="lf-status" role="status">{{ t('oauth.loading') }}</p>
+        } @else if (completed()) {
+          <p class="lf-done" role="status">
+            <app-lf-icon name="check" [size]="18" aria-hidden="true" />
+            <span>{{ cimd() ? t(completed() === 'allowed' ? 'oauth.app.completed' : 'oauth.app.denied', { host: callbackHost() }) : t('oauth.completed') }}</span>
+          </p>
+        } @else if (terminal() || !details()) {
+          <div class="lf-alert lf-alert--block" role="alert">
+            <app-lf-icon name="alert" [size]="18" aria-hidden="true" />
+            <span>{{ t(error() || 'oauth.expired') }}</span>
+          </div>
+          @if (!terminal()) {
+            <div class="lf-actions"><button type="button" class="lf-btn" (appThrottleClick)="load()">{{ t('oauth.retry') }}</button></div>
+          }
+        } @else if (!signedIn()) {
+          @if (error()) { <p role="alert" class="lf-alert"><app-lf-icon name="alert" [size]="18" aria-hidden="true" /><span>{{ t(error()) }}</span></p> }
+          @if (hasToken()) {
+            <div class="lf-actions"><button type="button" class="lf-btn" (appThrottleClick)="load()">{{ t('oauth.retry') }}</button></div>
+          } @else {
+            <p class="lf-copy">{{ t(cimd() ? 'oauth.app.signInDescription' : 'oauth.signInDescription') }}</p>
+            <div class="lf-actions"><button type="button" class="lf-btn lf-btn--primary" (appThrottleClick)="signIn()">{{ t('oauth.signIn') }}</button></div>
+          }
+        } @else {
+          <div class="lf-account">
+            <span class="lf-account__name">{{ t('oauth.signedIn', { name: accountName() }) }}</span>
+            <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="signOut()" [disabled]="busy()">{{ t('oauth.signOut') }}</button>
+          </div>
+
+          @if (cimd()) {
+            @if (channelSelection()) {
+              @if (channels().length > 1) {
+                <fieldset class="lf-block lf-channels">
+                  <legend class="lf-h2">{{ t('oauth.app.channelLegend') }}</legend>
+                  @for (channel of channels(); track channel.id) {
+                    <label class="lf-radio" [class.lf-radio--on]="selectedChannel() === channel.id" [class.lf-radio--failed]="failedChannel() === channel.id">
+                      <input type="radio" name="oauth-channel" [value]="channel.id" [checked]="selectedChannel() === channel.id"
+                        (change)="selectChannel(channel.id)" [disabled]="busy()" />
+                      <span class="lf-radio__name">{{ channel.name }}</span>
+                      <span class="lf-chip" [class.lf-chip--accent]="channel.role === 'owner'">{{ roleLabel(channel.role) }}</span>
+                    </label>
+                  }
+                </fieldset>
+              } @else if (chosenChannel(); as channel) {
+                <div class="lf-block">
+                  <h2 class="lf-h2">{{ t('oauth.app.channelTitle') }}</h2>
+                  <p class="lf-single"><span class="lf-radio__name">{{ channel.name }}</span><span class="lf-chip" [class.lf-chip--accent]="channel.role === 'owner'">{{ roleLabel(channel.role) }}</span></p>
+                </div>
+              } @else {
+                <p class="lf-caution"><app-lf-icon name="alert" [size]="16" aria-hidden="true" /><span>{{ t('oauth.app.noChannels') }}</span></p>
+              }
+            }
+
+            <div class="lf-block">
+              <h2 class="lf-h2">{{ t('oauth.app.permissionsTitle') }}</h2>
+              <ul class="lf-perms">
+                @for (scope of details()!.scopes; track scope) {
+                  <li>
+                    <span class="lf-perms__icon" aria-hidden="true"><app-lf-icon [name]="scopeIcon(scope)" [size]="16" /></span>
+                    <div><strong>{{ scopeText('scopes', scope) }}</strong>@if (scopeText('descriptions', scope); as description) { <p>{{ description }}</p> }</div>
+                  </li>
+                }
+              </ul>
+            </div>
+
+            @if (mcp()) {
+              <p class="lf-credits"><app-lf-icon name="zap" [size]="16" aria-hidden="true" /><span>{{ t('oauth.app.credits', { channel: chosenChannel()?.name || accountName() }) }}</span></p>
+            }
+          } @else {
+            <p class="lf-copy">{{ t('oauth.request', { app: details()!.client_name, device: details()!.device_name }) }}</p>
+            <ul class="lf-perms">
+              @for (scope of details()!.scopes; track scope) {
+                <li>
+                  <span class="lf-perms__icon" aria-hidden="true"><app-lf-icon name="check" [size]="16" /></span>
+                  <div><strong>{{ scopeText('scopes', scope) }}</strong>@if (scopeText('descriptions', scope); as description) { <p>{{ description }}</p> }</div>
+                </li>
+              }
+            </ul>
+            <p class="lf-note">{{ t('oauth.ownAccount') }}</p>
+          }
+
+          <div class="lf-decide">
+            @if (error()) { <p role="alert" class="lf-alert"><app-lf-icon name="alert" [size]="18" aria-hidden="true" /><span>{{ t(error()) }}</span></p> }
+            <p class="lf-note lf-note--strong">{{ t(cimd() ? 'oauth.app.initiated' : 'oauth.initiated') }}</p>
+            <div class="lf-actions">
+              <button type="button" class="lf-btn" (appThrottleClick)="decide(false)" [disabled]="busy()">{{ t('oauth.deny') }}</button>
+              <button type="button" class="lf-btn lf-btn--primary" (appThrottleClick)="decide(true)" [disabled]="busy() || !canAllow()">{{ t(busy() ? 'oauth.working' : 'oauth.allow') }}</button>
+            </div>
+          </div>
+          <a routerLink="/oauth/connections" class="lf-manage">{{ t('oauth.manage') }}</a>
+        }
+      </section>
+    }
   </main>
 </div>

@@ -293,6 +293,14 @@ export const routes: Routes = [
         title: 'LF Auth & Status Mocks | DomDimaBot'
       },
       {
+        path: 'oauth-consent',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/oauth-consent-mock.component').then(
+            (m) => m.OAuthConsentMockComponent
+          ),
+        title: 'OAuth Consent Mock | DomDimaBot'
+      },
+      {
         path: 'lf-login',
         loadComponent: () =>
           import('./features/landing-mocks/dev/lf-login-mock.component').then(

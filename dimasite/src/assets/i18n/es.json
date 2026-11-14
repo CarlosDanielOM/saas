@@ -10363,13 +10363,75 @@
     "working": "Conectando…",
     "completed": "Volviendo a Dima Desktop. Puedes cerrar esta página cuando la app se conecte.",
     "manage": "Administrar aplicaciones conectadas",
-    "connectionsDescription": "Desconecta una computadora o revoca esta aplicación en todas las computadoras. La conexión de tu bot con Twitch seguirá activa.",
-    "disconnect": "Desconectar esta computadora",
-    "disconnectApp": "Desconectar app en todas las computadoras",
-    "noConnections": "No hay aplicaciones conectadas.",
+    "connectionsDescription": "Las apps que conectaste a Dima, por canal. Desconecta una conexión o la app completa de un canal. Tu bot de Twitch sigue funcionando.",
+    "noConnections": "Cuando conectes Dima Desktop o una app de IA a Dima, aparecerá aquí.",
     "loginExpired": "Tu sesión ha caducado. Inicia sesión de nuevo para continuar.",
     "expired": "La solicitud no es válida o ha caducado. Inicia una nueva conexión desde la app.",
     "failed": "No se pudo completar la solicitud. Inténtalo de nuevo en un momento.",
+    "genericKicker": "Conexión de app · Beta",
+    "genericTitle": "Conectar una aplicación",
+    "retry": "Intentar de nuevo",
+    "app": {
+      "kicker": "Conexión de app de IA · Beta",
+      "title": "Conectar {{app}}",
+      "recognized": "App reconocida",
+      "unverified": "App sin verificar",
+      "unverifiedNote": "Dima no ha revisado esta app y cualquiera puede ponerle cualquier nombre a una app. Continúa solo si confías en las direcciones de arriba.",
+      "publishedBy": "Publicada por",
+      "returnsTo": "Después de elegir, regresas a",
+      "thisComputer": "una app en esta computadora",
+      "signInDescription": "Inicia sesión con Twitch para elegir qué canal puede usar esta app.",
+      "channelLegend": "¿Qué canal puede usar?",
+      "channelTitle": "Canal",
+      "noChannels": "Todavía no tienes un canal que puedas conectar. Primero activa Dima en tu canal o pídele a un streamer que te haga admin.",
+      "permissionsTitle": "Lo que podrá hacer",
+      "credits": "Las llamadas a herramientas usan los créditos de IA de {{channel}}: 1 crédito por cada llamada que lee o cambia el canal. Las respuestas de la documentación son gratis.",
+      "initiated": "Continúa solo si tú iniciaste esta conexión.",
+      "completed": "Conexión aprobada. Te regresamos a {{host}}. Puedes cerrar esta página cuando la app diga que ya está conectada.",
+      "denied": "Conexión rechazada. Te regresamos a {{host}}. No se compartió nada."
+    },
+    "roles": {
+      "owner": "Dueño",
+      "admin": "Admin"
+    },
+    "resources": {
+      "desktop": "Dima Desktop",
+      "mcp": "App de IA (MCP)"
+    },
+    "errors": {
+      "channelAccess": "Ya no puedes conectar apps a ese canal. Elige otro canal o pídele a su dueño que te vuelva a hacer admin.",
+      "blocked": "Dima bloqueó esta app, así que no se puede conectar. No se compartió nada y tu canal no cambió.",
+      "unsupported": "Esta app pidió algo que Dima no ofrece. Regresa a la app y vuelve a conectarla.",
+      "accountRequired": "No encontramos una cuenta de Dima para esta cuenta de Twitch. Cierra sesión, vuelve a iniciar sesión en Dima y empieza la conexión otra vez desde la app.",
+      "slowDown": "Demasiados intentos en poco tiempo. Espera un minuto y vuelve a intentarlo.",
+      "unsafeRedirect": "Nos detuvimos aquí porque la dirección de regreso de la app no coincidía. No se envió nada a la app. Empieza la conexión otra vez desde la app."
+    },
+    "connections": {
+      "kicker": "Conexiones · Beta",
+      "signInDescription": "Inicia sesión con Twitch para ver las apps conectadas a tus canales.",
+      "channel": "Canal",
+      "onChannel": "{{app}} en {{channel}}",
+      "countOne": "1 conexión",
+      "countOther": "{{count}} conexiones",
+      "computer": "Computadora",
+      "connection": "Conexión",
+      "lastUsed": "Último uso: {{time}}",
+      "neverUsed": "Sin usar todavía",
+      "connectedOn": "Conectada el {{date}}",
+      "permissions": "Qué puede hacer ({{count}})",
+      "disconnectOne": "Desconectar",
+      "disconnectOneLabel": "Desconectar {{device}} de {{channel}}",
+      "disconnectApp": "Desconectar {{app}} de {{channel}}",
+      "confirmTitle": "¿Desconectar {{app}} de {{channel}}?",
+      "confirmBody": "Todas las conexiones de esta app a este canal dejan de funcionar de inmediato. Para usarla otra vez, vuelve a conectarla desde la app.",
+      "confirmBodyDesktop": "Todas las computadoras que usan Dima Desktop en este canal cierran sesión de inmediato. Vuelve a iniciar sesión en la app para usarla.",
+      "confirm": "Desconectar app",
+      "cancel": "Cancelar",
+      "emptyTitle": "No hay apps conectadas",
+      "reload": "Recargar",
+      "disconnectedOne": "Se desconectó {{device}} de {{channel}}.",
+      "disconnectedApp": "Se desconectó {{app}} de {{channel}}."
+    },
     "scopes": {
       "pet:read": "Leer la configuración de tu mascota",
       "profile:read": "Ver tu perfil de Dima",
@@ -10379,7 +10441,10 @@
       "pet:interact": "Hablar con tu mascota como streamer",
       "pet:receive": "Recibir voz y animación de la mascota",
       "pet:control": "Controlar la reproducción de la mascota",
-      "pet:playback:select": "Elegir esta computadora para reproducir la mascota"
+      "pet:playback:select": "Elegir esta computadora para reproducir la mascota",
+      "channel:read": "Ver los comandos, temporizadores, configuración, chat y estadísticas del stream del canal",
+      "channel:write": "Cambiar comandos, temporizadores y configuración",
+      "stream:act": "Hacer acciones en tu stream en vivo"
     },
     "descriptions": {
       "pet:read": "La voz, personalidad y reglas de respuesta de tu mascota. Requiere Premium o Pro. Este permiso no permite cambiar configuración, interactuar, reproducir audio ni gastar créditos.",
@@ -10390,7 +10455,10 @@
       "pet:interact": "Enviar mensajes como streamer en tu propio canal, con la personalidad y la voz de tu mascota. La mascota puede usar tus herramientas habituales de streamer, incluidas la moderación y los cambios del canal, leer y actualizar la memoria compartida según tu configuración actual y gastar créditos de IA y TTS en las respuestas. Requiere Premium o Pro.",
       "pet:receive": "Recibir la voz y la animación de tu mascota en esta computadora. La reproducción respeta la salida que hayas elegido. Este permiso por sí solo no permite enviar mensajes a la IA ni generar voz de pago.",
       "pet:control": "Cancelar solicitudes de la mascota y detener su reproducción. Este permiso por sí solo no permite enviar mensajes a la IA ni generar voz de pago.",
-      "pet:playback:select": "Seleccionar esta computadora para reproducir el audio de tu mascota o controlar su animación. Al cambiar la salida elegida, esas funciones de reproducción pasan del dispositivo anterior a este."
+      "pet:playback:select": "Seleccionar esta computadora para reproducir el audio de tu mascota o controlar su animación. Al cambiar la salida elegida, esas funciones de reproducción pasan del dispositivo anterior a este.",
+      "channel:read": "Solo lectura: no puede cambiar nada.",
+      "channel:write": "Cada cambio se puede deshacer en Dima.",
+      "stream:act": "Cosas que los espectadores ven de inmediato mientras estás en vivo."
     }
   },
   "dashboardInsights": {

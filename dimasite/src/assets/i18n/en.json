@@ -10363,13 +10363,75 @@
     "working": "Connecting…",
     "completed": "Returning to Dima Desktop. You can close this page once the app connects.",
     "manage": "Manage connected applications",
-    "connectionsDescription": "Disconnect a computer, or revoke this application on every computer. Your Twitch bot connection stays connected.",
-    "disconnect": "Disconnect this computer",
-    "disconnectApp": "Disconnect app on all computers",
-    "noConnections": "No applications are currently connected.",
+    "connectionsDescription": "Apps you connected to Dima, by channel. Disconnect one connection, or the whole app from a channel. Your Twitch bot keeps working.",
+    "noConnections": "When you connect Dima Desktop or an AI app to Dima, it shows up here.",
     "loginExpired": "Your sign-in expired. Sign in again to continue.",
     "expired": "This connection request is invalid or expired. Start a new connection from the app.",
     "failed": "We could not complete this request. Try again in a moment.",
+    "genericKicker": "App connection · Beta",
+    "genericTitle": "Connect an application",
+    "retry": "Try again",
+    "app": {
+      "kicker": "AI app connection · Beta",
+      "title": "Connect {{app}}",
+      "recognized": "Recognized app",
+      "unverified": "Unverified app",
+      "unverifiedNote": "Dima hasn't checked this app, and anyone can give an app any name. Only continue if you trust the addresses above.",
+      "publishedBy": "Published by",
+      "returnsTo": "After you choose, you return to",
+      "thisComputer": "an app on this computer",
+      "signInDescription": "Sign in with Twitch to choose which of your channels this app can use.",
+      "channelLegend": "Which channel can it use?",
+      "channelTitle": "Channel",
+      "noChannels": "You don't have a channel you can connect yet. Turn on Dima for your channel first, or ask a streamer to make you an admin.",
+      "permissionsTitle": "It will be able to",
+      "credits": "Tool calls use {{channel}}'s AI credits: 1 credit for each call that reads or changes the channel. Docs answers are free.",
+      "initiated": "Only continue if you started this connection yourself.",
+      "completed": "Connection approved. Returning you to {{host}}. You can close this page once the app says it's connected.",
+      "denied": "Connection denied. Returning you to {{host}}. Nothing was shared."
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin"
+    },
+    "resources": {
+      "desktop": "Dima Desktop",
+      "mcp": "AI app (MCP)"
+    },
+    "errors": {
+      "channelAccess": "You can't connect apps to that channel anymore. Pick another channel, or ask its owner to make you an admin again.",
+      "blocked": "Dima blocked this app, so it can't connect. Nothing was shared and your channel wasn't changed.",
+      "unsupported": "This app asked for something Dima doesn't offer. Go back to the app and connect again.",
+      "accountRequired": "We couldn't find a Dima account for this Twitch account. Sign out, sign in to Dima again, then start the connection again from the app.",
+      "slowDown": "Too many tries in a short time. Wait a minute, then try again.",
+      "unsafeRedirect": "We stopped here because the app's return address didn't match. Nothing was sent to the app. Start the connection again from the app."
+    },
+    "connections": {
+      "kicker": "Connections · Beta",
+      "signInDescription": "Sign in with Twitch to see the apps connected to your channels.",
+      "channel": "Channel",
+      "onChannel": "{{app}} on {{channel}}",
+      "countOne": "1 connection",
+      "countOther": "{{count}} connections",
+      "computer": "Computer",
+      "connection": "Connection",
+      "lastUsed": "Last used {{time}}",
+      "neverUsed": "Not used yet",
+      "connectedOn": "Connected {{date}}",
+      "permissions": "What it can do ({{count}})",
+      "disconnectOne": "Disconnect",
+      "disconnectOneLabel": "Disconnect {{device}} from {{channel}}",
+      "disconnectApp": "Disconnect {{app}} from {{channel}}",
+      "confirmTitle": "Disconnect {{app}} from {{channel}}?",
+      "confirmBody": "Every connection of this app to the channel stops working right away. To use it again, connect it again from the app.",
+      "confirmBodyDesktop": "Every computer using Dima Desktop on this channel is signed out right away. Sign in again in the app to use it.",
+      "confirm": "Disconnect app",
+      "cancel": "Cancel",
+      "emptyTitle": "No apps connected",
+      "reload": "Reload",
+      "disconnectedOne": "{{device}} was disconnected from {{channel}}.",
+      "disconnectedApp": "{{app}} was disconnected from {{channel}}."
+    },
     "scopes": {
       "pet:read": "Read your pet configuration",
       "profile:read": "View your Dima profile",
@@ -10379,7 +10441,10 @@
       "pet:interact": "Talk with your pet as the streamer",
       "pet:receive": "Receive pet speech and animation",
       "pet:control": "Control pet playback",
-      "pet:playback:select": "Choose this computer for pet playback"
+      "pet:playback:select": "Choose this computer for pet playback",
+      "channel:read": "See the channel's commands, timers, settings, chat and stream stats",
+      "channel:write": "Change commands, timers and settings",
+      "stream:act": "Take actions on your live stream"
     },
     "descriptions": {
       "pet:read": "Your pet’s voice, personality, and response rules. Requires Premium or Pro. This permission cannot change settings, interact, play audio, or spend credits.",
@@ -10390,7 +10455,10 @@
       "pet:interact": "Send messages as the streamer in your own channel, using your pet’s personality and voice. The pet can use your normal streamer-level tools, including moderation and channel changes, read and update shared memory under your existing settings, and spend AI and TTS credits on replies. Requires Premium or Pro.",
       "pet:receive": "Receive speech and animation from your pet on this computer. Playback follows your selected output. This permission alone cannot submit AI messages or generate paid speech.",
       "pet:control": "Cancel pet requests and stop pet playback. This permission alone cannot submit AI messages or generate paid speech.",
-      "pet:playback:select": "Select this computer to play your pet’s audio or control its animation. Changing the selected output moves those playback roles from the previous device."
+      "pet:playback:select": "Select this computer to play your pet’s audio or control its animation. Changing the selected output moves those playback roles from the previous device.",
+      "channel:read": "Read only: it can't change anything.",
+      "channel:write": "Every change can be undone in Dima.",
+      "stream:act": "Things viewers see right away while you're live."
     }
   },
   "dashboardInsights": {
