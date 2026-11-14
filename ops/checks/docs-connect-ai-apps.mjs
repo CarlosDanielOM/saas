@@ -11,6 +11,10 @@ for (const prefix of ['', 'es/']) {
   const html = await response.text();
   for (const fact of facts) assert.ok(html.includes(fact), `${prefix}connect-ai-apps: missing ${fact}`);
   assert.match(html, prefix ? /1 crédito/ : /1 AI credit/);
+  // Admins need the owner's explicit AI apps (MCP) grant; the balance check is free.
+  assert.match(html, prefix ? /Apps de IA \(MCP\)/ : /AI apps \(MCP\)/, `${prefix}connect-ai-apps: AI apps permission`);
+  const dashboard = await (await fetch(`${base}/${prefix}dashboard/`)).text();
+  assert.match(dashboard, prefix ? /Apps de IA \(MCP\)/ : /AI apps \(MCP\)/, `${prefix}dashboard: AI apps permission`);
   const assistants = await (await fetch(`${base}/${prefix}ai-assistants/`)).text();
   assert.ok(assistants.includes(`/${prefix}connect-ai-apps/`), `${prefix}ai-assistants links to the MCP page`);
 }
