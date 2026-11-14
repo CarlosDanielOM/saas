@@ -81,6 +81,18 @@ assert.ok(result.body.scopes_supported.includes('ai:interact'));
 assert.ok(result.body.scopes_supported.includes('pet:playback:select'));
 assert.deepEqual(result.body.beta.socket_io, { path: '/socket.io/', namespace: '/desktop', protocol_version: 1 });
 assert.match(result.headers.get('cache-control'), /no-store/);
+// Startup gives first-party clients only their registry scopes; a restart adds listed ones and removes none.
+const { FIRST_PARTY_CLIENTS } = await import('/app/dist/server/oauth/clients.js');
+const { initializeOAuth } = await import('/app/dist/server/oauth/service.js');
+const registryScopes = [...FIRST_PARTY_CLIENTS.find(client => client.client_id === 'dima-desktop').allowed_scopes].sort();
+const desktopScopes = async () => [...(await OAuthClient.findOne({ client_id: 'dima-desktop' }).lean()).allowed_scopes].sort();
+assert.deepEqual(await desktopScopes(), registryScopes, 'desktop client holds exactly its registry scopes');
+await OAuthClient.updateOne({ client_id: 'dima-desktop' }, { $pull: { allowed_scopes: 'credits:read' } });
+await OAuthClient.updateOne({ client_id: 'dima-desktop' }, { $addToSet: { allowed_scopes: 'usage:read' } });
+await initializeOAuth();
+assert.deepEqual(await desktopScopes(), [...registryScopes, 'usage:read'].sort(), 'restart re-adds listed scopes, keeps DB-added ones');
+await OAuthClient.updateOne({ client_id: 'dima-desktop' }, { $pull: { allowed_scopes: 'usage:read' } });
+assert.deepEqual(await desktopScopes(), registryScopes);
 // Malformed origin-form targets must not throw out of the HTTP upgrade listener.
 const malformedUpgrade = await new Promise((resolve, reject) => {
   const socket = createConnection({ host: '127.0.0.1', port: 3000 });

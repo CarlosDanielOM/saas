@@ -6,8 +6,9 @@ import { OAuthGrant } from '../../schemas/oauth_grant.schema.js';
 import { OAuthSession } from '../../schemas/oauth_session.schema.js';
 import { OAuthRefreshToken } from '../../schemas/oauth_refresh_token.schema.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
-import { ACCESS_TTL_SECONDS, CODE_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES,
+import { ACCESS_TTL_SECONDS, CODE_TTL_SECONDS, OAuthError, OAUTH_SCOPES,
     parseScopes, REFRESH_IDLE_MS, REQUEST_TTL_SECONDS, SESSION_ABSOLUTE_MS, validateRedirect } from './catalog.js';
+import { assertClientRegistry, FIRST_PARTY_CLIENTS } from './clients.js';
 
 export const oauthIssuer = () => new URL(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').origin;
 export const oauthWebsite = () => new URL(process.env.DASHBOARD_URL || 'https://domdimabot.com').origin;
@@ -24,15 +25,16 @@ interface AuthorizationCode extends AuthorizationRequest { user_id: string; chan
 export interface AccessIdentity { session_id: string; user_id: string; client_id: string; channel_id: string; scopes: string[] }
 
 export async function initializeOAuth(): Promise<void> {
+    assertClientRegistry();
     await Promise.all([OAuthClient.init(), OAuthGrant.init(), OAuthSession.init(), OAuthRefreshToken.init()]);
-    await OAuthClient.updateOne({ client_id: DESKTOP_CLIENT_ID }, { $setOnInsert: {
-        name: 'Dima Desktop Beta', type: 'public', enabled: true,
-        redirect_uris: ['http://127.0.0.1/oauth/callback', 'http://[::1]/oauth/callback'],
-        allowed_scopes: Object.entries(OAUTH_SCOPES).filter(([, value]) => value.active).map(([key]) => key)
-    } }, { upsert: true });
-    // Newly active scopes require fresh consent; never expand existing grants/sessions.
-    await OAuthClient.updateOne({ client_id: DESKTOP_CLIENT_ID }, { $addToSet: { allowed_scopes: { $each:
-        Object.entries(OAUTH_SCOPES).filter(([, value]) => value.active).map(([key]) => key) } } });
+    // Name, redirects and enabled are seeded once so DB edits (e.g. disabling a client) survive restarts.
+    // A client gains only the scopes it lists; boot never removes one, since that cuts live sessions
+    // (activeSession), so removal is a deliberate DB change. Newly listed scopes need fresh consent;
+    // existing grants/sessions are never expanded.
+    for (const { client_id, allowed_scopes, ...fields } of FIRST_PARTY_CLIENTS) {
+        await OAuthClient.updateOne({ client_id }, { $setOnInsert: { ...fields, enabled: true },
+            $addToSet: { allowed_scopes: { $each: allowed_scopes } } }, { upsert: true });
+    }
 }
 
 export async function getClient(clientID: unknown) {
