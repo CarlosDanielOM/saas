@@ -151,6 +151,8 @@ export interface ToolContext {
     signal: AbortSignal;
     /** True only if the requester holds EVERY permission (owner/global admin always true). */
     can(permissions: readonly string[]): Promise<boolean>;
+    /** Set when the call comes through MCP (`tools/execute.ts`): the OAuth client and the scopes its token holds. */
+    mcp?: { clientId: string; clientName: string; scopes: readonly string[] };
 }
 
 /** A change the user must approve. Serializable: it is stored on the turn while waiting. */
@@ -206,8 +208,12 @@ export interface NavigateAction {
 }
 
 export type ToolOutcome =
-    /** Plain result for the model. `summary` is a short line for the tool row in the chat. */
-    | { type: 'result'; result: unknown; summary?: string }
+    /**
+     * Plain result for the model. `summary` is a short line for the tool row in the chat. `billable: false` = nothing
+     * was read or done that costs credits on surfaces that charge per call (MCP): no access, needs full access,
+     * feature unavailable, not found.
+     */
+    | { type: 'result'; result: unknown; summary?: string; billable?: false }
     /** The runner pauses for approval, then calls tool.apply(proposal). */
     | { type: 'approval'; proposal: ChangeProposal }
     /** Show a UI block. With waitForInput the runner pauses until submit. */
@@ -239,6 +245,15 @@ export interface AgentTool<Input = Record<string, unknown>> {
     apply?(proposal: ChangeProposal, ctx: ToolContext): Promise<{ result: unknown; change: ChangeRecordInput | null }>;
     /** Write tools: restore a change from the log. Throw ToolConflictError if it changed since. */
     undo?(change: { undo: Record<string, unknown> | null; after: Record<string, unknown> | null; target: ChangeRecordInput['target'] }, ctx: Omit<ToolContext, 'callId'>): Promise<void>;
+    /**
+     * Write tools whose changes make command-language text run. Surfaces that apply without an approval card (MCP)
+     * check each returned text with `tools/safe_body.ts` before `apply`: new bodies and messages, plus stored ones
+     * the change turns on, opens to more people or schedules. `null` = it would run code that can't be checked
+     * (a built-in command's own code), so those surfaces refuse it.
+     */
+    executableFields?(input: Input, proposal: ChangeProposal, ctx: ToolContext): string[] | null | Promise<string[] | null>;
+    /** Where the tool is offered (default both). MCP-only tools (`tools/mcp_changes.ts`) are never in the site registry. */
+    surfaces?: readonly ('site' | 'mcp')[];
 }
 
 // ---------------------------------------------------------------------------

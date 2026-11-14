@@ -85,6 +85,11 @@ export const createBitsRule: AgentTool<BitsRuleCreateInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['min'], properties: ruleParameters },
     label: (_input, lang) => tr(lang, 'Preparing the Bits rule…', 'Preparando la regla de Bits…'),
     validate: (raw) => fields(asObject(raw), true) as BitsRuleCreateInput,
+    // A custom chat message runs for every cheer in the range.
+    executableFields(_input, proposal) {
+        const chat = (proposal.payload.raw as { chat?: BitsRule['chat'] }).chat;
+        return chat?.mode === 'custom' ? [chat.message] : [];
+    },
     async run(input, ctx) {
         const current = await loadBitsRules(ctx.channelId);
         if (current.rules.length >= MAX_BITS_RULES) throw new ToolInputError(`The channel already has ${MAX_BITS_RULES} Bits rules`);
@@ -139,6 +144,13 @@ export const updateBitsRule: AgentTool<BitsRuleUpdateInput> = {
         const value = { id: str(input, 'id', { required: true, max: 64 })!, ...fields(input, false) };
         if (!Object.entries(value).some(([key, item]) => key !== 'id' && item !== undefined)) throw new ToolInputError('Give at least one rule field to change');
         return value;
+    },
+    // The custom message after the change, when it is new, turned on or used for other amounts.
+    executableFields(_input, proposal) {
+        const { raw, expected } = proposal.payload as { raw: Record<string, unknown> & { chat?: BitsRule['chat'] }; expected: BitsRule };
+        const chat = raw.chat ?? expected.chat;
+        const exposes = raw.chat !== undefined || raw.enabled === true || raw.min !== undefined || 'max' in raw;
+        return exposes && chat.mode === 'custom' ? [chat.message] : [];
     },
     async run(input, ctx) {
         const current = await loadBitsRules(ctx.channelId);

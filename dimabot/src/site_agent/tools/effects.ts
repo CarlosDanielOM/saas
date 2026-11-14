@@ -108,6 +108,20 @@ function effectFor(name: string, args: string[]): EffectKey | 'generic' | null {
     return 'generic';
 }
 
+/**
+ * Every function `FUNCTION_EFFECTS` (plus the overlay./roulette. prefixes) lists as an action, with its effect in
+ * plain words (no arguments, so `ban` reads as a ban). Null for functions not listed as actions. Used by the MCP
+ * safe-body guard (`safe_body.ts`) to say why a function is refused.
+ */
+export function functionEffect(name: string, lang: Lang = 'en'): string | null {
+    const known = name in FUNCTION_EFFECTS || name.startsWith('overlay.') || (name.startsWith('roulette.') && name !== 'roulette.result');
+    const effect = known ? effectFor(name, []) : null;
+    return effect && effect !== 'generic' ? t(EFFECTS[effect], lang) : null;
+}
+
+/** Names `FUNCTION_EFFECTS` lists (tests check the MCP guard refuses each one). */
+export const EFFECT_FUNCTION_NAMES: readonly string[] = Object.keys(FUNCTION_EFFECTS);
+
 /** Several viewers and arguments, so argument-only and mod-only branches run too. */
 const RUNS: SimulationRunInput[] = [
     { user: 'Sam', role: 'viewer' },

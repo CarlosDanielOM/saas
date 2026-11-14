@@ -119,6 +119,11 @@ export const updateTimerTool: AgentTool<UpdateInput> = {
         }
         return parsed;
     },
+    // The message runs on its own every N minutes: a new one, or the stored one when the timer is turned on.
+    executableFields(_input, proposal) {
+        const { changes, expected } = proposal.payload as { changes: UpdateChanges; expected: TimerSnapshot };
+        return changes.message !== undefined || changes.enabled === true ? [changes.message ?? expected.message] : [];
+    },
     async run(input, ctx) {
         const current = await readTimer(ctx.channelId, input.name);
         if (!current) throw new ToolInputError(`No timer "${input.name}". Use list_timers. To make a command repeat, use update_command (or create_command) with repeatMinutes.`);

@@ -62,7 +62,7 @@ export const searchDocsTool: AgentTool<SearchDocsToolInput> = {
         try {
             response = await searchDocs({ query: input.query, lang: input.lang ?? ctx.lang, limit: input.limit });
         } catch {
-            return { type: 'result', result: DOCS_UNAVAILABLE, summary: t(ctx.lang, 'Docs unavailable', 'Documentación no disponible') };
+            return { type: 'result', result: DOCS_UNAVAILABLE, billable: false, summary: t(ctx.lang, 'Docs unavailable', 'Documentación no disponible') };
         }
         const count = response.results.length;
         return {
@@ -130,10 +130,10 @@ export const readDocsTool: AgentTool<ReadDocsToolInput> = {
             // Pages shrink to fit the runner's tool result cap, so text is paged instead of cut.
             result = await readDocs({ id: input.id, scope: input.scope, page: input.page, lang: ctx.lang, maxBytes: READ_DOCS_RESULT_BYTES - 100 });
         } catch {
-            return { type: 'result', result: DOCS_UNAVAILABLE, summary: t(ctx.lang, 'Docs unavailable', 'Documentación no disponible') };
+            return { type: 'result', result: DOCS_UNAVAILABLE, billable: false, summary: t(ctx.lang, 'Docs unavailable', 'Documentación no disponible') };
         }
         if ('error' in result) {
-            return { type: 'result', result, summary: t(ctx.lang, 'Not found', 'No encontrado') };
+            return { type: 'result', result, billable: false, summary: t(ctx.lang, 'Not found', 'No encontrado') };
         }
         const name = (result.section ?? result.title).replace(/`/g, '');
         const part = result.pages > 1 ? t(ctx.lang, ` (page ${result.page} of ${result.pages})`, ` (página ${result.page} de ${result.pages})`) : '';

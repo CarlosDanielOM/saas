@@ -62,6 +62,13 @@ const TRIGGER_PATTERN = /^[\p{L}\p{N}]{1,30}$/u;
 
 const l = (lang: Lang, en: string, es: string) => (lang === 'es' ? es : en);
 
+/**
+ * Built-in commands (`func`, message.handler.ts) whose own code only replies, so MCP may turn them on or open their
+ * access without a card (`executableFields`). The others moderate, change the stream or edit commands; `!mod` mods
+ * whoever the caller names, gated only by the command's access.
+ */
+export const SAFE_BUILT_IN_FUNCS: ReadonlySet<string> = new Set(['commands', 'followage', 'sumimetro', 'amor']);
+
 /** Shared with the model in every write tool description. */
 export const COMMAND_LANGUAGE_BASICS =
     'Command language basics (the reply body): plain text is posted in chat as typed. $(fn args) calls a function, '
@@ -398,6 +405,8 @@ export const createCommandTool: AgentTool<CreateInput> = {
             ...(repeatMinutes !== undefined ? { repeatMinutes } : {}),
         };
     },
+    // The reply runs as written (and as its repeat's message).
+    executableFields: (input) => [input.body],
     async run(input, ctx) {
         const clash = builtInNameProblem(input.name, ctx.lang);
         if (clash.refuse) throw new ToolInputError(clash.refuse);
@@ -592,6 +601,21 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
             throw new ToolInputError('Nothing to change: send at least one of body, access, cooldown, enabled, description, newName, repeatMinutes');
         }
         return parsed;
+    },
+    async executableFields(_input, proposal, ctx) {
+        const { id, changes, repeat } = proposal.payload as { id: string; changes: UpdateChanges; repeat?: RepeatMove };
+        const texts = changes.body !== undefined ? [changes.body] : [];
+        // The repeat posts by itself: a new message, or one it starts posting again.
+        if (repeat?.to && (!repeat.from || repeat.from.message !== repeat.to.message || (!repeat.from.active && repeat.to.active))) texts.push(repeat.to.message);
+        if (changes.body !== undefined || (changes.enabled !== true && changes.access === undefined)) return texts;
+        // Turning it on or opening its access makes the stored reply (or the built-in code) run for more people.
+        const current = await readById(ctx.channelId, id);
+        if (!current) return texts;
+        const narrows = changes.enabled !== true && inspectExpression(current.permissionExpression).mode === 'level'
+            && levelNumber(changes.access!) >= Number(current.userLevel ?? 1);
+        if (narrows) return texts;
+        if (runsBuiltInCode(current)) return SAFE_BUILT_IN_FUNCS.has(String(current.func ?? '')) ? texts : null;
+        return [...texts, String(current.message ?? '')];
     },
     async run(input, ctx) {
         const current = await findChannelCommand(ctx.channelId, input.name, input.kind);

@@ -4,7 +4,7 @@ import { installFakeModel } from './tools/write/fake_store.testutil.js';
 import type { AgentTool, ToolContext } from './types.js';
 
 const { SiteAgentChangeSchema, SITE_AGENT_CHANGE_TTL_DAYS } = await import('./changes.schema.js');
-const { recordChange, listChanges, undoChange, changeFromApply, ChangeNotFoundError, ChangeNotUndoableError, ChangeForbiddenError } = await import('./changes.js');
+const { recordChange, listChanges, undoChange, changeFromApply, applyProposal, ChangeNotFoundError, ChangeNotUndoableError, ChangeForbiddenError } = await import('./changes.js');
 const { ToolConflictError } = await import('./types.js');
 
 const CHANNEL = '1001';
@@ -84,7 +84,8 @@ test('listChanges: owner sees the whole channel, an admin only their own; newest
     assert.equal(owner.next, null);
     assert.ok(owner.changes.every((change) => change.canUndo));
     const view = owner.changes[2];
-    assert.deepEqual(Object.keys(view).sort(), ['actor', 'after', 'area', 'at', 'before', 'canUndo', 'effects', 'id', 'request', 'target', 'title', 'undone']);
+    assert.deepEqual(Object.keys(view).sort(), ['actor', 'after', 'area', 'at', 'before', 'canUndo', 'effects', 'id', 'request', 'source', 'target', 'title', 'undone']);
+    assert.deepEqual(view.source, { surface: 'site' });
     assert.deepEqual(view.actor, ADMIN);
     assert.equal(view.request, 'please first');
     assert.deepEqual(view.before, { Reply: 'old' });
@@ -178,4 +179,44 @@ test('undoChange: two clicks at once run the undo only once', async () => {
     assert.equal((await first).alreadyUndone, false);
     assert.equal(undoCalls.length, 1);
     assert.equal((await undoChange(CHANNEL, id, { id: OWNER.id, role: 'owner' }, resolve, context(OWNER))).alreadyUndone, true);
+});
+
+test('source: site by default (also for rows saved before it existed), MCP with its client; undo records carry their own', async () => {
+    const site = await record(ADMIN, 'site change');
+    assert.deepEqual(db.store.get(site)!.source, { surface: 'site', clientId: null, clientName: null });
+    const old = await record(ADMIN, 'old row');
+    delete db.store.get(old)!.source;
+    const mcp = await record(ADMIN, 'mcp change', { source: { surface: 'mcp', clientId: 'https://claude.ai/oauth/client', clientName: 'Claude' } });
+    const views = new Map((await listChanges(CHANNEL, { id: OWNER.id, role: 'owner' })).changes.map((change) => [change.id, change.source]));
+    assert.deepEqual(views.get(site), { surface: 'site' });
+    assert.deepEqual(views.get(old), { surface: 'site' });
+    assert.deepEqual(views.get(mcp), { surface: 'mcp', clientId: 'https://claude.ai/oauth/client', clientName: 'Claude' });
+    const done = await undoChange(CHANNEL, mcp, { id: ADMIN.id, role: 'admin' }, resolve, context(ADMIN), { surface: 'mcp', clientId: 'c2', clientName: 'Cursor' });
+    assert.deepEqual(db.store.get(done.undoChangeId!)!.source, { surface: 'mcp', clientId: 'c2', clientName: 'Cursor' });
+    const preset = '5f0000000000000000000001';
+    assert.equal(await record(ADMIN, 'preset id', { id: preset }), preset);
+});
+
+test('applyProposal (the shared apply step): logs an applied change, passes conflicts through, logs a late write after the timeout', async () => {
+    const recorded: unknown[] = [];
+    const record = async (change: unknown) => { recorded.push(change); return 'change-1'; };
+    const change = { area: 'commands', target: { type: 'command', id: '1', label: '!x' }, before: null, after: {}, undo: {}, summary: '' };
+    const proposal = { tool: 'create_command', title: 't', area: 'commands', target: { type: 'command', id: null, label: '!x' }, before: null, after: {}, effects: [], permissions: [], payload: {} };
+    const ctx = { ...context(ADMIN)(), callId: 'c1' } as ToolContext;
+    const make = (apply: AgentTool['apply']) => ({ name: 'create_command', apply } as unknown as AgentTool);
+
+    assert.deepEqual(await applyProposal(make(async () => ({ result: { ok: 1 }, change })), proposal, ctx, record), { result: { ok: 1 }, change, changeId: 'change-1' });
+    assert.deepEqual(await applyProposal(make(async () => ({ result: 'x', change: null })), proposal, ctx, record), { result: 'x', change: null });
+    assert.equal(recorded.length, 1);
+
+    await assert.rejects(applyProposal(make(async () => { throw new ToolConflictError('changed'); }), proposal, ctx, record), ToolConflictError);
+    assert.equal(recorded.length, 1);
+
+    let finish!: () => void;
+    const slow = make(() => new Promise((resolveApply) => { finish = () => resolveApply({ result: 'late', change }); }));
+    await assert.rejects(applyProposal(slow, proposal, ctx, record, { timeoutMs: 5 }), /tool_timeout/);
+    assert.equal(recorded.length, 1);
+    finish();
+    await new Promise((resolveTick) => setTimeout(resolveTick, 5));
+    assert.equal(recorded.length, 2, 'logged when it landed');
 });

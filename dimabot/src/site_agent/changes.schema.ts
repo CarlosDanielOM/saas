@@ -31,6 +31,8 @@ export interface ISiteAgentChange {
     undoOf: Types.ObjectId | null;
     /** Short claim while an undo runs, so two clicks can't undo twice. */
     undoLockUntil: Date | null;
+    /** Where the change was made: the site assistant, or an MCP client (OAuth). Rows from before 2026-11-14 have none = site. */
+    source?: { surface: 'site' | 'mcp'; clientId?: string | null; clientName?: string | null };
     expiresAt: Date;
 }
 
@@ -74,6 +76,14 @@ const siteAgentChangeSchema = new Schema<ISiteAgentChange>({
     },
     undoOf: { type: Schema.Types.ObjectId, default: null },
     undoLockUntil: { type: Date, default: null, select: false },
+    source: {
+        type: new Schema({
+            surface: { type: String, enum: ['site', 'mcp'], default: 'site' },
+            clientId: { type: String, default: null, maxlength: 2048 },
+            clientName: { type: String, default: null, maxlength: 200 },
+        }, { _id: false }),
+        default: () => ({ surface: 'site' }),
+    },
     expiresAt: { type: Date, required: true },
 }, { versionKey: false, minimize: false });
 

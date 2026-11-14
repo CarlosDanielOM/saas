@@ -10,7 +10,7 @@
 import { randomUUID } from 'node:crypto';
 import { error as logError, warn } from '../utils/logger.js';
 import { permissionChecker, resolveAccess, type ChannelAccess } from './access.js';
-import { recordChange } from './changes.js';
+import { applyProposal, recordChange } from './changes.js';
 import { effectiveLevel, LEVEL_SWITCH, levelAvailable, levelConfig, messageCost, modelTraits, SITE_AGENT_LIMITS as L, type AgentLevel, type ChatState, type MessageCost } from './config.js';
 import { channelFacts, compact, dropOldest, estimateItemTokens, estimateTokens, promptHash, repairContext, toMessages } from './context.js';
 import { getDocsPromptIndex } from './docs/index.js';
@@ -998,16 +998,13 @@ async function runApproval(ctx: LoopContext, tool: AgentTool, callId: string, na
             return undefined;
         }
     };
-    const applying = tool.apply(proposal, toolContext(ctx, callId, new AbortController().signal));
     try {
-        const applied = await withTimeout(applying, 120_000, new AbortController().signal);
-        const changeId = applied.change ? await record(applied.change) : undefined;
-        return settle('applied', 'done', toolResultText({ applied: true, result: applied.result, ...(changeId ? { changeId } : {}) }), changeId ? { changeId } : {});
+        // Timeout 120 s; a write still running then is logged when it lands (applyProposal).
+        const { result, changeId } = await applyProposal(tool, proposal, toolContext(ctx, callId, new AbortController().signal), record);
+        return settle('applied', 'done', toolResultText({ applied: true, result, ...(changeId ? { changeId } : {}) }), changeId ? { changeId } : {});
     } catch (err) {
         if (err instanceof ToolConflictError) return settle('failed', 'error', errorText('conflict', `Not applied: ${err.message}`), { error: err.message });
         if (err instanceof Error && err.message === 'tool_timeout') {
-            // Still running: if it finishes later, the change log gets its entry then.
-            void applying.then((late) => (late.change ? record(late.change) : undefined)).catch(() => {});
             return settle('failed', 'error', errorText('outcome_unknown', 'This change took too long: it may or may not have been applied. Check the current state before trying again.'), { error: 'outcome_unknown' });
         }
         // The write may have happened before the error (e.g. a cache refresh after saving failed).

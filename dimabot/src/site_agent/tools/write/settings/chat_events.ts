@@ -142,12 +142,14 @@ export const createChatEvent: AgentTool<TypeInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter, enabled: { type: 'boolean', description: 'Default true' }, fields: fieldsParameter } },
     label: (_input, lang) => tr(lang, 'Preparing the chat event…', 'Preparando el evento de chat…'),
     validate: (raw) => typeInput(raw, 'create'),
+    // Every text value (messages run $(...) when the event fires; other strings are plain values).
+    executableFields: (_input, proposal) => Object.values((proposal.payload.body as { config: Record<string, unknown> }).config).filter((value): value is string => typeof value === 'string'),
     async run(input, ctx) {
         const event = await catalogEvent(input.type);
         if (!event) throw new ToolInputError(`Unknown chat event type ${input.type}. Use get_settings area "chat_events".`);
         if (UNAVAILABLE_STAGES.has(event.releaseStage)) throw new ToolInputError(`${event.name} is not available yet (${event.releaseStage}).`);
         const blocked = planBlock(event, ctx);
-        if (blocked) return { type: 'result', result: { planRequired: true, message: blocked }, summary: blocked };
+        if (blocked) return { type: 'result', billable: false, result: { planRequired: true, message: blocked }, summary: blocked };
         if (await channelEventsub(ctx.channelId, event.type)) throw new ToolInputError(`${event.name} is already set up on this channel; use update_chat_event.`);
         if (!await hasFullAccess(ctx.channelId)) return needsFullAccessResult(ctx.lang);
         const condition: Record<string, string> = {};
@@ -209,6 +211,14 @@ export const updateChatEvent: AgentTool<TypeInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter, enabled: { type: 'boolean' }, fields: fieldsParameter } },
     label: (_input, lang) => tr(lang, 'Preparing the chat event change…', 'Preparando el cambio del evento de chat…'),
     validate: (raw) => typeInput(raw, 'update'),
+    // New text values, plus the stored ones when the event is turned back on.
+    async executableFields(_input, proposal, ctx) {
+        const { id, after } = proposal.payload as { id: string; after: Record<string, unknown> };
+        const texts = Object.values(after).filter((value): value is string => typeof value === 'string');
+        if (after.enabled !== true) return texts;
+        const current = await EventsubSchema.findOne({ _id: id, channelID: ctx.channelId }).lean() as unknown as Record<string, unknown> | null;
+        return [...texts, ...Object.entries(current ?? {}).filter(([key, value]) => typeof value === 'string' && !(key in after)).map(([, value]) => value as string)];
+    },
     async run(input, ctx) {
         const [event, current] = await Promise.all([catalogEvent(input.type), channelEventsub(ctx.channelId, input.type)]);
         if (!event) throw new ToolInputError(`Unknown chat event type ${input.type}. Use get_settings area "chat_events".`);
@@ -217,7 +227,7 @@ export const updateChatEvent: AgentTool<TypeInput> = {
             throw new ToolInputError(`${event.name} cannot be turned off. Clear its message to silence it.`);
         }
         const blocked = planBlock(event, ctx);
-        if (blocked) return { type: 'result', result: { planRequired: true, message: blocked }, summary: blocked };
+        if (blocked) return { type: 'result', billable: false, result: { planRequired: true, message: blocked }, summary: blocked };
         const fields = eventFields(event);
         const wanted: Record<string, unknown> = { ...checkFieldValues(event, input.fields), ...(input.enabled !== undefined ? { enabled: input.enabled } : {}) };
         const keys = Object.keys(wanted).filter((key) => !sameValue(current[key] ?? null, wanted[key]));

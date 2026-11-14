@@ -310,7 +310,7 @@ export const getCommandTool: AgentTool<GetCommandInput> = {
     async run(input, ctx) {
         const command = await findChannelCommand(ctx.channelId, input.name, input.kind);
         if (!command) {
-            return { type: 'result', summary: l(ctx.lang, 'Not found', 'No encontrado'), result: { found: false, message: `No command or keyword "${input.name}" on this channel. Use list_commands to see them.` } };
+            return { type: 'result', billable: false, summary: l(ctx.lang, 'Not found', 'No encontrado'), result: { found: false, message: `No command or keyword "${input.name}" on this channel. Use list_commands to see them.` } };
         }
         const shown = presentCommand(command as never) as Record<string, any>;
         const blocks = shown.authoring === 'blocks';
@@ -431,7 +431,7 @@ export const getTimerTool: AgentTool<{ name: string }> = {
     },
     async run(input, ctx) {
         const result = await getTimer(ctx.channelId, input.name);
-        if (result.status === 404) return { type: 'result', summary: l(ctx.lang, 'Not found', 'No encontrado'), result: { found: false, message: `No timer "${input.name}". Use list_timers.` } };
+        if (result.status === 404) return { type: 'result', billable: false, summary: l(ctx.lang, 'Not found', 'No encontrado'), result: { found: false, message: `No timer "${input.name}". Use list_timers.` } };
         if (result.error) throw new Error(result.message);
         const row = result.timer as TimerRow;
         const command = (await repeatLinks(ctx.channelId)).byTimer.get(String(row.name).toLowerCase())?.trigger ?? null;
@@ -513,7 +513,7 @@ export const getReferralCodesTool: AgentTool<Record<string, never>> = {
     validate: () => ({}),
     async run(_input, ctx) {
         const owner = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: ctx.channelId } } }).select('_id').lean();
-        if (!owner) return { type: 'result', result: { codes: [], message: 'No account found for this channel.' } };
+        if (!owner) return { type: 'result', billable: false, result: { codes: [], message: 'No account found for this channel.' } };
         const codes = await getUserCodes(owner._id as never);
         return {
             type: 'result',

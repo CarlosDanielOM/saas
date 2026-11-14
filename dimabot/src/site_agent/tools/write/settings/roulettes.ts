@@ -247,6 +247,8 @@ export const addRouletteItems: AgentTool<RouletteItemsInput> = {
         if (!Array.isArray(input.items) || !input.items.length || input.items.length > MAX_ITEMS_PER_CALL) throw new ToolInputError(`items must be a list of 1–${MAX_ITEMS_PER_CALL} prizes`);
         return { roulette: str(input, 'roulette', { required: true, max: 100 })!, items: input.items.map(itemInput) };
     },
+    // Winner actions run when the prize wins.
+    executableFields: (input) => input.items.map((item) => item.winnerAction ?? '').filter((text) => text.trim()),
     async run(input, ctx) {
         const { state } = await readRouletteState(ctx.channelId);
         const roulette = findRoulette(state, input.roulette);
@@ -329,6 +331,12 @@ export const updateRouletteItem: AgentTool<RouletteItemUpdateInput> = {
         };
         if (!Object.values(changes).some((value) => value !== undefined)) throw new ToolInputError('Give a label, weight, count or winnerAction to change');
         return { roulette: str(input, 'roulette', { required: true, max: 100 })!, itemId: str(input, 'itemId', { required: true, max: 100 })!, changes };
+    },
+    // The winner action after the change, when it is new or the prize's odds change.
+    executableFields(_input, proposal) {
+        const { data, expected } = proposal.payload as { data: Record<string, unknown>; expected: ReturnType<typeof itemView> };
+        if (data.action === undefined && data.weight === undefined && data.multiplier === undefined) return [];
+        return [String(data.action ?? expected.winnerAction ?? '')];
     },
     async run(input, ctx) {
         const { state } = await readRouletteState(ctx.channelId);

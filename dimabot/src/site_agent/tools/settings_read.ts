@@ -217,6 +217,7 @@ export const getSettings: AgentTool<GetSettingsInput> = {
         if (!await ctx.can([permission])) {
             return {
                 type: 'result',
+                billable: false,
                 summary: tr(ctx.lang, 'No access', 'Sin acceso'),
                 result: { area: input.area, allowed: false, message: permission === '*'
                     ? 'Only the channel owner or a full-access admin can see this area.'
@@ -227,7 +228,9 @@ export const getSettings: AgentTool<GetSettingsInput> = {
             tts: () => tts(ctx), moderation: () => moderation(ctx), follow_defense: () => followDefense(ctx), ai_personality: () => aiPersonality(ctx),
             chat_events: () => chatEvents(ctx), goals: () => goals(ctx), bits_rules: () => bitsRules(ctx), roulettes: () => roulettes(ctx, input.roulette)
         };
-        return { type: 'result', result: { area: input.area, ...(await readers[input.area]() as object) }, summary: AREA_NAMES[input.area][ctx.lang as Lang] };
+        const data = await readers[input.area]() as object;
+        // A roulette that doesn't exist read nothing.
+        return { type: 'result', result: { area: input.area, ...data }, summary: AREA_NAMES[input.area][ctx.lang as Lang], ...('error' in data ? { billable: false as const } : {}) };
     }
 };
 

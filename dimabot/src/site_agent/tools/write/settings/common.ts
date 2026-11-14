@@ -87,9 +87,10 @@ export async function hasFullAccess(channelId: string): Promise<boolean> {
     return Boolean(account?.actived) && account?.actived !== 'false';
 }
 
-export function needsFullAccessResult(lang: Lang): { type: 'result'; result: unknown; summary: string } {
+export function needsFullAccessResult(lang: Lang): { type: 'result'; result: unknown; summary: string; billable: false } {
     return {
         type: 'result',
+        billable: false,
         summary: tr(lang, 'Needs full access', 'Necesita acceso completo'),
         result: {
             needsFullAccess: true,

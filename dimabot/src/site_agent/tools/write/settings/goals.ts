@@ -118,6 +118,8 @@ export const createGoal: AgentTool<GoalCreateInput> = {
             failureAction: action(input, 'failureAction', false) ?? undefined
         };
     },
+    // AST actions run when the goal is reached or missed (message actions are plain text).
+    executableFields: (input) => [input.completionAction, input.failureAction].filter((item): item is ActionInput => item?.type === 'ast').map((item) => item.text),
     async run(input, ctx) {
         const current = await state(ctx.channelId);
         if (current.goals.length >= goalLimit(ctx.plan)) throw new ToolInputError(`The ${ctx.plan} plan allows ${goalLimit(ctx.plan)} goals and the channel has ${current.goals.length}. Delete one first or upgrade.`);
@@ -189,6 +191,13 @@ export const updateGoal: AgentTool<GoalUpdateInput> = {
         };
         if (value.name === undefined && value.target === undefined && value.completionAction === undefined && value.failureAction === undefined) throw new ToolInputError('Give a name, target or action to change');
         return value;
+    },
+    // New actions, or the stored ones when a lower target makes them run sooner.
+    executableFields(_input, proposal) {
+        const { body, before } = proposal.payload as { body: { target: number; actions?: GoalActions }; before: { target: number; actions?: GoalActions } };
+        if (!body.actions && body.target >= before.target) return [];
+        const actions = body.actions ?? before.actions ?? {};
+        return [actions.completion, actions.failure].filter((item): item is GoalAction => item?.type === 'ast').map((item) => item.text);
     },
     async run(input, ctx) {
         const current = await state(ctx.channelId);

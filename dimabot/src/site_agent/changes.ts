@@ -13,6 +13,13 @@ import { SITE_AGENT_CHANGE_TTL_DAYS, SiteAgentChangeSchema, type ISiteAgentChang
 import type { AgentTool, ChangeProposal, ChangeRecordInput, PlanTier, ToolContext } from './types.js';
 import { ToolConflictError } from './types.js';
 
+/** Where a change was made: the site assistant, or an MCP client (named by its OAuth client). */
+export interface ChangeSource {
+    surface: 'site' | 'mcp';
+    clientId?: string;
+    clientName?: string;
+}
+
 /** Wire shape (dimasite `assistant.types.ts` `ChangeView`). Never includes the undo data. */
 export interface ChangeView {
     id: string;
@@ -27,6 +34,7 @@ export interface ChangeView {
     at: number;
     undone: { at: number; by: { id: string; login: string } } | null;
     canUndo: boolean;
+    source: ChangeSource;
 }
 
 export interface ChangeViewer {
@@ -49,6 +57,10 @@ export interface RecordChangeInput {
     /** Set on the record of an undo. */
     undoOf?: string | null;
     at?: Date;
+    /** Default: the site assistant. */
+    source?: ChangeSource;
+    /** Preset record id (24 hex), so a retried save can't log the same change twice. */
+    id?: string;
 }
 
 /** Errors with the HTTP status and code the route should answer with. */
@@ -85,6 +97,12 @@ function mayUndo(row: Pick<ChangeRow, 'actor'>, viewer: ChangeViewer): boolean {
     return viewer.role === 'owner' || row.actor?.id === viewer.id;
 }
 
+/** Stored source → wire shape (rows without one were made on the site). */
+function sourceView(source: ISiteAgentChange['source']): ChangeSource {
+    if (source?.surface !== 'mcp') return { surface: 'site' };
+    return { surface: 'mcp', ...(source.clientId ? { clientId: source.clientId } : {}), ...(source.clientName ? { clientName: source.clientName } : {}) };
+}
+
 export function toChangeView(row: ChangeRow, viewer: ChangeViewer): ChangeView {
     const undone = row.undoneAt
         ? { at: new Date(row.undoneAt).getTime(), by: { id: row.undoneBy?.id ?? '', login: row.undoneBy?.login ?? '' } }
@@ -102,6 +120,7 @@ export function toChangeView(row: ChangeRow, viewer: ChangeViewer): ChangeView {
         at: new Date(row.at).getTime(),
         undone,
         canUndo: !undone && !row.undoOf && Boolean(row.undoable) && mayUndo(row, viewer),
+        source: sourceView(row.source),
     };
 }
 
@@ -110,6 +129,7 @@ export async function recordChange(input: RecordChangeInput): Promise<string> {
     const at = input.at ?? new Date();
     const undo = input.undoOf ? null : input.change.undo ?? null;
     const doc = await SiteAgentChangeSchema.create({
+        ...(input.id ? { _id: new Types.ObjectId(input.id) } : {}),
         channelId: input.channelId,
         actor: input.actor,
         sessionId: input.sessionId ?? null,
@@ -131,6 +151,9 @@ export async function recordChange(input: RecordChangeInput): Promise<string> {
         undoneBy: null,
         undoOf: input.undoOf ? new Types.ObjectId(input.undoOf) : null,
         undoLockUntil: null,
+        source: input.source?.surface === 'mcp'
+            ? { surface: 'mcp', clientId: input.source.clientId?.slice(0, 2048) ?? null, clientName: input.source.clientName?.slice(0, 200) ?? null }
+            : { surface: 'site' },
         expiresAt: new Date(at.getTime() + SITE_AGENT_CHANGE_TTL_DAYS * 86_400_000),
     });
     return String(doc._id);
@@ -150,6 +173,46 @@ export function changeFromApply(ctx: ToolContext, proposal: ChangeProposal, chan
         effects: proposal.effects,
         change,
     };
+}
+
+/** An approved write that takes longer than this is reported as "outcome unknown" (it may still land). */
+export const APPLY_TIMEOUT_MS = 120_000;
+
+/**
+ * The shared apply step of an approved proposal (site runner after Apply, MCP right away): runs `tool.apply`
+ * (callers check permissions, plan and the approval first), then logs the change with `record` (which must not
+ * throw; it returns the change id or undefined). Rethrows what apply threw: ToolConflictError = nothing changed,
+ * anything else = the outcome is unknown. After `timeoutMs` (or `signal`) it throws Error('tool_timeout' /
+ * 'tool_aborted') without stopping the write; if the write lands later, its change is still logged.
+ */
+export async function applyProposal(
+    tool: AgentTool,
+    proposal: ChangeProposal,
+    ctx: ToolContext,
+    record: (change: ChangeRecordInput) => Promise<string | undefined>,
+    opts: { timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<{ result: unknown; change: ChangeRecordInput | null; changeId?: string }> {
+    if (!tool.apply) throw new Error(`${tool.name} can't apply changes`);
+    const applying = tool.apply(proposal, ctx);
+    let applied: Awaited<typeof applying>;
+    try {
+        applied = await new Promise<Awaited<typeof applying>>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('tool_timeout')), opts.timeoutMs ?? APPLY_TIMEOUT_MS);
+            const onAbort = () => { clearTimeout(timer); reject(new Error('tool_aborted')); };
+            if (opts.signal?.aborted) onAbort();
+            opts.signal?.addEventListener('abort', onAbort, { once: true });
+            applying.then((value) => { clearTimeout(timer); opts.signal?.removeEventListener('abort', onAbort); resolve(value); },
+                (err) => { clearTimeout(timer); opts.signal?.removeEventListener('abort', onAbort); reject(err); });
+        });
+    } catch (err) {
+        // Still running: if it finishes later, the change log gets its entry then.
+        if (err instanceof Error && (err.message === 'tool_timeout' || err.message === 'tool_aborted')) {
+            void applying.then((late) => (late.change ? record(late.change) : undefined)).catch(() => {});
+        }
+        throw err;
+    }
+    const changeId = applied.change ? await record(applied.change) : undefined;
+    return { result: applied.result, change: applied.change, ...(changeId ? { changeId } : {}) };
 }
 
 /**
@@ -182,7 +245,8 @@ export interface UndoChangeResult extends ChangeView {
  * Undoes one change. Throws a ChangeError (ChangeNotFoundError: unknown, other channel, or another
  * admin's change; ChangeNotUndoableError; ChangeForbiddenError) or the tool's ToolConflictError
  * (the target changed since; nothing was touched). `makeContext().can` must check permissions
- * fresh. Already undone → returns the change with `alreadyUndone: true` and does nothing.
+ * fresh. Already undone → returns the change with `alreadyUndone: true` and does nothing. `source` = where the
+ * undo was asked for (default the site).
  */
 export async function undoChange(
     channelId: string,
@@ -190,6 +254,7 @@ export async function undoChange(
     viewer: ChangeViewer,
     resolveTool: (name: string) => AgentTool | undefined,
     makeContext: () => Omit<ToolContext, 'callId'>,
+    source?: ChangeSource,
 ): Promise<UndoChangeResult> {
     if (!isId(changeId)) throw new ChangeNotFoundError();
     const row = await SiteAgentChangeSchema.findOne({ _id: changeId, channelId }).select('+undo').lean() as unknown as ChangeRow | null;
@@ -241,6 +306,7 @@ export async function undoChange(
         change: { area: row.area, target: row.target, before: row.after ?? null, after: row.before ?? null, undo: null, summary: `Undid: ${row.summary ?? row.title}` },
         undoOf: changeId,
         at: undoneAt,
+        ...(source ? { source } : {}),
     });
     return { ...toChangeView({ ...row, undoneAt, undoneBy }, viewer), alreadyUndone: false, undoChangeId };
 }
