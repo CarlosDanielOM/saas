@@ -358,12 +358,17 @@ export async function listConnections(userID: Types.ObjectId) {
         client_name: session.client_name || FIRST_PARTY_CLIENTS.find(item => item.client_id === session.client_id)?.name || session.client_id }));
 }
 
-export async function revokeUserOAuth(userID: string) {
-    if (!Types.ObjectId.isValid(userID)) return;
-    await OAuthGrant.updateMany({ user_id: userID }, { $set: { revoked_at: new Date() } });
-    await OAuthSession.updateMany({ user_id: userID }, { $set: { revoked_at: new Date(), revoke_reason: 'account_deleted' } });
-    const sessions = await OAuthSession.find({ user_id: userID }).select('_id').lean();
+/** Account deletion: the user's own connections, and other users' connections to the deleted channel (admins' MCP apps). */
+export async function revokeUserOAuth(userID: string, channelID?: string) {
+    const filters: Record<string, unknown>[] = [];
+    if (Types.ObjectId.isValid(userID)) filters.push({ user_id: userID });
+    if (channelID && /^\d{1,30}$/.test(channelID)) filters.push({ channel_id: channelID });
+    if (!filters.length) return;
+    const filter = { $or: filters };
+    await OAuthGrant.updateMany(filter, { $set: { revoked_at: new Date() } });
+    await OAuthSession.updateMany(filter, { $set: { revoked_at: new Date(), revoke_reason: 'account_deleted' } });
+    const sessions = await OAuthSession.find(filter).select('_id').lean();
     await OAuthRefreshToken.deleteMany({ session_id: { $in: sessions.map(session => session._id) } });
-    await OAuthSession.deleteMany({ user_id: userID });
-    await OAuthGrant.deleteMany({ user_id: userID });
+    await OAuthSession.deleteMany(filter);
+    await OAuthGrant.deleteMany(filter);
 }

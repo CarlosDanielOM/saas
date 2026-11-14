@@ -70,7 +70,7 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
     const polarSubscriptionsRevoked = await revokePolarSubscriptionsForAccount(userID);
 
     // Revoke before deletion; cached access tokens must fail immediately afterward.
-    await revokeUserOAuth(userID);
+    await revokeUserOAuth(userID, channelID);
 
     console.log('[ACCOUNT_DELETION] Starting permanent deletion', {
         channelID,
