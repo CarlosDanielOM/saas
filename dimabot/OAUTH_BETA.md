@@ -93,7 +93,7 @@ A `/v1` HTTP 401 returns `{"error":"invalid_token"}`. Without Bearer credentials
 
 ## Rate limits
 
-Per client IP, the limits per minute are 600 requests to `/oauth/*`, 1200 to `/v1/*`, and 120 native WebSocket handshakes. `/v1/*` also has a limit of 1200 per access token per minute. A rate-limited HTTP request returns 429 `{"error":"slow_down"}` with `Retry-After: 60`; a rate-limited WebSocket handshake currently receives HTTP 401. Client IP is resolved through the Cloudflare and proxy chain; conflicting forwarded addresses share an untrusted bucket.
+Per client IP, the limits per minute are 600 requests to `/oauth/*`, 1200 to `/v1/*`, and 120 native WebSocket handshakes. `/v1/*` also has a limit of 1200 per access token per minute. A rate-limited HTTP request returns 429 `{"error":"slow_down"}` with `Retry-After: 60`; a rate-limited WebSocket handshake currently receives HTTP 401. IPv6 clients are limited per /64; when forwarded addresses conflict, both are counted and each must have budget. For `/v1/*`, the per-IP limit is checked before the per-token limit.
 
 ## Client scope registry
 
