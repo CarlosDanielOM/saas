@@ -394,6 +394,10 @@ assert.deepEqual([listed.client_name, listed.channel_id, listed.resource], ['Dim
 // Consent offers the account's own channel plus channels it administers with website access.
 await AdminSchema.create({ adminID: other, adminName: 'oauth_other', channelID: owner, channelName: 'oauth_owner', permissions: ['dashboard:view'] });
 assert.deepEqual((await get('/oauth/browser-session', 'oauth-beta-browser-owner')).body.channels, [{ id: owner, name: 'oauth_owner', role: 'owner' }]);
+// A website admin can pick the channel for AI apps only once the owner granted AI apps (mcp:admin).
+assert.deepEqual((await get('/oauth/browser-session', 'oauth-beta-browser-other')).body.channels,
+  [{ id: other, name: 'oauth_other', role: 'owner' }]);
+await AdminSchema.updateOne({ adminID: other, channelID: owner }, { $set: { permissions: ['dashboard:view', 'mcp:admin'] } });
 assert.deepEqual((await get('/oauth/browser-session', 'oauth-beta-browser-other')).body.channels,
   [{ id: other, name: 'oauth_other', role: 'owner' }, { id: owner, name: 'oauth_owner', role: 'admin' }]);
 
