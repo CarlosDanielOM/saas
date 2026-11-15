@@ -69,6 +69,14 @@ test('valid token posts to the channel trigger endpoint with the streamer bearer
     assert.deepEqual(JSON.parse(call.init.body), { ...triggerData, queue: true });
 });
 
+test('firedBy is posted as given; without it the body has no firedBy key', async () => {
+    state.token = 'streamer-token';
+    await sendTrigger('chan', { ...triggerData, triggerId: 'a'.repeat(24), firedBy: { id: '42', login: 'ada', name: 'Ada' } });
+    assert.deepEqual(JSON.parse(state.fetchCalls[0].init.body).firedBy, { id: '42', login: 'ada', name: 'Ada' });
+    await sendTrigger('chan', triggerData);
+    assert.equal(Object.hasOwn(JSON.parse(state.fetchCalls[1].init.body), 'firedBy'), false);
+});
+
 test('API error responses forward the API message', async () => {
     state.token = 'streamer-token';
     state.fetchResponse = new Response(JSON.stringify({ error: true, message: 'No trigger overlay clients connected', status: 409 }), { status: 409 });

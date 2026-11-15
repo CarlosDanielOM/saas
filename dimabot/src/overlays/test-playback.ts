@@ -14,14 +14,14 @@ import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import type { LiveMedia } from './live.js';
 import { MAX_MEDIA_BYTES } from './delivery-store.js';
 import { recordActivity } from '../utils/activity_log.js';
-import { resolveLook, type PlaybackLook } from './trigger-look.js';
+import { resolveLook, sampleViewer, type PlaybackLook } from './trigger-look.js';
 const run = promisify(execFile);
 interface TestFile { channel: string; path: string; mime: string; expiresAt: number; clean: () => Promise<void> }
 const files = new Map<string, TestFile>();
 export function testFile(ticket: string): TestFile | undefined {
   const file = files.get(ticket); return file && file.expiresAt > Date.now() ? file : undefined;
 }
-export interface PreparedTest { media?: LiveMedia; triggerId?: string; hasLook?: boolean; look?: PlaybackLook; text?: string; file?: string; mime?: string; cleanup: () => Promise<void> }
+export interface PreparedTest { media?: LiveMedia; triggerId?: string; hasLook?: boolean; look?: PlaybackLook; raw?: Record<string, unknown>; text?: string; file?: string; mime?: string; cleanup: () => Promise<void> }
 /** Reads module content without joining legacy namespaces or enqueueing a real module action. */
 export async function prepareTest(channel: string, kind: string, input: unknown): Promise<PreparedTest> {
   const body = object(input);
@@ -37,9 +37,10 @@ export async function prepareTest(channel: string, kind: string, input: unknown)
     const url = asset?.storageUrl || trigger.file, mime = asset?.mimeType || trigger.mediaType;
     const type = mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio' : mime.startsWith('image') || mime === 'gif' ? 'image' : null;
     if (!type || !/^https?:\/\//i.test(url)) throw new OverlayError('Trigger media is unavailable', 404);
-    // Previews get the resolved look; OBS tests carry the marker and resolve it like real sends.
-    const look = trigger.look && body.destination === 'preview' ? await resolveLook(trigger).catch(() => null) : null;
-    return { triggerId: String(trigger._id), hasLook: !!trigger.look, ...(look ? { look } : {}), media: { type, url, title: trigger.name, volume: Math.max(0, Math.min(1, (trigger.volume ?? 100) / 100)) }, cleanup: async () => {} };
+    // Previews get the resolved look; OBS tests carry the marker and resolve it like real sends. Both use a sample viewer.
+    const viewer = sampleViewer(body.user);
+    const look = trigger.look && body.destination === 'preview' ? await resolveLook(trigger, viewer).catch(() => null) : null;
+    return { triggerId: String(trigger._id), hasLook: !!trigger.look, ...(trigger.look ? { raw: viewer } : {}), ...(look ? { look } : {}), media: { type, url, title: trigger.name, volume: Math.max(0, Math.min(1, (trigger.volume ?? 100) / 100)) }, cleanup: async () => {} };
   }
   if (kind === 'tts') {
     const language = body.language === 'es' ? 'es' : 'en';

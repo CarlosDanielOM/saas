@@ -482,15 +482,20 @@ export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', 
   const retained = await retainFile(file);
   await deliver({ channel, speechID, event: { id, kind, media, text, platform }, ...retained, mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(p => p.key)) }, selected);
 }
-/** `hasLook` comes from the server's own trigger lookup, never from the request body. */
-export async function publishStudioTrigger(channel: string, body: Record<string, unknown>, platform: OverlayPlatform = 'twitch', options: { hasLook?: boolean } = {}): Promise<void> {
+/**
+ * `hasLook` comes from the server's own trigger lookup, never from the request body. `raw` is the sanitised
+ * `{ user_id?, user_login?, user_name? }` for the look's `$(user)`, kept with the delivery only when there is a look.
+ */
+export async function publishStudioTrigger(channel: string, body: Record<string, unknown>, platform: OverlayPlatform = 'twitch', options: { hasLook?: boolean; raw?: Record<string, unknown> } = {}): Promise<void> {
   await restore();
   const triggerId = typeof body.triggerId === 'string' && /^[a-f0-9]{24}$/.test(body.triggerId) ? body.triggerId : undefined;
   const selected = recipients(channel, 'trigger', true).filter(peer => peer.state.snapshot.widgets.some(w => w.visible && w.kind === 'trigger' && matchesTrigger(w, triggerId))); if (!selected.length) return;
   const mime = String(body.mediaType || ''); const type = mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio' : 'image';
   const url = String(body.url || ''); if (!/^https?:\/\//i.test(url)) return;
   const id = randomUUID(); const volume = Number(body.volume ?? 100);
-  await deliver({ channel, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), event: { id, platform, kind: 'trigger', triggerId, ...(options.hasLook && triggerId ? { hasLook: true as const } : {}), media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } }, recipients: new Set(selected.map(p => p.key)) }, selected);
+  const look = !!options.hasLook && !!triggerId;
+  await deliver({ channel, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), event: { id, platform, kind: 'trigger', triggerId, ...(look ? { hasLook: true as const } : {}), media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } },
+    ...(look && options.raw ? { raw: options.raw } : {}), recipients: new Set(selected.map(p => p.key)) }, selected);
 }
 /** The shared Bits rule a cheer matches (null for other events or when no rule matches). */
 export async function bitsRuleFor(channel: string, kind: EventKind, raw?: Record<string, unknown>): Promise<BitsRule | null> {
@@ -525,24 +530,24 @@ export async function eventFor(publicId: string, eventId: string, clientId?: unk
   if (item.event.tts && !key) return null;
   const layouts: Record<string, unknown> = {};
   const bitsRule = await bitsRuleFor(state.channel, item.event.kind, item.raw);
-  if (item.raw) for (const design of state.snapshot.designs) {
+  if (item.raw && item.event.kind !== 'trigger') for (const design of state.snapshot.designs) {
     const layout = selectAlertLayout(design, item.event.kind as AlertEvent, item.raw, bitsRule);
     if (layout) layouts[design.id] = await renderLayout(layout, state.channel, item.raw);
   }
   const event = key ? recipientEvent(item, key) : item.event;
   const query = key ? `?clientId=${encodeURIComponent(String(clientId))}&socketId=${encodeURIComponent(String(socketId))}` : '';
-  const look = item.event.kind === 'trigger' && item.event.hasLook && item.event.triggerId ? await triggerLook(state.channel, item.event.triggerId) : null;
+  const look = item.event.kind === 'trigger' && item.event.hasLook && item.event.triggerId ? await triggerLook(state.channel, item.event.triggerId, item.raw) : null;
   return { ...event, snapshot: state.snapshot, revision: state.revision, ...(item.mediaId && (!item.event.tts || key === item.ttsOwnerKey) ? { media: { ...item.event.media!, url: `/overlay-studio/public/${publicId}/media/${eventId}${query}` } } : {}), layouts, ...(look ? { look } : {}) };
 }
 /**
  * The trigger's look as it is now (resolved per request: after an edit, sources or retries may get different revisions).
  * A deleted trigger or look, or any failure while resolving, means no look: the renderer falls back to `media`.
  */
-async function triggerLook(channel: string, triggerId: string) {
+async function triggerLook(channel: string, triggerId: string, raw?: Record<string, unknown>) {
   try {
     const [{ TriggerSchema }, { resolveLook }] = await Promise.all([import('../schemas/trigger.schema.js'), import('./trigger-look.js')]);
     const trigger = await TriggerSchema.findOne({ _id: triggerId, channelID: channel }).select('channelID volume look').lean();
-    return trigger ? await resolveLook(trigger) : null;
+    return trigger ? await resolveLook(trigger, raw ?? {}) : null;
   } catch (error) {
     console.warn('Trigger look unavailable', channel, triggerId, error instanceof Error ? error.message : 'Unknown error');
     return null;

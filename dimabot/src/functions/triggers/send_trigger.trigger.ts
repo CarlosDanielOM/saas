@@ -2,12 +2,20 @@ import TwitchStreamers from "../../classes/twitch_streamers.class.js";
 import { getApiUrl } from "../../utils/dev.js";
 import { error as logError } from "../../utils/logger.js";
 
+/** Display text for `$(user)` in a trigger's look; the API sanitises it again. */
+export interface FiredBy {
+    id?: string;
+    login?: string;
+    name?: string;
+}
+
 interface TriggerData {
     triggerId?: string;
     name?: string;
     url: string;
     mediaType: string;
     volume: number;
+    firedBy?: FiredBy;
 }
 
 interface SendTriggerResponse {

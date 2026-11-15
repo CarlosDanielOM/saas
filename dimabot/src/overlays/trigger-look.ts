@@ -97,19 +97,38 @@ export async function editorLook(trigger: Pick<ITrigger, 'channelID' | 'look'>) 
   return { width: look.width, height: look.height, layout: applyLookMedia(look.layout, media, 'editor'), mediaIds: look.mediaIds ?? [], revision: look.revision, updatedAt: look.updatedAt };
 }
 /**
- * What OBS plays, never stored: references are checked again now, text templates rendered with empty event data.
+ * What OBS plays, never stored: references are checked again now, text templates rendered with the delivery's event data
+ * (`firedByEvent`; none renders `$(user)` as "Viewer").
  * Callers resolve per request, so after an edit two sources (or a retry) may get different revisions; that is accepted.
  */
-export async function resolveLook(trigger: Pick<ITrigger, 'channelID' | 'look' | 'volume'>): Promise<PlaybackLook | null> {
+export async function resolveLook(trigger: Pick<ITrigger, 'channelID' | 'look' | 'volume'>, event: Record<string, unknown> = {}): Promise<PlaybackLook | null> {
   const look = trigger.look;
   if (!look?.layout) return null;
   const media = await lookMedia(trigger.channelID, look.mediaIds ?? []);
   const layout = applyLookMedia(look.layout, media, 'playback', masterVolume(trigger.volume));
-  return { width: look.width, height: look.height, layout: await renderLayout(layout, trigger.channelID, {}) };
+  return { width: look.width, height: look.height, layout: await renderLayout(layout, trigger.channelID, event) };
 }
+
+/** Display text only: control and bidi-override characters removed, trimmed, cut by code points. Non-strings are ''. */
+const displayText = (value: unknown, max: number): string =>
+  typeof value === 'string' ? Array.from(value.replace(/[\p{Cc}\u202A-\u202E\u2066-\u2069]/gu, '').trim()).slice(0, max).join('').trim() : '';
+export type FiredByEvent = { user_id?: string; user_login?: string; user_name?: string };
+/** A send's optional `firedBy: { id?, login?, name? }` as event data for `$(user)`; anything unusable is ignored (never an error). */
+export function firedByEvent(value: unknown): FiredByEvent | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const input = value as Record<string, unknown>, id = displayText(input.id, 32), login = displayText(input.login, 64), name = displayText(input.name, 64);
+  const event: FiredByEvent = { ...(id ? { user_id: id } : {}), ...(login ? { user_login: login } : {}), ...(name ? { user_name: name } : {}) };
+  return Object.keys(event).length ? event : undefined;
+}
+/** Previews and Studio tests: a sample viewer (`user`, default Luna), like alert tests. */
+export function sampleViewer(user?: unknown): FiredByEvent {
+  const name = displayText(user, 64) || 'Luna';
+  return firedByEvent({ name, login: name.toLowerCase() })!;
+}
+
 /** List/create/update responses carry only this, never the whole layout. */
 export function lookSummary(look: ITriggerLook, counts?: { objectCount: number; soundCount: number }) {
-  return { revision: look.revision, width: look.width, height: look.height, updatedAt: look.updatedAt,
+  return { revision: look.revision, width: look.width, height: look.height, updatedAt: look.updatedAt, mediaIds: Array.isArray(look.mediaIds) ? look.mediaIds.map(String) : [],
     objectCount: counts?.objectCount ?? look.layout?.widgets?.length ?? 0, soundCount: counts?.soundCount ?? (look.layout ? layoutSounds(look.layout).length : 0) };
 }
 

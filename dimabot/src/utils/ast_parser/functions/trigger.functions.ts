@@ -1,9 +1,8 @@
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
+import type { ExecutionContext } from '../types.js';
 import { TriggerSchema } from '../../../schemas/trigger.schema.js';
-import { MediaAssetSchema } from '../../../schemas/media_asset.schema.js';
-import { UserMediaLibraryItemSchema } from '../../../schemas/user_media_library_item.schema.js';
-import { sendTrigger } from '../../../functions/triggers/send_trigger.trigger.js';
-import { buildMediaPlaybackUrl } from '../../../server/services/media_library.service.js';
+import { sendTrigger, type FiredBy } from '../../../functions/triggers/send_trigger.trigger.js';
+import { resolveTriggerPlaybackAsset } from '../../../functions/triggers/resolve_trigger_file.trigger.js';
 
 function parseQueueFlag(raw: unknown): boolean | null {
     const normalized = String(raw).trim().toLowerCase();
@@ -12,52 +11,14 @@ function parseQueueFlag(raw: unknown): boolean | null {
     return null;
 }
 
-async function resolveTriggerPlaybackAsset(trigger: {
-    channelID: string;
-    file: string;
-    fileID?: unknown;
-    assetID?: unknown;
-    libraryItemID?: unknown;
-    mediaType: string;
-}): Promise<{ fileUrl: string; fileType: string } | null> {
-    if (trigger.libraryItemID) {
-        const libraryItem = await UserMediaLibraryItemSchema.findOne({
-            _id: trigger.libraryItemID,
-            channelID: trigger.channelID,
-            isActive: true,
-            deletedAt: null
-        }).lean();
-
-        if (libraryItem) {
-            const asset = await MediaAssetSchema.findOne({
-                _id: libraryItem.assetID,
-                deletedAt: null
-            }).lean();
-
-            if (asset) {
-                return {
-                    fileUrl: buildMediaPlaybackUrl(asset._id),
-                    fileType: asset.mimeType
-                };
-            }
-        }
-    }
-
-    if (trigger.assetID) {
-        const asset = await MediaAssetSchema.findOne({
-            _id: trigger.assetID,
-            deletedAt: null
-        }).lean();
-
-        if (asset) {
-            return {
-                fileUrl: buildMediaPlaybackUrl(asset._id),
-                fileType: asset.mimeType
-            };
-        }
-    }
-
-    return null;
+/** Who fired the trigger, for `$(user)` in its look. Timers have no real chatter (their context is the streamer). */
+function firedByFrom(ctx: ExecutionContext): FiredBy | undefined {
+    if (ctx.scopeType === 'timer') return undefined;
+    const firedBy: FiredBy = {};
+    if (typeof ctx.userId === 'string' && ctx.userId.trim()) firedBy.id = ctx.userId;
+    if (typeof ctx.userLogin === 'string' && ctx.userLogin.trim()) firedBy.login = ctx.userLogin;
+    if (typeof ctx.userDisplayName === 'string' && ctx.userDisplayName.trim()) firedBy.name = ctx.userDisplayName;
+    return Object.keys(firedBy).length ? firedBy : undefined;
 }
 
 const triggerSendHandler: FunctionHandler = async (args, ctx) => {
@@ -100,12 +61,14 @@ const triggerSendHandler: FunctionHandler = async (args, ctx) => {
         return `Trigger file not found: ${trigger.file}`;
     }
 
+    const firedBy = firedByFrom(ctx);
     const result = await sendTrigger(ctx.broadcasterId, {
         triggerId: String(trigger._id),
         name: trigger.name,
         url: file.fileUrl,
         mediaType: file.fileType,
-        volume: trigger.volume
+        volume: trigger.volume,
+        ...(firedBy ? { firedBy } : {})
     }, queue);
 
     return result.error ? result.message : '';

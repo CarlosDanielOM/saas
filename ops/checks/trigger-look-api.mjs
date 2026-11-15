@@ -1,5 +1,6 @@
 // Trigger looks against the real candidate API: disposable Mongo/Redis and local Socket.IO clients only.
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 const { getMongoDBConnection } = await import('/app/dist/utils/databases/mongodb.database.js');
 const { getDragonflyClient } = await import('/app/dist/utils/databases/dragonfly.database.js');
 const { default: Users } = await import('/app/dist/schemas/users.schema.js');
@@ -31,7 +32,10 @@ const itemDoc = (key, extra = {}) => ({ channelID: channel, channelName: 'lookfi
 const itemKeys = ['gif', 'png', 'video', 'audio', 'spare', 'gone', 'inactive', 'foreign'];
 const items = Object.fromEntries(Object.entries((await UserMediaLibraryItemSchema.collection.insertMany(itemKeys.map(key =>
   itemDoc(key, key === 'inactive' ? { isActive: false, deletedAt: now } : key === 'foreign' ? { channelID: foreign } : {})))).insertedIds).map(([i, id]) => [itemKeys[i], String(id)]));
-const playback = key => `https://api.domdimabot.com/media/${assetIds[key]}`;
+// Playback links are signed: HMAC-SHA256 over `media:<id>` with the candidate's SECRET_KEY, base64url, 22 characters.
+assert(process.env.SECRET_KEY, 'the candidate signs media links (SECRET_KEY set in the test env)');
+const signed = id => `https://api.domdimabot.com/media/${id}?k=${createHmac('sha256', process.env.SECRET_KEY).update(`media:${id}`).digest('base64url').slice(0, 22)}`;
+const playback = key => signed(String(assetIds[key]));
 // Library items for the save/delete race (one per round).
 const RACE_ROUNDS = 6;
 const raceAssets = (await MediaAssetSchema.collection.insertMany(Array.from({ length: RACE_ROUNDS }, (_, i) => assetDoc(`race${i}.mp3`, 'audio', 'audio/mpeg')))).insertedIds;
@@ -131,14 +135,17 @@ await reject({ width: 900, height: 500, revision: 1, layout }, 409, 'look_confli
 assert.deepEqual(await data('GET', lookPath(triggerA)), saved);
 const listed = (await call('GET', `/triggers/${channel}`)).data;
 const summaryA = listed.find(t => t._id === triggerA).look;
-assert.deepEqual(summaryA, { revision: 2, width: 900, height: 500, updatedAt: saved.look.updatedAt, objectCount: 6, soundCount: 2 });
+assert.deepEqual(summaryA, { revision: 2, width: 900, height: 500, updatedAt: saved.look.updatedAt, mediaIds: [items.gif, items.png, items.video, items.audio, items.spare], objectCount: 6, soundCount: 2 });
 assert(!has(listed.find(t => t._id === triggerB), 'look'));
 const patched = (await call('PATCH', `/triggers/${channel}/${triggerA}`, { volume: 50 })).data;
 assert.deepEqual(patched.look, summaryA, 'update responses carry the summary only'); assert.equal(patched.volume, 50);
-console.log('PASS look save/read: editor form (resolved URLs, media types, A2 fields), sounds-only, no stored URLs, conditional revisions (409), list/update summaries');
+console.log('PASS look save/read: editor form (resolved, signed URLs, media types, A2 fields), sounds-only, no stored URLs, conditional revisions (409), list/update summaries with mediaIds');
 
-// Render route (editor preview of text objects, empty event data).
-assert.deepEqual(await data('POST', `/triggers/${channel}/look/render`, { texts: ['$(user) sent a trigger', 'plain', 7] }), ['Viewer sent a trigger', 'plain', '']);
+// Render route (editor preview of text objects): a sample viewer, `user` or Luna.
+assert.deepEqual(await data('POST', `/triggers/${channel}/look/render`, { texts: ['$(user) sent a trigger', 'plain', 7] }), ['Luna sent a trigger', 'plain', '']);
+assert.deepEqual(await data('POST', `/triggers/${channel}/look/render`, { texts: ['$(user) sent a trigger'], user: ' Ada ' }), ['Ada sent a trigger']);
+assert.deepEqual(await data('POST', `/triggers/${channel}/look/render`, { texts: ['$(user)'], user: 'x'.repeat(100) }), ['x'.repeat(64)], 'user is cut to 64 characters');
+assert.deepEqual(await data('POST', `/triggers/${channel}/look/render`, { texts: ['$(user)'], user: { name: 'Ada' } }), ['Luna'], 'a non-string user is ignored');
 await call('POST', `/triggers/${channel}/look/render`, { texts: Array(101).fill('x') }, 400);
 await call('POST', `/triggers/${channel}/look/render`, { texts: ['$(nosuchfunction)'] }, 400);
 await call('POST', `/triggers/${channel}/look/render`, { texts: ['x'] }, 403, foreignToken);
@@ -277,6 +284,98 @@ ack(obsTest.id);
 await redis.del('overlay:test:' + channel);
 console.log('PASS deleted trigger falls back; Studio tests honour triggerId within the filter, previews return the resolved look, OBS tests carry the marker');
 
+// Who fired it: `$(user)` in a look's text is the send's sanitised firedBy, kept with the pending delivery; nobody known is Viewer.
+const triggerD = 'd5'.repeat(12), triggerE = 'e6'.repeat(12);
+await TriggerSchema.create([
+  { _id: triggerD, name: 'Greeter', channel: 'lookfixture', channelID: channel, file: 'https://fixture.invalid/greeter.png', mediaType: 'image/png', volume: 100 },
+  { _id: triggerE, name: 'Library', channel: 'lookfixture', channelID: channel, file: 'clip.mp4', mediaType: 'video/mp4', volume: 80, libraryItemID: items.video, assetID: assetIds.png }
+]);
+await data('PUT', lookPath(triggerD), body({ widgets: [object('hi', 'text', { text: '$(user) fired it' })] }));
+const viewerId = crypto.randomUUID();
+let viewerPeer = socket('/overlay-studio/' + scene.publicId, { clientId: viewerId });
+await until(() => viewerPeer.messages.some(m => m[0] === 'overlay-state'), 'second Studio peer ready');
+const viewerEvents = () => viewerPeer.messages.filter(m => m[0] === 'overlay-event').map(m => m[1]);
+const greeterBody = { url: 'https://fixture.invalid/greeter.png', mediaType: 'image/png', volume: 100, name: 'Greeter', triggerId: triggerD };
+const fire = async extra => {
+  const count = viewerEvents().length, pageCount = oldPage.messages.filter(m => m[0] === 'trigger').length;
+  await call('POST', `/triggers/${channel}/send`, { ...greeterBody, ...extra });
+  const event = await until(() => viewerEvents()[count], 'greeter event');
+  await until(() => oldPage.messages.filter(m => m[0] === 'trigger').length > pageCount, 'old page greeter');
+  return { event, page: oldPage.messages.filter(m => m[0] === 'trigger').at(-1)[1] };
+};
+const greeting = async event => { const shown = await detail(event.id); assert(!has(shown, 'raw'), 'event data is never exposed as such'); assert.deepEqual(shown.layouts, {}); return shown.look.layout.widgets.find(w => w.id === 'hi').text; };
+const named = await fire({ firedBy: { id: '42', login: 'ada', name: 'Ada' } });
+assert.equal(named.event.hasLook, true); assert(!has(named.event, 'raw'));
+assert.equal(await greeting(named.event), 'Ada fired it');
+assert.deepEqual(named.page, { ...greeterBody, firedBy: { id: '42', login: 'ada', name: 'Ada' } }, 'the old page gets the caller body (legacy trigger: caller url kept)');
+assert.equal((await detail(named.event.id)).media.url, greeterBody.url, 'a legacy trigger without an asset keeps the caller url');
+const stored = await mongo.connection.db.collection('overlay_deliveries').findOne({ _id: named.event.id });
+assert.deepEqual(stored.raw, { user_id: '42', user_login: 'ada', user_name: 'Ada' }, 'stored with the pending delivery');
+assert.equal(await greeting((await fire({})).event), 'Viewer fired it');
+assert.equal(await greeting((await fire({ firedBy: { login: ' ada ' } })).event), 'ada fired it');
+const hostile = [
+  [{ name: { first: 'Ada' }, login: ['ada'], id: 42 }, 'Viewer fired it'],
+  ['Ada', 'Viewer fired it'], [['Ada'], 'Viewer fired it'], [null, 'Viewer fired it'], [7, 'Viewer fired it'],
+  [{ name: 'x'.repeat(5000), id: '9'.repeat(5000) }, `${'x'.repeat(64)} fired it`],
+  [{ name: 'A\u0000d\u0007a\n\u202E' }, 'Ada fired it'],
+  [{ name: '<img src=x onerror=alert(1)>' }, '<img src=x onerror=alert(1)> fired it'],
+  [{ name: '$(touser)' }, '$(touser) fired it'],
+  [{ name: '   ', login: '\u0001' }, 'Viewer fired it']
+];
+for (const [firedBy, expected] of hostile) assert.equal(await greeting((await fire({ firedBy })).event), expected, JSON.stringify(firedBy).slice(0, 80));
+// A trigger without a look keeps no event data (custom widgets and plain playback are unchanged).
+await call('POST', `/triggers/${channel}/send`, { ...greeterBody, triggerId: triggerB, firedBy: { name: 'Ada' } });
+const plainSent = await until(() => viewerEvents().find(e => e.triggerId === triggerB), 'plain trigger event');
+assert.equal((await mongo.connection.db.collection('overlay_deliveries').findOne({ _id: plainSent.id })).raw, undefined, 'no look: no event data stored');
+// Reconnect with the same client: the pending delivery comes back and still shows the name.
+viewerPeer.ws.close();
+await new Promise(r => setTimeout(r, 300));
+viewerPeer = socket('/overlay-studio/' + scene.publicId, { clientId: viewerId });
+const resumedState = await until(() => viewerPeer.messages.find(m => m[0] === 'overlay-state'), 'reconnected Studio peer');
+assert(resumedState[1].pendingIds.includes(named.event.id), 'the pending delivery survives the reconnect');
+await until(() => viewerEvents().some(e => e.id === named.event.id), 'replayed event');
+assert.equal(await greeting(named.event), 'Ada fired it', 'same text after the reconnect');
+console.log('PASS who fired it: firedBy renders in the look text, Viewer without it, hostile values sanitised or ignored (never an error), stored with the delivery, survives a reconnect, no data without a look');
+
+// Studio tests use a sample viewer (`user`, default Luna), in previews and in OBS.
+let greeterPreview = await test({ kind: 'trigger', destination: 'preview', triggerId: triggerD });
+assert.equal(greeterPreview.look.layout.widgets[0].text, 'Luna fired it');
+greeterPreview = await test({ kind: 'trigger', destination: 'preview', triggerId: triggerD, user: 'Ada' });
+assert.equal(greeterPreview.look.layout.widgets[0].text, 'Ada fired it');
+const beforeObs = viewerEvents().length;
+await test({ kind: 'trigger', destination: 'obs', confirmed: true, sceneId: scene.id, triggerId: triggerD, user: 'Ada' });
+const obsGreeting = await until(() => viewerEvents().slice(beforeObs).find(e => e.triggerId === triggerD), 'OBS greeter test');
+assert.equal(await greeting(obsGreeting), 'Ada fired it');
+const beforeDefault = viewerEvents().length;
+await test({ kind: 'trigger', destination: 'obs', confirmed: true, sceneId: scene.id, triggerId: triggerD });
+assert.equal(await greeting(await until(() => viewerEvents().slice(beforeDefault).find(e => e.triggerId === triggerD), 'OBS default test')), 'Luna fired it');
+await redis.del('overlay:test:' + channel);
+console.log('PASS Studio tests: preview and OBS looks show the sample viewer (Luna) and honour user');
+
+// A known trigger plays its own file: the server-built signed URL and MIME type reach both the Studio event and the old page.
+const pagesBefore = oldPage.messages.filter(m => m[0] === 'trigger').length;
+const bogus = { url: 'https://evil.invalid/x.png', mediaType: 'image/png', volume: 80, name: 'Body name', triggerId: triggerE };
+await call('POST', `/triggers/${channel}/send`, bogus);
+const libraryEvent = await until(() => viewerEvents().find(e => e.triggerId === triggerE), 'library trigger event');
+assert.deepEqual(libraryEvent.media, { type: 'video', url: playback('video'), title: 'Library', volume: .8 }, 'library item first, signed, its MIME type');
+assert.deepEqual((await detail(libraryEvent.id)).media, libraryEvent.media);
+await until(() => oldPage.messages.filter(m => m[0] === 'trigger').length > pagesBefore, 'old page library trigger');
+assert.deepEqual(oldPage.messages.filter(m => m[0] === 'trigger').at(-1)[1], { ...bogus, url: playback('video'), mediaType: 'video/mp4' }, 'the old page gets the server URL too');
+// Library item gone: the trigger's own asset; then nothing resolvable: the caller's values.
+await UserMediaLibraryItemSchema.updateOne({ _id: items.video }, { $set: { isActive: false, deletedAt: new Date() } });
+await call('POST', `/triggers/${channel}/send`, bogus);
+const assetEvent = await until(() => viewerEvents().filter(e => e.triggerId === triggerE)[1], 'asset trigger event');
+assert.deepEqual([assetEvent.media.type, assetEvent.media.url], ['image', playback('png')]);
+await TriggerSchema.updateOne({ _id: triggerE }, { $unset: { assetID: '', libraryItemID: '' } });
+await call('POST', `/triggers/${channel}/send`, bogus);
+const legacyEvent = await until(() => viewerEvents().filter(e => e.triggerId === triggerE)[2], 'legacy trigger event');
+assert.equal(legacyEvent.media.url, bogus.url, 'no resolvable asset: the caller url as today');
+await until(() => oldPage.messages.filter(m => m[0] === 'trigger').length >= pagesBefore + 3, 'old page legacy');
+assert.deepEqual(oldPage.messages.filter(m => m[0] === 'trigger').at(-1)[1], bogus);
+console.log('PASS /send resolves the trigger file server-side: signed URL + MIME for the Studio event and the old page, asset fallback, legacy caller values');
+
+for (const event of [...events(), ...viewerEvents()]) { ack(event.id); viewerPeer.ws.send(`42${viewerPeer.ns},${JSON.stringify(['overlay-ended', event.id])}`); }
+viewerPeer.ws.close();
 peer.ws.close(); oldPage.ws.close();
 await mongo.connection.close(); redis.destroy();
 process.exit(0);

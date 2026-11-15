@@ -38,7 +38,8 @@ import {
 } from '../services/media_library.service.js';
 import { OverlayError } from '../../overlays/store.js';
 import { renderTemplate } from '../../overlays/ast.js';
-import { LookError, MAX_LOOK_BYTES, checkLookMedia, editorLook, lookBytes, lookRevisionFilter, lookRevisionOf, lookSummary, validateLookLayout, withTriggerMediaLock, type ValidatedLook } from '../../overlays/trigger-look.js';
+import { LookError, MAX_LOOK_BYTES, checkLookMedia, editorLook, firedByEvent, lookBytes, lookRevisionFilter, lookRevisionOf, lookSummary, sampleViewer, validateLookLayout, withTriggerMediaLock, type ValidatedLook } from '../../overlays/trigger-look.js';
+import { resolveTriggerPlaybackAsset } from '../../functions/triggers/resolve_trigger_file.trigger.js';
 
 interface TriggerRequest extends Request {
     user?: {
@@ -1808,7 +1809,7 @@ router.delete('/:channelID/:triggerID/look', authMiddleware as any, async (req: 
     }
 });
 
-/** Editor preview of a look's text objects: rendered like the Studio's own preview, with empty event data. */
+/** Editor preview of a look's text objects: rendered like the Studio's own preview, with a sample viewer (`user`, default Luna). */
 router.post('/:channelID/look/render', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
     try {
         const { channelID } = req.params;
@@ -1823,9 +1824,10 @@ router.post('/:channelID/look/render', authMiddleware as any, async (req: Trigge
             return res.status(400).json({ error: true, message: 'Invalid templates', status: 400, code: 'invalid_look' });
         }
 
+        const viewer = sampleViewer(req.body?.user);
         let rendered: string[];
         try {
-            rendered = await Promise.all(texts.map((text: unknown) => renderTemplate(typeof text === 'string' ? text : '', channelIdStr, {})));
+            rendered = await Promise.all(texts.map((text: unknown) => renderTemplate(typeof text === 'string' ? text : '', channelIdStr, viewer)));
         } catch (renderError) {
             return res.status(400).json({ error: true, message: renderError instanceof Error ? renderError.message : 'Invalid template', status: 400, code: 'invalid_look' });
         }
@@ -1855,18 +1857,28 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
         }
 
         // Stable channel-scoped identity keeps Studio filters valid after a rename.
+        let pageBody = body;
         let studioBody = body;
         let hasLook = false;
         if (body.triggerId !== undefined) {
             if (typeof body.triggerId !== 'string' || !/^[a-f0-9]{24}$/.test(body.triggerId)) {
                 return res.status(400).json({ error: true, message: 'Invalid trigger ID', status: 400 });
             }
-            const trigger = await TriggerSchema.findOne({ _id: body.triggerId, channelID: channelIdStr }).select('_id name look.revision').lean();
+            const trigger = await TriggerSchema.findOne({ _id: body.triggerId, channelID: channelIdStr }).select('_id name channelID assetID libraryItemID look.revision').lean();
             if (!trigger) return res.status(404).json({ error: true, message: 'Trigger not found', status: 404 });
-            studioBody = { ...body, triggerId: String(trigger._id), name: trigger.name };
+            // The caller's url/mediaType are not trusted for a known trigger: play the trigger's own file through a
+            // server-built signed link (the same resolver as the bot's trigger.send). Legacy triggers without an asset
+            // keep the caller's values.
+            const file = await resolveTriggerPlaybackAsset(trigger);
+            if (file) {
+                pageBody = { ...body, url: file.fileUrl, mediaType: file.fileType };
+            }
+            studioBody = { ...pageBody, triggerId: String(trigger._id), name: trigger.name };
             // Only the stored trigger decides; the look itself is resolved when a source asks for the event.
             hasLook = !!trigger.look;
         }
+        // Who fired it: display text for the look's $(user) only, sanitised and never an error.
+        const firedBy = hasLook ? firedByEvent(body.firedBy) : undefined;
 
         if (!io) {
             return res.status(500).json({
@@ -1902,10 +1914,10 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
         }
 
         try {
-            namespace.emit('trigger', body);
-            await publishStudioTrigger(channelIdStr, studioBody, undefined, { hasLook });
+            namespace.emit('trigger', pageBody);
+            await publishStudioTrigger(channelIdStr, studioBody, undefined, { hasLook, ...(firedBy ? { raw: firedBy } : {}) });
             // Custom widgets: which trigger was sent (never its media URL or other request fields).
-            const mime = String(body.mediaType || '');
+            const mime = String(studioBody.mediaType || '');
             publishWidgetEvent(channelIdStr, 'triggers', 'trigger', { id: randomUUID(), triggerId: typeof studioBody.triggerId === 'string' ? studioBody.triggerId : '',
                 name: String(studioBody.name ?? '').slice(0, 100), mediaType: mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio' : mime.startsWith('image') ? 'image' : 'unknown',
                 at: Date.now(), test: false });

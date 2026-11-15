@@ -233,7 +233,8 @@ overlayStudioRoute.post('/:channelID/test', wrap(async (req, res) => {
         if (raw) await feedTestAlert(channel, scene!.publicId, kind as AlertEvent, raw);
         const alertWidgets = scene!.published!.widgets.some(w => w.visible && (w.kind === kind || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)));
         if (raw && !alertWidgets) { await prepared.cleanup(); return ok(res, { sent: true, clients: 0, sceneId: scene!.id }); }
-        const clients = await publishTest(channel, scene!.publicId, kind, prepared, raw);
+        // Trigger tests carry the sample viewer for the look's $(user); it is not alert data (no alert feed above).
+        const clients = await publishTest(channel, scene!.publicId, kind, prepared, raw ?? prepared.raw);
         await prepared.cleanup(); return ok(res, { sent: true, clients, sceneId: scene!.id });
       }
       return ok(res, { media: await previewMedia(channel, prepared), triggerId: prepared.triggerId, text: prepared.text, ...(prepared.look ? { look: prepared.look } : {}) });

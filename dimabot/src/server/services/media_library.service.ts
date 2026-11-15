@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import path from 'path';
 import { Types } from 'mongoose';
 import { hasGlobalChannelOwnerAccess } from '../../middleware/admin.middleware.js';
@@ -114,8 +114,36 @@ export function buildMediaS3Key(scope: MediaAssetScope, mediaType: MediaAssetTyp
     return `${channelID}/triggers/${fileName}`;
 }
 
+/**
+ * Link signature for `GET /media/:id`: HMAC-SHA256 over `media:<id>` with SECRET_KEY, base64url, 22 characters.
+ * Returns null when this process has no SECRET_KEY (links are then unsigned).
+ */
+export function mediaLinkSignature(mediaID: string | Types.ObjectId): string | null {
+    const secret = process.env.SECRET_KEY;
+    if (!secret) {
+        return null;
+    }
+
+    return createHmac('sha256', secret).update(`media:${String(mediaID)}`).digest('base64url').slice(0, 22);
+}
+
+/** Constant-time string comparison (different lengths are unequal without comparing content). */
+export function safeEqual(a: string, b: string): boolean {
+    const left = Buffer.from(a);
+    const right = Buffer.from(b);
+    return left.length === right.length && timingSafeEqual(left, right);
+}
+
+/** Whether `k` is this asset's link signature. False without SECRET_KEY or for a non-string `k`. */
+export function isValidMediaLinkSignature(mediaID: string | Types.ObjectId, k: unknown): boolean {
+    const expected = mediaLinkSignature(mediaID);
+    return expected !== null && typeof k === 'string' && safeEqual(k, expected);
+}
+
 export function buildMediaPlaybackUrl(mediaID: string | Types.ObjectId): string {
-    return `${getApiUrl()}/media/${String(mediaID)}`;
+    const url = `${getApiUrl()}/media/${String(mediaID)}`;
+    const signature = mediaLinkSignature(mediaID);
+    return signature ? `${url}?k=${signature}` : url;
 }
 
 export function getDefaultMediaScope(planTier: PlanTier, requestedScope: unknown): MediaAssetScope {

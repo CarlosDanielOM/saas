@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 process.env.SECRET_KEY ??= 'a'.repeat(32); // the save validator's module reads it at load; nothing is encrypted here
 const { OverlayError } = await import('./store.js');
-const { validateLookLayout, applyLookMedia, masterVolume, lookReferences, lookSummary, lookRevisionOf, lookRevisionFilter, withTriggerMediaLock } = await import('./trigger-look.js');
+const { validateLookLayout, applyLookMedia, masterVolume, lookReferences, lookSummary, lookRevisionOf, lookRevisionFilter, withTriggerMediaLock, firedByEvent, sampleViewer, resolveLook } = await import('./trigger-look.js');
 
 const IMG = '1'.repeat(24), VID = '2'.repeat(24), SND = '3'.repeat(24), GONE = '4'.repeat(24);
 const object = (id: string, kind: string, extra: Record<string, unknown> = {}) => ({ id, kind, x: 0, y: 0, width: 200, height: 100, visible: true, locked: false, ...extra });
@@ -87,8 +87,40 @@ test('master volume: clamp(volume / 100, 0, 1), non-numeric plays at 1', () => {
 test('summary counts objects and sounds, never the layout', () => {
   const layout = stored();
   const summary = lookSummary({ width: 800, height: 400, layout, mediaIds: [], revision: 3, updatedAt: new Date(0) });
-  assert.deepEqual(summary, { revision: 3, width: 800, height: 400, updatedAt: new Date(0), objectCount: 7, soundCount: 2 });
+  assert.deepEqual(summary, { revision: 3, width: 800, height: 400, updatedAt: new Date(0), mediaIds: [], objectCount: 7, soundCount: 2 });
   assert.equal(lookSummary({ width: 1, height: 1, mediaIds: [], revision: 1, updatedAt: new Date(0) } as never, { objectCount: 4, soundCount: 1 }).objectCount, 4);
+  assert.deepEqual(lookSummary({ width: 1, height: 1, layout, mediaIds: [IMG, SND], revision: 1, updatedAt: new Date(0) }).mediaIds, [IMG, SND], 'the library items the look references');
+  assert.deepEqual(lookSummary({ width: 1, height: 1, layout, revision: 1, updatedAt: new Date(0) } as never).mediaIds, [], 'older looks without mediaIds');
+});
+
+test('firedBy: strings only, trimmed, control/bidi characters removed, name/login cut to 64 and id to 32, else ignored', () => {
+  assert.deepEqual(firedByEvent({ id: ' 42 ', login: ' ada ', name: ' Ada Lovelace ' }), { user_id: '42', user_login: 'ada', user_name: 'Ada Lovelace' });
+  assert.deepEqual(firedByEvent({ name: 'A\u0000d\u0007a\n\u202Eevil\u2066', login: '\tada\r\n' }), { user_login: 'ada', user_name: 'Adaevil' });
+  const long = firedByEvent({ id: '9'.repeat(40), login: 'l'.repeat(100), name: '😀'.repeat(70) })!;
+  assert.equal(long.user_id, '9'.repeat(32)); assert.equal(long.user_login, 'l'.repeat(64)); assert.equal(long.user_name, '😀'.repeat(64), 'cut by characters, never a broken pair');
+  assert.deepEqual(firedByEvent({ name: '<img src=x onerror=alert(1)>' }), { user_name: '<img src=x onerror=alert(1)>' }, 'HTML stays literal text (renderers use text)');
+  assert.deepEqual(firedByEvent({ id: 42, login: ['ada'], name: { first: 'Ada' }, extra: 'drop' }), undefined);
+  assert.deepEqual(firedByEvent({ name: 'Ada', login: null }), { user_name: 'Ada' });
+  for (const value of [undefined, null, 'Ada', 7, true, ['Ada'], {}, { name: '   ' }, { name: '\u0000\u0001' }]) assert.equal(firedByEvent(value), undefined, JSON.stringify(value));
+});
+
+test('sample viewer: user or Luna', () => {
+  assert.deepEqual(sampleViewer(), { user_login: 'luna', user_name: 'Luna' });
+  assert.deepEqual(sampleViewer(' Ada '), { user_login: 'ada', user_name: 'Ada' });
+  assert.deepEqual(sampleViewer({ name: 'x' }), { user_login: 'luna', user_name: 'Luna' });
+  assert.equal(sampleViewer('x'.repeat(100)).user_name, 'x'.repeat(64));
+});
+
+test('playback look renders $(user) from the delivery event data; none is Viewer', async () => {
+  const trigger = { channelID: 'chan', volume: 100, look: { width: 640, height: 360, mediaIds: [], revision: 1, updatedAt: new Date(0),
+    layout: validateLookLayout(look({ widgets: [object('t', 'text', { text: 'Hi $(user) here' }), object('box', 'shape')] })).layout } };
+  const text = async (event?: Record<string, unknown>) => (await resolveLook(trigger as never, event))!.layout.widgets.find(w => w.id === 't')!.text;
+  assert.equal(await text(firedByEvent({ id: '42', login: 'ada', name: 'Ada' })), 'Hi Ada here');
+  assert.equal(await text(firedByEvent({ login: 'ada' })), 'Hi ada here', 'the login when there is no display name');
+  assert.equal(await text({}), 'Hi Viewer here');
+  assert.equal(await text(), 'Hi Viewer here');
+  assert.equal(await text(sampleViewer()), 'Hi Luna here');
+  assert.equal(await text(firedByEvent({ name: '$(touser)' })), 'Hi $(touser) here', 'a name is text, never evaluated');
 });
 
 test('look counter: missing counts as 0, the filter matches a missing counter only for revision 0', () => {

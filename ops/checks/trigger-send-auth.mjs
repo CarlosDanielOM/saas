@@ -3,6 +3,7 @@
 // streamer to reauthenticate in the dashboard, transient refresh failures ask
 // to retry, and a valid token reaches the trigger API with the streamer bearer.
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import { TriggerSchema } from '/app/dist/schemas/trigger.schema.js';
@@ -84,6 +85,21 @@ assert.equal(apiCalls.length, 2, 'AST path emitted the trigger to the API');
 assert.ok(apiCalls[1].url.endsWith('/triggers/998003/send'), apiCalls[1].url);
 assert.equal(JSON.parse(apiCalls[1].init.body).triggerId, String(validTrigger._id));
 assert.equal(JSON.parse(apiCalls[1].init.body).name, 'airhorn');
+// The bot signs the playback link with its own SECRET_KEY (same signature as the API) and says who fired it.
+assert.ok(process.env.SECRET_KEY, 'SECRET_KEY set in the test env');
+const k = createHmac('sha256', process.env.SECRET_KEY).update(`media:${asset._id}`).digest('base64url').slice(0, 22);
+assert.equal(JSON.parse(apiCalls[1].init.body).url, `https://api.domdimabot.com/media/${asset._id}?k=${k}`);
+assert.equal(JSON.parse(apiCalls[1].init.body).mediaType, 'audio/mpeg');
+assert.deepEqual(JSON.parse(apiCalls[1].init.body).firedBy, { id: '998003', login: 'valid' }, 'empty display name omitted');
+assert.equal(await handler(['airhorn'], createExecutionContext({ broadcasterId: '998003', userId: '555', userLogin: 'ada', userDisplayName: 'Ada' })), '');
+assert.deepEqual(JSON.parse(apiCalls.at(-1).init.body).firedBy, { id: '555', login: 'ada', name: 'Ada' }, 'the chatter in the context');
+assert.equal(await handler(['airhorn'], createExecutionContext({ broadcasterId: '998003' })), '');
+assert.equal(Object.hasOwn(JSON.parse(apiCalls.at(-1).init.body), 'firedBy'), false, 'no user: no firedBy');
+// A chat command through the real parser: the chatter from the event data.
+const { parseSpecialCommands: parseCommand } = await import('/app/dist/handlers/special_parser.handler.js');
+await parseCommand('$(trigger.send airhorn)', { channelID: '998003', scopeType: 'command', scopeName: 'horn', argument: '', userPlan: 'pro', userLevel: 10,
+  eventData: { chatter_user_id: '777', chatter_user_login: 'pix', chatter_user_name: 'Pix', broadcaster_user_id: '998003', broadcaster_user_login: 'valid', broadcaster_user_name: 'Valid', badges: [] } });
+assert.deepEqual(JSON.parse(apiCalls.at(-1).init.body).firedBy, { id: '777', login: 'pix', name: 'Pix' }, 'chat command chatter');
 await TriggerSchema.updateOne({ _id: validTrigger._id }, { $set: { name: 'renamed horn' } });
 assert.equal(await handler(['renamed', 'horn'], createExecutionContext({ broadcasterId: '998003', userId: '998003', userLogin: 'valid' })), '');
 assert.equal(JSON.parse(apiCalls.at(-1).init.body).triggerId, String(validTrigger._id));
@@ -94,8 +110,9 @@ const { parseSpecialCommands } = await import('/app/dist/handlers/special_parser
 const timerResult = await renderTimerMessage({ channelID: '998003', streamerName: 'valid', timerName: 'fixture', message: '$(trigger.send renamed horn)', planTier: 'pro', parse: parseSpecialCommands });
 assert.equal(timerResult.parsedText, '');
 assert.equal(JSON.parse(apiCalls.at(-1).init.body).triggerId, String(validTrigger._id));
+assert.equal(Object.hasOwn(JSON.parse(apiCalls.at(-1).init.body), 'firedBy'), false, 'timers have no real chatter: no firedBy');
 
 await mongo.connection.close();
 await redis.quit();
-console.log('PASS: runtime readiness, stable trigger IDs through AST commands, renames and scheduled timer rendering, revoked permissions reauthenticate message, transient renew message, success path, AST trigger.send end-to-end for revoked and valid accounts');
+console.log('PASS: runtime readiness, stable trigger IDs through AST commands, renames and scheduled timer rendering, revoked permissions reauthenticate message, transient renew message, success path, AST trigger.send end-to-end for revoked and valid accounts, signed playback link, firedBy from the chatter (context and chat command), none without a user or from a timer');
 process.exit(0);
