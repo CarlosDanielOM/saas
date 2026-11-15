@@ -18,6 +18,12 @@ import { requiredScope } from '../../site_agent/tools/mcp.js';
 import { toolResultText } from '../../site_agent/tools/registry.js';
 
 const RESULT_BYTES = 64 * 1024;
+/**
+ * JSON-RPC messages in one POST. Clients run parallel tool calls as parallel requests; old (2025-03-26) clients
+ * may batch. Every message counts against the rate limits, and tool calls share the connection's concurrency
+ * limit (`site_agent/tools/concurrency.ts`) however they arrive.
+ */
+const MAX_BATCH = 20;
 const INSTRUCTIONS = 'Dima runs a Twitch channel\'s chat bot: commands, timers, goals, roulettes, Bits rules, chat events and TTS. ' +
     'Tools act on the one channel this connection was approved for. Changes apply immediately; every change can be undone ' +
     'with undo_change (or from the Changes list on domdimabot.com). Each call that reads or changes channel data costs AI credits ' +
@@ -86,7 +92,14 @@ async function handleMcp(req: Request, res: Response) {
         res.set('WWW-Authenticate', challenge());
         return res.status(401).json({ error: 'invalid_token' });
     }
-    await rateLimit(`mcp-token:${hash(token)}`, 300);
+    const messages = Array.isArray(req.body) ? req.body.length : 1;
+    if (messages > MAX_BATCH || messages === 0) {
+        return res.status(400).json({ jsonrpc: '2.0', id: null, error: { code: -32600,
+            message: messages ? `A batch may hold at most ${MAX_BATCH} messages; send parallel requests instead.` : 'Empty batch.' } });
+    }
+    // The IP limit counted this request once on the way in; a batch counts every message.
+    if (messages > 1) for (const ip of clientIps(req)) await rateLimit(`mcp:${ip}`, 600, messages - 1);
+    await rateLimit(`mcp-token:${hash(token)}`, 300, messages);
     let identity: AccessIdentity;
     try {
         identity = await authenticateAccess(token, { resource: OAUTH_RESOURCES.mcp });
@@ -101,7 +114,10 @@ async function handleMcp(req: Request, res: Response) {
         return res.status(403).json({ error: 'insufficient_scope' });
     }
     const principal: McpPrincipal = { requesterId: identity.requester_id, channelId: identity.channel_id, sessionId: identity.session_id,
-        clientId: identity.client_id, clientName: await clientName(identity), scopes: identity.scopes };
+        clientId: identity.client_id, clientName: await clientName(identity), scopes: identity.scopes,
+        // Right before a write: the session, grant and client are still valid (revoked or denylisted since → refused).
+        stillAuthorized: () => authenticateAccess(token, { resource: OAUTH_RESOURCES.mcp }).then(() => true,
+            (error: unknown) => error instanceof OAuthError && error.status === 401 ? false : Promise.reject(error)) };
     const server = buildServer(principal);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => { void transport.close().catch(() => undefined); void server.close().catch(() => undefined); });

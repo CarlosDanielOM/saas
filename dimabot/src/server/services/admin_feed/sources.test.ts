@@ -11,6 +11,8 @@ import { localBound } from './source.js';
 import { eventFilter, eventItem, eventsSource, FEED_EVENT_TYPES, viewerFilters } from './sources/events.js';
 import { decisionFilter, decisionItem, modelWithoutDate, protectionSource, topScore, type DecisionRow } from './sources/protection.js';
 import { usageFilter, usageItem, usageSource } from './sources/usage.js';
+import { mcpFilter, mcpItem, mcpSource } from './sources/mcp.js';
+import type { IMcpCallLog } from '../../../site_agent/mcp_call_log.js';
 import type { FeedFilters } from './types.js';
 
 const from = new Date('2026-11-01T00:00:00.000Z');
@@ -235,6 +237,36 @@ describe('assistant source', () => {
         assert.deepEqual(assistantSource.plan({ ...scope, actorLogin: 'x' }), []);
         assert.deepEqual(assistantSource.gaps!({ ...scope, actorLogin: 'x' }), ['assistant']);
         assert.deepEqual(assistantSource.gaps!({ ...scope, actorLogin: 'x', channelID: '1' }), []);
+    });
+});
+
+describe('mcp source', () => {
+    const call = (extra: Partial<IMcpCallLog>): IMcpCallLog => ({
+        _id: 'op-1', at, ms: 820, channelId: '100', channelLogin: 'streamer', user: { id: '200', login: 'helper', role: 'admin' },
+        client: { id: 'https://claude.ai/oauth/mcp-oauth-client-metadata', name: 'Claude' }, sessionId: 's1', tool: 'create_command', kind: 'write',
+        outcome: 'ok', code: '', reason: '', problem: false, charged: 1, changeId: 'c1', late: null, expiresAt: now, ...extra
+    });
+    it('maps a call: tool, app, who, credits, duration; no session id', () => {
+        const item = mcpItem(call({}));
+        assert.deepEqual([item.id, item.kind, item.name, item.outcome, item.reason, item.credits, item.durationMs, item.channel, item.text, item.ref],
+            ['mcp:op-1', 'mcp', 'create_command', 'ok', null, 1, 820, 'streamer', null, null]);
+        assert.deepEqual(item.actor, { id: '200', login: 'helper', name: null });
+        assert.deepEqual(item.data, { app: 'Claude', appId: 'https://claude.ai/oauth/mcp-oauth-client-metadata', toolKind: 'write', role: 'admin', changeId: 'c1' });
+        assert.equal(JSON.stringify(item).includes('s1'), false);
+    });
+    it('refusals and failures keep the code and the message the app got; free calls show no credits', () => {
+        const refused = mcpItem(call({ outcome: 'blocked', code: 'unsafe_content', reason: 'Not applied: $(ban): bans a viewer', problem: true, charged: 0, changeId: null }));
+        assert.deepEqual([refused.outcome, refused.reason, refused.text, refused.credits], ['blocked', 'unsafe_content', 'Not applied: $(ban): bans a viewer', null]);
+        assert.equal(mcpItem(call({ outcome: 'failed', code: 'outcome_unknown', late: 'applied' })).data.late, 'applied');
+    });
+    it('filters: problems use the stored rule, failed the outcome; login only inside a channel', () => {
+        assert.deepEqual(mcpFilter({ ...scope, outcome: 'problems', channelID: '100' }), { channelId: '100', problem: true });
+        assert.deepEqual(mcpFilter({ ...scope, outcome: 'failed', actorID: '200' }), { 'user.id': '200', outcome: 'failed' });
+        assert.deepEqual(mcpSource.plan(scope), ['mcp']);
+        assert.deepEqual(mcpSource.plan({ ...scope, kinds: ['assistant'] }), []);
+        assert.deepEqual(mcpSource.plan({ ...scope, actorLogin: 'x' }), []);
+        assert.deepEqual(mcpSource.gaps!({ ...scope, actorLogin: 'x' }), ['mcp']);
+        assert.deepEqual(mcpSource.gaps!({ ...scope, actorLogin: 'x', channelID: '1' }), []);
     });
 });
 

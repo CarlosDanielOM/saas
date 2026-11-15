@@ -18,6 +18,7 @@ const KINDS: Array<{ kind: FeedKind; problem: string; always?: boolean }> = [
   { kind: 'voice', problem: 'not spoken' },
   { kind: 'ai', problem: "didn't finish" },
   { kind: 'assistant', problem: "didn't finish" },
+  { kind: 'mcp', problem: 'refused or failed' },
   { kind: 'docs', problem: 'not answered' },
 ];
 

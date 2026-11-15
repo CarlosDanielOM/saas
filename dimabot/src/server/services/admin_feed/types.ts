@@ -3,7 +3,7 @@
  * contract the admin site is built against: change both together.
  */
 export const FEED_KINDS = [
-    'command', 'bot_message', 'twitch_event', 'alert', 'protection', 'voice', 'ai', 'assistant', 'docs', 'credits', 'system'
+    'command', 'bot_message', 'twitch_event', 'alert', 'protection', 'voice', 'ai', 'assistant', 'mcp', 'docs', 'credits', 'system'
 ] as const;
 export type FeedKind = typeof FEED_KINDS[number];
 export type FeedOutcome = 'ok' | 'skipped' | 'blocked' | 'failed';

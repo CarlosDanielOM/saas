@@ -45,8 +45,15 @@ export function toolPrice(tool: { name: string; kind: ToolKind }, surface: ToolS
     return TOOL_KIND_PRICES[tool.kind] ?? 1;
 }
 
+/**
+ * `credits_exhausted`: out of credits. `credits_busy`: too many priced calls in flight on the channel (they waited
+ * TOOL_CREDIT_BUSY_WAIT_MS). `credits_not_set_up`: the channel has no billing customer yet. `credits_unavailable`:
+ * the balance could not be read (Dragonfly/Polar trouble, a duplicate operation id).
+ */
+export type CreditErrorCode = 'credits_exhausted' | 'credits_busy' | 'credits_not_set_up' | 'credits_unavailable';
+
 export class CreditError extends Error {
-    constructor(public readonly code: 'credits_exhausted' | 'credits_unavailable') { super(code); }
+    constructor(public readonly code: CreditErrorCode) { super(code); }
 }
 
 export interface CreditReservation {
@@ -57,7 +64,11 @@ export interface CreditReservation {
 }
 
 export const TOOL_CREDIT_HOLD_TTL_MS = 10 * 60_000;
-export const TOOL_CREDIT_MAX_HOLDS = 8;
+/** Priced calls in flight per channel. AI apps run tool calls in parallel; past this they wait, then get `credits_busy`. */
+export const TOOL_CREDIT_MAX_HOLDS = 24;
+/** How long a reservation waits for a free hold slot when the channel is at TOOL_CREDIT_MAX_HOLDS. */
+export const TOOL_CREDIT_BUSY_WAIT_MS = 5000;
+const BUSY_RETRY_MS = 150;
 const BALANCE_LOAD_TIMEOUT_MS = 3000;
 const CACHE_CALLER = 'site-agent-credits';
 
@@ -147,16 +158,17 @@ async function tryHold(cache: Awaited<ReturnType<typeof getDragonflyClient>>, { 
 }
 
 /**
- * Atomically holds `credits` against the channel's balance. Throws CreditError when the balance is short or unknown.
- * `credits_exhausted`: an exhaustion marker is set or the balance minus pending holds is short of the price.
- * `credits_unavailable`: no verified balance, more than TOOL_CREDIT_MAX_HOLDS calls in flight, a duplicate
- * operationId, or Dragonfly/Polar failed. 0 credits returns a reservation without holding anything.
+ * Atomically holds `credits` against the channel's balance. Throws CreditError when the balance is short or unknown
+ * (codes: see CreditErrorCode). While TOOL_CREDIT_MAX_HOLDS calls are in flight it waits up to
+ * TOOL_CREDIT_BUSY_WAIT_MS for one to finish (`signal` stops the wait). 0 credits returns a reservation without
+ * holding anything.
  */
-export async function reserveToolCredits(channelId: string, credits: number, operationId: string): Promise<CreditReservation> {
+export async function reserveToolCredits(channelId: string, credits: number, operationId: string, signal?: AbortSignal): Promise<CreditReservation> {
     assertReservation(channelId, credits, operationId);
     const reservation: CreditReservation = { channelId, credits, operationId };
     if (credits === 0) return reservation;
     let result: HoldResult;
+    let notSetUp = false;
     try {
         const cache = await getDragonflyClient(CACHE_CALLER);
         result = await tryHold(cache, reservation);
@@ -166,7 +178,12 @@ export async function reserveToolCredits(channelId: string, credits: number, ope
             if (owner?.polar_sh_customer_id) {
                 await getAiCredits(owner, channelId, { requireVerified: true, signal: AbortSignal.timeout(BALANCE_LOAD_TIMEOUT_MS) });
                 result = await tryHold(cache, reservation);
-            }
+            } else notSetUp = true;
+        }
+        const deadline = Date.now() + TOOL_CREDIT_BUSY_WAIT_MS;
+        while (result === 'busy' && Date.now() < deadline && !signal?.aborted) {
+            await new Promise((resolve) => setTimeout(resolve, BUSY_RETRY_MS));
+            result = await tryHold(cache, reservation);
         }
     } catch (err) {
         log('error', 'reserve', channelId, { operationId, credits, error: message(err) });
@@ -174,7 +191,8 @@ export async function reserveToolCredits(channelId: string, credits: number, ope
     }
     if (result === 'ok') return reservation;
     if (result === 'duplicate') log('error', 'reserve', channelId, { operationId, credits, error: 'duplicate operationId' });
-    throw new CreditError(result === 'exhausted' ? 'credits_exhausted' : 'credits_unavailable');
+    throw new CreditError(result === 'exhausted' ? 'credits_exhausted' : result === 'busy' ? 'credits_busy'
+        : result === 'unknown' && notSetUp ? 'credits_not_set_up' : 'credits_unavailable');
 }
 
 async function dropHold({ channelId, operationId }: CreditReservation, fn: string): Promise<void> {
@@ -187,8 +205,10 @@ async function dropHold({ channelId, operationId }: CreditReservation, fn: strin
 
 /**
  * The call succeeded: charge through the Polar AI-credit path (idempotent by operationId) and drop the hold.
- * Never throws (the tool already ran): when the charge could not be accepted or durably queued, the failure is
- * logged and the hold stays until it expires, so the balance is never over-promised meanwhile.
+ * The hold is dropped as soon as the charge is queued and projected on the local balance (before Polar is called),
+ * so a call waiting on Polar never counts twice against the balance. Never throws (the tool already ran): when the
+ * charge could not be accepted or durably queued, the failure is logged and the hold stays until it expires, so the
+ * balance is never over-promised meanwhile.
  */
 export async function settleToolCredits(reservation: CreditReservation, meta: { tool: string; surface: ToolSurface }): Promise<void> {
     const { channelId, credits, operationId } = reservation;
@@ -202,7 +222,9 @@ export async function settleToolCredits(reservation: CreditReservation, meta: { 
         }
         // `batch`: queued durably and projected locally before Polar is called, then flushed now. The local
         // projection (recordAiCreditUsage) runs inside this path; it must not be debited a second time here.
+        const projected = { holdDropped: false };
         const result = await ingestPolarSHEvent({
+            onProjected: async () => { projected.holdDropped = true; await dropHold(reservation, 'settle'); },
             customerId,
             channelID: channelId,
             externalId: toolCreditExternalId(operationId),
@@ -224,6 +246,7 @@ export async function settleToolCredits(reservation: CreditReservation, meta: { 
             return;
         }
         if (result.error) log('warn', 'settle', channelId, { ...context, message: `charge queued; Polar flush failed (${result.message ?? 'unknown'}), a later flush sends it` });
+        if (projected.holdDropped) return;
     } catch (err) {
         log('error', 'settle', channelId, { ...context, error: `charge failed: ${message(err)}` });
         return;

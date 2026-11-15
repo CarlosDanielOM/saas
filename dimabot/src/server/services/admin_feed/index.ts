@@ -5,6 +5,7 @@ import { activitySource } from './sources/activity.js';
 import { assistantSource } from './sources/assistant.js';
 import { docsSource } from './sources/docs.js';
 import { eventsSource } from './sources/events.js';
+import { mcpSource } from './sources/mcp.js';
 import { protectionSource } from './sources/protection.js';
 import { usageSource } from './sources/usage.js';
 import type { EventDetail, FeedFilters, FeedPage, FeedSummary } from './types.js';
@@ -16,7 +17,7 @@ export { isValidEventKey } from './event_detail.js';
 const lookupLogins = (ids: string[]) => channelLogins(ids);
 
 /** Every store the feed reads, one adapter each (see `sources/`). */
-const feed = createFeed([activitySource, eventsSource, protectionSource, usageSource, assistantSource, docsSource], { channelLogins: lookupLogins });
+const feed = createFeed([activitySource, eventsSource, protectionSource, usageSource, assistantSource, mcpSource, docsSource], { channelLogins: lookupLogins });
 
 /**
  * One time-ordered feed over every store that records what happened (see `types.ts`).

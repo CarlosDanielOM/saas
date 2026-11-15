@@ -16,6 +16,7 @@ const PROBLEM: Partial<Record<FeedKind, string>> = {
   protection: "couldn't be reviewed",
   voice: 'not spoken',
   assistant: 'not answered',
+  mcp: 'refused or failed',
   docs: 'not answered',
 };
 

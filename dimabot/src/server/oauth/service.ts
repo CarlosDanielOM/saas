@@ -76,10 +76,11 @@ export async function initializeOAuth(): Promise<void> {
     }
 }
 
-export async function rateLimit(bucket: string, limit: number): Promise<void> {
+/** Fixed one-minute window per bucket. `cost` counts several operations at once (e.g. a JSON-RPC batch). */
+export async function rateLimit(bucket: string, limit: number, cost = 1): Promise<void> {
     const count = await (await redis()).eval(
-        "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n",
-        { keys: [`oauth:rate:${hash(bucket)}`], arguments: [] });
+        "local n=redis.call('INCRBY',KEYS[1],ARGV[1]); if n==tonumber(ARGV[1]) then redis.call('EXPIRE',KEYS[1],60) end; return n",
+        { keys: [`oauth:rate:${hash(bucket)}`], arguments: [String(Math.max(1, Math.floor(cost)))] });
     if (Number(count) > limit) throw new OAuthError('slow_down', 429);
 }
 

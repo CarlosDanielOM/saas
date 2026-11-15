@@ -90,7 +90,7 @@ test('channel_overview: plan, bot level, live status, requester role; never toke
         channel: { id: OWNER, login: 'owner_login' },
         plan: { tier: 'premium', until: '2026-12-01T00:00:00.000Z' },
         bot: { level: 'in_chat', inChat: true, fullAccess: false },
-        live: { isLive: true, title: 'Night coding', category: 'Just Chatting', viewers: 42, startedAt: '2026-11-11T01:00:00Z' },
+        live: { isLive: true, untrusted_data: { title: 'Night coding', category: 'Just Chatting' }, viewers: 42, startedAt: '2026-11-11T01:00:00Z' },
         you: { login: 'helper', role: 'admin' },
     });
     assert.doesNotMatch(JSON.stringify(overview), /secret|example\.com|access_token/);

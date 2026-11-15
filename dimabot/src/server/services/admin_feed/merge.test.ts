@@ -113,7 +113,7 @@ describe('feed merge', () => {
         const summary = await feed.summarize(filters);
         assert.deepEqual(summary.partial, ['protection']);
         assert.equal(summary.kinds.find(row => row.kind === 'command')?.total, 1);
-        assert.equal(summary.kinds.length, 11);
+        assert.equal(summary.kinds.length, 12);
     });
 
     it('lists the kinds a store cannot search in partial, for pages and summaries', async () => {

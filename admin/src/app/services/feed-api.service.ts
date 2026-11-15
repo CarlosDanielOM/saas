@@ -8,10 +8,10 @@ import { Envelope, httpParams } from './api-util';
 /**
  * The activity feed: one time-ordered list of what happened, across every channel or for one channel or
  * one chatter. The API builds it from several stores (the bot's activity log, journaled Twitch events,
- * chat protection decisions, AI usage receipts, assistant turns, docs answers).
+ * chat protection decisions, AI usage receipts, assistant turns, AI app (MCP) calls, docs answers).
  */
 export const FEED_KINDS = [
-  'command', 'bot_message', 'twitch_event', 'alert', 'protection', 'voice', 'ai', 'assistant', 'docs', 'credits', 'system',
+  'command', 'bot_message', 'twitch_event', 'alert', 'protection', 'voice', 'ai', 'assistant', 'mcp', 'docs', 'credits', 'system',
 ] as const;
 /**
  * - command: a chat command ran, or was refused (cooldown, permission, turned off).
@@ -22,6 +22,8 @@ export const FEED_KINDS = [
  * - voice: a text-to-speech request.
  * - ai: other AI work charged to the channel (chat replies, memory summaries).
  * - assistant: a Dima assistant turn; `text` is what the person asked.
+ * - mcp: one tool call by an AI app connected over MCP (Claude, ChatGPT, Cursor…); `name` is the tool, `reason` the
+ *   refusal/error code and `text` the message the app got. Arguments and results are never stored.
  * - docs: a question answered by the docs assistant.
  * - credits: credits added or removed (grants, packs, monthly reset).
  * - system: things the bot did on its own (a Twitch subscription was revoked, stream start/end steps).
@@ -82,6 +84,7 @@ export interface FeedItem {
    * - voice: provider, chars, source, voice, model
    * - ai: category, operation, provider, model, tokens, source
    * - assistant: level, status, steps, tools, model, errorCode, units
+   * - mcp: app, appId, toolKind (knowledge|read|write), role (owner|admin), changeId, late (pending|applied|failed)
    * - docs: lang, page, feedback, rounds
    * - credits: adjustmentType, source
    */

@@ -10,6 +10,7 @@ import { limitHitsKey } from './limits.js';
 import { stopTurn } from './runner.js';
 import * as store from './store.js';
 import { deleteTurnLogs } from './turn_log.js';
+import { deleteMcpCallLogs } from './mcp_call_log.js';
 
 /**
  * Stops the channel's turns, and this person's turns on channels they manage, that are still queued, running or
@@ -54,5 +55,7 @@ export async function deleteChannelSiteAgentData(channelId: string): Promise<{ s
     // Expert refusals record what was asked: on this channel, and by this person on channels they manage.
     await mongoose.connection.collection('site_agent_refusals').deleteMany({ $or: [{ channelId }, { userId: channelId }] });
     await deleteTurnLogs(channelId);
+    // AI app (MCP) calls: on this channel, and by this person on channels they manage.
+    await deleteMcpCallLogs(channelId);
     return { sessionsDeleted, changesDeleted: result.deletedCount ?? 0 };
 }

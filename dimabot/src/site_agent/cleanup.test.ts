@@ -16,6 +16,7 @@ mock.module('./store.js', { namedExports: {
     getTurn: async (id: string) => ({ id, ...turns[id] }),
 } });
 mock.module('./turn_log.js', { namedExports: { deleteTurnLogs: async (channelId: string) => { removed.push(['turnLogs', channelId]); return 0; } } });
+mock.module('./mcp_call_log.js', { namedExports: { deleteMcpCallLogs: async (channelId: string) => { removed.push(['mcpCallLogs', channelId]); return 0; } } });
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => ({
     scanIterator: async function* () { /* no keys */ },
     zRange: async () => [], del: async () => 0, hDel: async () => 0,
@@ -27,5 +28,5 @@ const { deleteChannelSiteAgentData } = await import('./cleanup.js');
 test('account deletion stops the channel\'s running turns and the person\'s turns on other channels', async () => {
     await deleteChannelSiteAgentData('42');
     assert.deepEqual(stopped, [['a', '42'], ['b', '7'], ['c', '42']], 'each with its own requester; other channels\' turns untouched');
-    assert.deepEqual(removed.at(-1), ['turnLogs', '42']);
+    assert.deepEqual(removed.slice(-2), [['turnLogs', '42'], ['mcpCallLogs', '42']]);
 });

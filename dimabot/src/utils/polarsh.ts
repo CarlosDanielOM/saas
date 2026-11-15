@@ -70,6 +70,20 @@ interface IngestPolarSHEventOptions {
   chargeCredits?: boolean;
   /** Descriptive receipt metadata. It does not affect pricing or credits. */
   usage?: AiUsageContextInput;
+  /**
+   * Batch/cache modes: called once the event is in the durable queue and projected locally (the local
+   * balance already shows the charge), before Polar is called. Errors it throws are ignored.
+   */
+  onProjected?: () => Promise<void> | void;
+}
+
+async function runProjectedHook(hook: IngestPolarSHEventOptions["onProjected"]): Promise<void> {
+  if (!hook) return;
+  try {
+    await hook();
+  } catch {
+    // The caller's bookkeeping must never fail or delay billing.
+  }
 }
 
 interface IngestPolarSHEventResponse {
@@ -274,6 +288,7 @@ export async function ingestPolarSHEvent(
     mode = "batch",
     chargeCredits = true,
     usage,
+    onProjected,
   } = options;
 
   if (!customerId) {
@@ -407,6 +422,7 @@ export async function ingestPolarSHEvent(
         await queueEvent(cacheClient, cacheKey, eventData);
         queued = true;
         await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
+        await runProjectedHook(onProjected);
       } catch (queueErr) {
         await error(
           {
@@ -427,6 +443,7 @@ export async function ingestPolarSHEvent(
       await queueEvent(cacheClient, cacheKey, eventData);
       queued = true;
       await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
+      await runProjectedHook(onProjected);
 
       if (mode === "cache") {
         return { error: false };

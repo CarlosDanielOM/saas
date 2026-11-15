@@ -29,6 +29,7 @@ export const FEED_KIND_LABEL: Record<FeedKind, { one: string; many: string; icon
   voice: { one: 'Voice', many: 'Voice', icon: 'mic' },
   ai: { one: 'AI', many: 'AI', icon: 'sparkles' },
   assistant: { one: 'Assistant', many: 'Assistant', icon: 'bot' },
+  mcp: { one: 'AI app', many: 'AI apps', icon: 'external' },
   docs: { one: 'Docs AI', many: 'Docs AI', icon: 'book' },
   credits: { one: 'Credits', many: 'Credits', icon: 'credits' },
   system: { one: 'System', many: 'System', icon: 'settings' },
@@ -339,6 +340,19 @@ export function feedLine(item: FeedItem): FeedLine {
       if (item.outcome === 'skipped') return { ...base, title: `${who(item)} stopped the assistant`, detail };
       return { ...base, tone: 'accent', title: `Assistant answered ${who(item)}`, detail };
     }
+    case 'mcp': {
+      const app = text(data['app']) ?? 'An AI app';
+      const tool = `“${item.name.replace(/_/g, ' ')}”`;
+      const late = text(data['late']);
+      const detail = join(data['toolKind'] === 'write' && item.outcome === 'ok' ? (text(data['changeId']) ? 'change logged' : 'change not logged') : null,
+        late === 'applied' ? 'it landed later' : late === 'failed' ? 'it never landed' : late === 'pending' ? 'still finishing' : null,
+        item.durationMs !== null ? formatDuration(item.durationMs) : null);
+      const forWho = item.actor ? ` for ${who(item)}` : '';
+      const why = item.reason ? MCP_REASON[item.reason] ?? item.reason.replace(/_/g, ' ') : null;
+      if (item.outcome === 'ok') return { ...base, tone: 'accent', title: `${app} used ${tool}${forWho}`, detail };
+      if (item.outcome === 'failed') return { ...base, title: `${app}: ${tool} failed${forWho}${why ? `: ${why}` : ''}`, detail };
+      return { ...base, title: `${app}: ${tool} refused${forWho}${why ? `: ${why}` : ''}`, detail };
+    }
     case 'docs': {
       const feedback = text(data['feedback']);
       const detail = join(text(data['page']), feedback === 'helpful' ? 'Rated helpful' : feedback === 'unhelpful' ? 'Rated not helpful' : null);
@@ -359,6 +373,25 @@ export function feedLine(item: FeedItem): FeedLine {
   }
 }
 
+/** Why an AI app's tool call was refused or failed, by the code the API returned. */
+const MCP_REASON: Record<string, string> = {
+  unsafe_content: 'the command text could act on the stream',
+  invalid_input: 'the app sent invalid arguments',
+  unknown_tool: 'there is no such tool',
+  no_access: 'no access to the channel (or the connection was removed)',
+  permission_denied: 'this account lacks the permission',
+  insufficient_scope: "the app wasn't given that access",
+  plan_required: 'it needs a higher plan',
+  credits_exhausted: 'the channel is out of credits',
+  credits_busy: 'too many paid calls at once',
+  credits_not_set_up: 'credits are not set up for the channel',
+  credits_unavailable: "credits couldn't be checked",
+  busy: 'too many calls from the app at once',
+  conflict: 'it changed in the meantime',
+  outcome_unknown: 'it took too long, result unknown',
+  failed: 'something went wrong',
+};
+
 /** Labels for the `data` keys shown in a row's details. Keys without a label are shown as they are. */
 const DATA_LABEL: Record<string, string> = {
   func: 'Runs', trigger: 'Started by', live: 'Channel was live', origin: 'Came from', messageId: 'Twitch message', httpStatus: 'Twitch status',
@@ -372,6 +405,7 @@ const DATA_LABEL: Record<string, string> = {
   latencyMs: 'Time', subscriptionId: 'Subscription', rewardId: 'Reward id',
   heard: 'Someone heard it', pages: 'Speech pages it went to', movedBecause: 'Moved because the first page', everyPage: 'Played on every open page',
   endReason: 'Ended as',
+  app: 'App', appId: 'App id', toolKind: 'Tool type', role: 'Acting as', changeId: 'Change', late: 'Late write',
 };
 
 /** Internal values the operator should read in plain words. */
@@ -384,6 +418,9 @@ const VALUE: Record<string, Record<string, string>> = {
   feedback: { helpful: 'Helpful', unhelpful: 'Not helpful' },
   level: { standard: 'Standard', expert: 'Expert' },
   adjustmentType: ADJUSTMENT,
+  toolKind: { knowledge: 'Docs (free)', read: 'Read', write: 'Change' },
+  role: { owner: 'Owner', admin: 'Admin' },
+  late: { pending: 'Still finishing', applied: 'Landed later', failed: 'Never landed' },
 };
 /** Keys the row's sentence already covers, or that only mean something to the code. */
 const HIDDEN = new Set(['message', 'verdict', 'ruleType', 'live', 'topCategory', 'category', 'event']);

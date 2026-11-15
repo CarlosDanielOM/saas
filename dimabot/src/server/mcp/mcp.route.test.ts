@@ -21,7 +21,7 @@ mock.module('../oauth/catalog.js', { namedExports: {
 } });
 mock.module('../oauth/service.js', { namedExports: {
     hash: (value: string) => `h:${value}`, oauthIssuer: () => 'https://api.domdimabot.com',
-    rateLimit: async (bucket: string) => { buckets.push(bucket); if (bucket === limited) throw new OAuthError('slow_down', 429); },
+    rateLimit: async (bucket: string, _limit: number, cost = 1) => { buckets.push(cost > 1 ? `${bucket}x${cost}` : bucket); if (bucket === limited) throw new OAuthError('slow_down', 429); },
     authenticateAccess: async (token: unknown, options?: { resource?: string }) => {
         assert.equal(options?.resource, MCP, 'only MCP-audience tokens');
         if (token === 'good') return identity;
@@ -123,7 +123,10 @@ test('tools/call maps outcomes and passes the principal; missing scope is a 403 
     assert.equal(ok.status, 200);
     assert.deepEqual(JSON.parse(ok.body.result.content[0].text), { result: { commands: ['!hi'] }, charged: 1 });
     assert.equal(ok.body.result.isError, undefined);
-    assert.deepEqual(calls[0], { name: 'list_commands', args: { limit: 5 }, principal: { requesterId: '111', channelId: '222',
+    const { stillAuthorized, ...principal } = calls[0].principal as Record<string, unknown>;
+    assert.equal(typeof stillAuthorized, 'function', 'writes re-check the connection right before they apply');
+    assert.equal(await (stillAuthorized as () => Promise<boolean>)(), true);
+    assert.deepEqual({ ...calls[0], principal }, { name: 'list_commands', args: { limit: 5 }, principal: { requesterId: '111', channelId: '222',
         sessionId: 'session-1', clientId: identity.client_id, clientName: 'Claude', scopes: ['channel:read'] } });
     const unknown = await call('POST', '/mcp', { body: rpc(4, 'tools/call', { name: 'nope' }), headers: { Authorization: 'Bearer good' } });
     assert.equal(unknown.body.result.isError, true);
@@ -152,4 +155,19 @@ test('only POST, bounded bodies, CORS preflight, rate limits per IP and per toke
     assert.equal(slow.status, 429);
     assert.equal(slow.headers['retry-after'], '60');
     limited = '';
+});
+
+test('batches: every message counts against the IP and token limits; oversized batches are refused; parallel calls all run', async () => {
+    buckets.length = 0;
+    const batch = await call('POST', '/mcp', { body: [1, 2, 3].map((id) => rpc(id, 'ping')), headers: { Authorization: 'Bearer good' } });
+    assert.equal(batch.status, 200);
+    assert.deepEqual(buckets, ['mcp:127.0.0.1', 'mcp:127.0.0.1x2', 'mcp-token:h:goodx3']);
+    const huge = await call('POST', '/mcp', { body: Array.from({ length: 21 }, (_, id) => rpc(id + 1, 'ping')), headers: { Authorization: 'Bearer good' } });
+    assert.equal(huge.status, 400);
+    assert.equal(huge.body.error.code, -32600);
+    calls.length = 0;
+    const parallel = await Promise.all(Array.from({ length: 6 }, (_, i) =>
+        call('POST', '/mcp', { body: rpc(100 + i, 'tools/call', { name: 'list_commands', arguments: {} }), headers: { Authorization: 'Bearer good' } })));
+    assert.deepEqual(parallel.map((r) => r.status), [200, 200, 200, 200, 200, 200]);
+    assert.equal(calls.length, 6);
 });

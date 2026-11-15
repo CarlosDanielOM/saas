@@ -24,8 +24,17 @@ import { mcpOnlyTools } from './mcp_changes.js';
 import { getTool, planAllows, toolsFor } from './registry.js';
 import { checkSafeBody } from './safe_body.js';
 import { untrusted } from './util.js';
+import { acquireCallSlot, CallSlotError } from './concurrency.js';
+import { recordMcpCall, settleLateMcpCall } from '../mcp_call_log.js';
 
-export interface McpPrincipal { requesterId: string; channelId: string; sessionId: string; clientId: string; clientName: string; scopes: readonly string[] }
+export interface McpPrincipal {
+    requesterId: string; channelId: string; sessionId: string; clientId: string; clientName: string; scopes: readonly string[];
+    /**
+     * The transport's own authorization check, run again right before a write applies (MCP: the OAuth session,
+     * grant and client are still valid, not revoked or denylisted). Absent = no extra check.
+     */
+    stillAuthorized?: () => Promise<boolean>;
+}
 
 export interface McpToolListing {
     name: string;
@@ -38,7 +47,8 @@ export interface McpToolListing {
 export type ExecuteOutcome =
     | { ok: true; result: unknown; changeId?: string; undoable?: boolean; charged: number }
     | { ok: false; code: 'unknown_tool' | 'invalid_input' | 'no_access' | 'permission_denied' | 'insufficient_scope' | 'plan_required'
-        | 'unsafe_content' | 'credits_exhausted' | 'credits_unavailable' | 'conflict' | 'outcome_unknown' | 'failed';
+        | 'unsafe_content' | 'credits_exhausted' | 'credits_busy' | 'credits_not_set_up' | 'credits_unavailable' | 'busy'
+        | 'conflict' | 'outcome_unknown' | 'failed';
         message: string; requiredScopes?: string[] };
 
 type Failure = Extract<ExecuteOutcome, { ok: false }>;
@@ -209,6 +219,8 @@ async function applyWrite(call: Call, tool: AgentTool, input: unknown, proposal:
     // Fresh, right before the write: access, role, plan and permissions (no card was shown, so this is the approval).
     const access = await resolveAccess(p.requesterId, p.channelId, 'mcp');
     if (!access) return no(fail('no_access', 'This account no longer has access to this channel on the website. Nothing was changed.'));
+    // The connection itself (revoked on the website, app blocked by the operator) is checked again here too.
+    if (p.stillAuthorized && !(await p.stillAuthorized())) return no(fail('no_access', 'This app\'s connection was removed or blocked. Nothing was changed.'));
     const fresh: Call = { check: call.check, ctx: { ...call.ctx, channelLogin: access.channelLogin, role: roleFor(p.requesterId, access), plan: access.plan } };
     if (!planAllows(tool, fresh.ctx.plan)) return no(fail('plan_required', `This needs the ${planName(tool)} plan. Nothing was changed.`));
     if (!tool.apply || !(await holds(fresh, tool.permissions, true)) || !(await holds(fresh, proposal.permissions))) {
@@ -298,21 +310,25 @@ async function perform(call: Call, tool: AgentTool, input: unknown, p: McpPrinci
     }
 }
 
-/**
- * Runs one MCP tool call for the principal. Never throws: every failure is an outcome. `opts.operationId` is the
- * server-generated id of this call (credits idempotency key, change-log turn/call id).
- */
-export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs: unknown, opts: { operationId: string; signal: AbortSignal }): Promise<ExecuteOutcome> {
-    const tool = mcpTool(name);
-    if (!tool) return fail('unknown_tool', `There is no tool named "${String(name).slice(0, 100)}".`);
+/** What a call learned along the way, for its log row. */
+interface Trace { kind?: AgentTool['kind']; channelLogin?: string; login?: string; role?: 'owner' | 'admin'; late?: Promise<boolean> }
+
+const CREDIT_MESSAGES: Record<CreditError['code'], (login: string) => string> = {
+    credits_exhausted: (login) => `The channel is out of AI credits. More credits: https://domdimabot.com/${login}/credits`,
+    credits_busy: () => 'Too many paid tool calls are running on this channel at once. Try again in a moment.',
+    credits_not_set_up: () => 'AI credits are not set up for this channel yet, so paid tools can\'t run. The free docs tools still work.',
+    credits_unavailable: () => 'AI credits can\'t be checked right now. Try again in a moment.',
+};
+
+async function runCall(p: McpPrincipal, tool: AgentTool, rawArgs: unknown, opts: { operationId: string; signal: AbortSignal }, trace: Trace): Promise<ExecuteOutcome> {
     const meta = { tool: tool.name, operationId: opts.operationId, channelId: p.channelId, clientId: p.clientId };
-    if (opts.signal.aborted) return fail('failed', 'Cancelled.');
     let hold: CreditReservation | null = null;
     let billable = false;
     let late: Promise<boolean> | null = null;
     try {
         const call = await openCall(p, opts);
         if (!call) return fail('no_access', 'This account has no access to this channel on the website.');
+        Object.assign(trace, { channelLogin: call.ctx.channelLogin, login: call.ctx.requester.login, role: call.ctx.role });
         const scope = missingScope(tool, p.scopes);
         if (scope) return fail('insufficient_scope', `This app was not given the ${scope} permission.`, [scope]);
         if (!(await holds(call, tool.permissions))) return fail('permission_denied', 'This account does not have permission for this on the channel.');
@@ -327,18 +343,17 @@ export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs:
         if (price > 0) {
             if (opts.signal.aborted) return fail('failed', 'Cancelled.');
             try {
-                hold = await reserveToolCredits(call.ctx.channelId, price, opts.operationId);
+                hold = await reserveToolCredits(call.ctx.channelId, price, opts.operationId, opts.signal);
             } catch (err) {
-                if (err instanceof CreditError) {
-                    return fail(err.code, err.code === 'credits_exhausted' ? 'The channel is out of AI credits.' : 'AI credits can\'t be checked right now. Try again in a moment.');
-                }
+                if (err instanceof CreditError) return fail(err.code, CREDIT_MESSAGES[err.code](call.ctx.channelLogin));
                 await logError({ function: 'mcp.reserveCredits', ...meta, error: message(err) }, { destination: 'both' }).catch(() => undefined);
-                return fail('credits_unavailable', 'AI credits can\'t be checked right now. Try again in a moment.');
+                return fail('credits_unavailable', CREDIT_MESSAGES.credits_unavailable(call.ctx.channelLogin));
             }
         }
         const done = await perform(call, tool, input, p, opts, meta);
         billable = done.outcome.ok && done.billable;
         late = done.late ?? null;
+        if (late) trace.late = late;
         return done.outcome.ok ? { ...done.outcome, charged: billable && hold ? hold.credits : 0 } : done.outcome;
     } catch (err) {
         await logError({ function: 'mcp.call', ...meta, error: message(err) }, { destination: 'both' }).catch(() => undefined);
@@ -351,4 +366,46 @@ export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs:
         if (held && late) void late.then(settle);
         else if (held) await settle(billable);
     }
+}
+
+/**
+ * Runs one MCP tool call for the principal. Never throws: every failure is an outcome. `opts.operationId` is the
+ * server-generated id of this call (credits idempotency key, change-log turn/call id). Calls of one connection run
+ * at most MCP_CALLS_AT_ONCE at a time (`concurrency.ts`); the rest wait their turn. Every call gets a log row
+ * (`mcp_call_log.ts`).
+ */
+export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs: unknown, opts: { operationId: string; signal: AbortSignal }): Promise<ExecuteOutcome> {
+    const startedAt = Date.now();
+    const tool = mcpTool(name);
+    const trace: Trace = {};
+    let outcome: ExecuteOutcome | undefined;
+    if (!tool) outcome = fail('unknown_tool', `There is no tool named "${String(name).slice(0, 100)}".`);
+    else if (opts.signal.aborted) outcome = fail('failed', 'Cancelled.');
+    else {
+        let release: (() => void) | null = null;
+        try {
+            release = await acquireCallSlot(p.sessionId, opts.signal);
+        } catch (err) {
+            outcome = err instanceof CallSlotError && err.reason === 'aborted' ? fail('failed', 'Cancelled.')
+                : fail('busy', 'Too many tool calls from this app are running or waiting. Wait for some to finish, then try again.');
+        }
+        if (release) {
+            try {
+                trace.kind = tool.kind;
+                outcome = await runCall(p, tool, rawArgs, opts, trace);
+            } finally {
+                release();
+            }
+        }
+    }
+    const result = outcome ?? fail('failed', 'Something went wrong. Try again in a moment.');
+    recordMcpCall({
+        operationId: opts.operationId, startedAt, channelId: p.channelId, channelLogin: trace.channelLogin,
+        user: { id: p.requesterId, login: trace.login, role: trace.role }, client: { id: p.clientId, name: p.clientName },
+        sessionId: p.sessionId, tool: tool?.name ?? String(name ?? '').slice(0, 64), kind: tool?.kind,
+        code: result.ok ? null : result.code, reason: result.ok ? '' : result.message, charged: result.ok ? result.charged : 0,
+        changeId: result.ok ? result.changeId : undefined, late: Boolean(trace.late),
+    });
+    if (trace.late) void trace.late.then((landed) => settleLateMcpCall(opts.operationId, landed), () => settleLateMcpCall(opts.operationId, false));
+    return result;
 }

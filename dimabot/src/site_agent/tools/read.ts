@@ -187,7 +187,7 @@ export const channelOverviewTool: AgentTool<Record<string, never>> = {
                     fullAccess,
                 },
                 live: live?.isLive
-                    ? { isLive: true, title: live.stream?.title ?? null, category: live.stream?.game_name ?? null, viewers: live.stream?.viewer_count ?? null, startedAt: live.stream?.started_at ?? null }
+                    ? { isLive: true, ...untrusted({ title: live.stream?.title ?? null, category: live.stream?.game_name ?? null }), viewers: live.stream?.viewer_count ?? null, startedAt: live.stream?.started_at ?? null }
                     : { isLive: false, unknown: live === null },
                 you: { login: ctx.requester.login, role: ctx.role },
             },

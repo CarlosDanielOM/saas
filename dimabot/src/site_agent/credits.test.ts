@@ -253,11 +253,11 @@ test('reserve: still no usable snapshot after the load → credits_unavailable, 
     assert.equal(hash(HOLDS), null);
 });
 
-test('reserve: a channel without a billing customer or owner is unavailable without a Polar read', async () => {
+test('reserve: a channel without a billing customer or owner is "not set up" without a Polar read', async () => {
     owner = { plan_tier: 'pro', polar_sh_customer_id: null };
-    await rejectsWith(reserveToolCredits(CH, 1, 'op-1'), 'credits_unavailable');
+    await rejectsWith(reserveToolCredits(CH, 1, 'op-1'), 'credits_not_set_up');
     owner = null;
-    await rejectsWith(reserveToolCredits(CH, 1, 'op-2'), 'credits_unavailable');
+    await rejectsWith(reserveToolCredits(CH, 1, 'op-2'), 'credits_not_set_up');
     assert.equal(getAiCredits.mock.callCount(), 0);
 });
 
@@ -268,15 +268,27 @@ test('reserve: Dragonfly failure → credits_unavailable', async () => {
     assert.ok(logs.some((entry) => entry.level === 'error' && entry.data.function === 'siteAgent.credits.reserve'));
 });
 
-test('reserve: at most 8 concurrent holds per channel; a release frees a slot; other channels unaffected', async () => {
+test('reserve: parallel calls up to the hold cap get holds at once; past it they wait for a slot, or end busy', async () => {
     setSnapshot({ balance: 1_000 });
-    const results = await Promise.allSettled(Array.from({ length: 10 }, (_, i) => reserveToolCredits(CH, 1, `op-${i}`)));
-    assert.equal(TOOL_CREDIT_MAX_HOLDS, 8);
-    assert.equal(results.filter((r) => r.status === 'fulfilled').length, 8);
-    for (const r of results.filter((r) => r.status === 'rejected')) assert.equal(((r as PromiseRejectedResult).reason as InstanceType<typeof CreditError>).code, 'credits_unavailable');
-    assert.equal(Object.keys(holds()).length, 8);
+    assert.equal(TOOL_CREDIT_MAX_HOLDS, 24);
+    const first = await Promise.allSettled(Array.from({ length: TOOL_CREDIT_MAX_HOLDS }, (_, i) => reserveToolCredits(CH, 1, `op-${i}`)));
+    assert.equal(first.filter((r) => r.status === 'fulfilled').length, TOOL_CREDIT_MAX_HOLDS);
+    assert.equal(Object.keys(holds()).length, TOOL_CREDIT_MAX_HOLDS);
+    // One more waits instead of failing, and gets the slot a finished call frees.
+    let waited = false;
+    const waiting = reserveToolCredits(CH, 1, 'op-waits').then(() => { waited = true; });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(waited, false);
     await releaseToolCredits({ channelId: CH, credits: 1, operationId: 'op-0' });
-    await reserveToolCredits(CH, 1, 'op-again');
+    await waiting;
+    assert.equal(waited, true);
+    assert.ok(holds()['op-waits']);
+    // A wait the caller gives up on (client cancelled) ends as credits_busy, holding nothing.
+    const controller = new AbortController();
+    const given = reserveToolCredits(CH, 1, 'op-gives-up', controller.signal);
+    setTimeout(() => controller.abort(), 50);
+    await rejectsWith(given, 'credits_busy');
+    assert.equal(holds()['op-gives-up'], undefined);
     setSnapshot({ balance: 10 }, '42');
     await reserveToolCredits('42', 1, 'op-other');
 });
@@ -420,4 +432,22 @@ test('release drops the hold without charging; idempotent and never throws', asy
 test('reading the AI credit balance is free on MCP, so a channel that is out of credits can still check it', () => {
     assert.equal(toolPrice({ name: 'get_ai_credits', kind: 'read' }, 'mcp'), 0);
     assert.equal(toolPrice({ name: 'list_commands', kind: 'read' }, 'mcp'), 1);
+});
+
+test('settle drops the hold once the charge is on the local balance, before Polar answers (no double count)', async () => {
+    setSnapshot({ balance: 2 });
+    const held = await reserveToolCredits(CH, 1, 'op-a');
+    let answer!: () => void;
+    polarIngest.mock.mockImplementationOnce(async ({ events }: { events: unknown[] }) => {
+        await new Promise<void>((resolve) => { answer = resolve; });
+        return { inserted: events.length, duplicates: 0 };
+    });
+    const settling = settleToolCredits(held, { tool: 'list_commands', surface: 'mcp' });
+    for (let i = 0; i < 50 && !answer; i++) await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.ok(answer, 'Polar was called');
+    assert.equal(recordAiCreditUsage.mock.callCount(), 1, 'projected on the local balance');
+    assert.equal(holds()['op-a'], undefined, 'hold already dropped while Polar is still answering');
+    answer();
+    await settling;
+    assert.equal(holds()['op-a'], undefined);
 });

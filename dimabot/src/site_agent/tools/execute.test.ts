@@ -27,7 +27,15 @@ const state = {
     reserveError: null as Error | null,
     credits: [] as unknown[][],
     logged: [] as Array<{ level: string; data: Record<string, unknown> }>,
+    callLog: [] as Array<Record<string, unknown>>,
+    lateLog: [] as Array<[string, boolean]>,
 };
+mock.module('../mcp_call_log.js', {
+    namedExports: {
+        recordMcpCall: (record: Record<string, unknown>) => { state.callLog.push(record); },
+        settleLateMcpCall: (operationId: string, landed: boolean) => { state.lateLog.push([operationId, landed]); },
+    },
+});
 
 mock.module('../access.js', {
     namedExports: {
@@ -150,6 +158,8 @@ beforeEach(() => {
     state.reserveError = null;
     state.credits = [];
     state.logged = [];
+    state.callLog = [];
+    state.lateLog = [];
     hooks.run = null;
     hooks.apply = 'ok';
     hooks.undoConflict = false;
@@ -570,4 +580,82 @@ test('undo_change: own MCP changes only, the original tool\'s permissions and pl
     const again = await call('undo_change', { changeId: mine });
     assert.deepEqual(again, { ok: true, result: { alreadyUndone: true, message: 'This change was already undone. Nothing was changed.' }, charged: 0 });
     assert.equal((await call('undo_change', { changeId: done.result.result.undoChangeId }) as { code: string }).code, 'invalid_input', 'an undo can\'t be undone');
+});
+
+// ---------------------------------------------------------------------------
+// v1.1: the connection re-check before a write, the call log, parallel calls
+// ---------------------------------------------------------------------------
+
+test('a connection revoked or blocked since the call started: the write is refused before apply, nothing charged', async () => {
+    let checked = 0;
+    const outcome = await call('create_command', { body: 'hi $(user)' }, { stillAuthorized: async () => { checked++; return false; } });
+    assert.equal(outcome.ok === false && outcome.code, 'no_access');
+    assert.match(outcome.ok === false ? outcome.message : '', /connection was removed or blocked/);
+    assert.equal(checked, 1);
+    assert.equal(applied.length, 0);
+    assert.deepEqual(kinds(), ['reserve', 'release']);
+    // A still-valid connection applies.
+    const ok = await call('create_command', { body: 'hi $(user)' }, { stillAuthorized: async () => true });
+    assert.equal(ok.ok, true);
+    assert.equal(applied.length, 1);
+    // A failing check (database down) never applies either.
+    const broken = await call('create_command', { body: 'hi $(user)' }, { stillAuthorized: async () => { throw new Error('db down'); } });
+    assert.equal(broken.ok === false && broken.code, 'failed');
+    assert.equal(applied.length, 1);
+});
+
+test('every call gets one log row: tool, who, app, outcome code, reason and credits; unknown tools too', async () => {
+    await call('get_command', { name: 'x' });
+    await call('create_command', { body: '$(ban &p1)' });
+    await call('nope');
+    assert.equal(state.callLog.length, 3);
+    const [read, unsafe, unknown] = state.callLog;
+    assert.equal(read.tool, 'get_command');
+    assert.equal(read.kind, 'read');
+    assert.equal(read.code, null);
+    assert.equal(read.charged, 1);
+    assert.equal(read.channelLogin, 'chan');
+    assert.deepEqual(read.user, { id: ADMIN, login: 'helper', role: 'admin' });
+    assert.deepEqual(read.client, { id: 'https://claude.ai/oauth/mcp-client', name: '  Claude\n' });
+    assert.equal(read.sessionId, 'sess-1');
+    assert.equal(typeof read.startedAt, 'number');
+    assert.equal(unsafe.code, 'unsafe_content');
+    assert.match(String(unsafe.reason), /Not applied/);
+    assert.equal(unsafe.charged, 0);
+    assert.equal(unknown.code, 'unknown_tool');
+    assert.equal(unknown.tool, 'nope');
+});
+
+test('credit refusals say why: out of credits (with the Credits link), busy, not set up', async () => {
+    for (const [code, pattern] of [['credits_exhausted', /out of AI credits.*domdimabot\.com\/chan\/credits/], ['credits_busy', /Too many paid tool calls/],
+        ['credits_not_set_up', /not set up for this channel/], ['credits_unavailable', /can't be checked right now/]] as const) {
+        state.reserveError = new CreditError(code as never);
+        const outcome = await call('get_command', { name: 'x' });
+        assert.equal(outcome.ok === false && outcome.code, code);
+        assert.match(outcome.ok === false ? outcome.message : '', pattern);
+    }
+});
+
+test('parallel calls of one connection: up to 12 run at once, the rest wait their turn and all finish', async () => {
+    let running = 0;
+    let peak = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    hooks.run = () => undefined;
+    const slow = siteTools.find((tool) => tool.name === 'search_docs')!;
+    const original = slow.run;
+    slow.run = async () => { running++; peak = Math.max(peak, running); await gate; running--; return { type: 'result', result: { hits: [] } }; };
+    try {
+        const calls = Array.from({ length: 20 }, () => call('search_docs', {}));
+        await flush(50);
+        assert.equal(running, 12);
+        release();
+        const outcomes = await Promise.all(calls);
+        assert.ok(outcomes.every((outcome) => outcome.ok));
+        assert.equal(peak, 12);
+        // Another connection is not held up by this one.
+        assert.equal((await call('search_docs', {}, { sessionId: 'sess-2' })).ok, true);
+    } finally {
+        slow.run = original;
+    }
 });
