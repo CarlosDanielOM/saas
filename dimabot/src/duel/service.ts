@@ -111,11 +111,14 @@ export async function challengeDuel(id: string, challenger: string, opponent: st
   return fail('busy', 'Duel is busy; try again', 409);
 }
 /** Challenging the streamer skips the accept step: the enraged streamer always fights. */
-export async function fightStreamer(id: string, challenger: string, streamer: string): Promise<DuelRun> {
+export const fightStreamer = (id: string, challenger: string, streamer: string) => fightAtOnce(id, { challenger, opponent: streamer, enraged: 'right' });
+/** The bot account accepts at once and always wins with its ultimate. A challenging streamer stays enraged. */
+export const fightBot = (id: string, challenger: string, bot: string, streamer: boolean) => fightAtOnce(id, { challenger, opponent: bot, enraged: streamer ? 'left' : null, bot: 'right' });
+async function fightAtOnce(id: string, sides: Pick<DuelChallenge, 'challenger' | 'opponent' | 'enraged' | 'bot'>): Promise<DuelRun> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
-    const run = await withRecord(id, createRun({ id: randomUUID(), challenger, opponent: streamer, expiresAt: now, enraged: 'right' }, await withLanguage(id, doc), await overlayActive(doc), now), doc.settings);
+    const run = await withRecord(id, createRun({ id: randomUUID(), ...sides, expiresAt: now }, await withLanguage(id, doc), await overlayActive(doc), now), doc.settings);
     const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
     if (saved.modifiedCount) { duelWidgetEvent(id, run, 'started'); return run; }
   }

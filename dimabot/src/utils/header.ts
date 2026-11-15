@@ -105,6 +105,8 @@ export const getTwitchStreamerHeaderById = async (streamerId: string, rejectedAc
  * pick the token that matches the moderator_id it sends to Helix.
  */
 export const TWITCH_BOT_ACCOUNT_ID = '698614112';
+/** The bot account's Twitch login (same account as TWITCH_BOT_ACCOUNT_ID). */
+export const TWITCH_BOT_LOGIN = 'domdimabot';
 
 /**
  * Helix moderation endpoints reject requests whose moderator_id does not match

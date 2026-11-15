@@ -137,6 +137,28 @@ await wait(()=>duelEvents(streamerRun.id).length===2,'streamer fight ended');ass
 assert.equal(calls().filter(c=>c.path==='/helix/moderation/bans').length,bansBeforeStreamer,'a losing streamer is never timed out');assert.equal(mods().length,modsBeforeStreamer,'no moderation lookups for the streamer');assert.match(chats().at(-1).body.message,/defeated the enraged streamer @duelfixture/);
 const byStreamer=await duelCommand(channel,'duelfixture',false,'@bob');assert.match(byStreamer.message,/^@bob, the enraged streamer @duelfixture has challenged you to a duel!/);assert.equal((await svc.loadDuel(channel)).challenge.enraged,'left');
 await duelCommand(channel,'bob',false,'accept');streamerRun=(await svc.loadDuel(channel)).run;assert.equal(streamerRun.enraged,'left');checkBattle(streamerRun);await finish();
+// The bot account: accepted at once without accept/decline instructions, always wins with its ultimate, never tracked.
+{const bans=()=>calls().filter(c=>c.path==='/helix/moderation/bans');
+ const botWins=r=>{assert.equal(r.bot,'right');assert.equal(r.opponent,'domdimabot');assert.equal(r.winner,'right');const last=r.turns.at(-1);assert.equal(last.move,'ultimate');assert.equal(last.attacker,'right');assert.equal(last.defended,false);assert(!r.turns.some(t=>t.move==='ultimate'&&t.attacker==='left'),'the viewer never rolls an ultimate');assert.equal(domain.remainingHp(r.turns,'left',r.maxHp),0);assert(domain.remainingHp(r.turns,'right',r.maxHp)>0);assert.equal(r.tracked,false,'bot fights are never tracked');assert.equal(r.record??null,null);assert.equal(r.endsAt-r.startedAt,last.hitAt+domain.KNOCKOUT_MS);};
+ const vsBot=await duelCommand(channel,'alice',false,'@DomDimaBot');assert.equal(vsBot.message,'@alice has challenged @domdimabot! The bot accepts. FIGHT!','chat-only: a short accept line, no instructions');
+ let botRun=(await svc.loadDuel(channel)).run;assert.equal((await svc.loadDuel(channel)).challenge,null,'no accept step');assert.equal(botRun.enraged,null);assert.equal(botRun.mode,'chat');botWins(botRun);assert(botRun.phrases.some(p=>/^ULTIMATE! @domdimabot /.test(p.text)),'chat narrates the bot ultimate');
+ assert.equal((await duelCommand(channel,'bob',false,'domdimabot')).status,409,'one fight at a time');
+ await wait(()=>duelEvents(botRun.id).length>0,'bot fight started reaches widgets');await finish();assert.equal(chats().at(-1).body.message,domain.winnerMessage(botRun));assert.match(chats().at(-1).body.message,/^@domdimabot has won the duel against @alice/);
+ await wait(()=>duelEvents(botRun.id).length===2,'bot fight ended');assert.deepEqual(duelEvents(botRun.id)[1],['ended','domdimabot','alice']);
+ // The streamer may challenge the bot too: still enraged, still loses, never timed out.
+ const bansMid=bans().length,modsMid=mods().length;
+ await duelCommand(channel,'duelfixture',false,'domdimabot');botRun=(await svc.loadDuel(channel)).run;assert.equal(botRun.enraged,'left');botWins(botRun);await finish();
+ assert.match(chats().at(-1).body.message,/^UNBELIEVABLE! @domdimabot has defeated the enraged streamer @duelfixture/);assert.equal(bans().length,bansMid,'a streamer losing to the bot is never timed out');assert.equal(mods().length,modsMid);
+ // On a ready overlay the command says nothing; the fight still never counts.
+ const botSource=connect(replacement);await wait(async()=>await svc.overlayActive(await svc.loadDuel(channel)),'bot fight overlay ready');
+ assert.equal((await duelCommand(channel,'alice',false,'domdimabot')).message,'');botRun=(await svc.loadDuel(channel)).run;assert.equal(botRun.mode,'overlay');assert.equal(botRun.phrases.length,0);botWins(botRun);
+ botSource.close();await wait(async()=>!await svc.overlayActive(await svc.loadDuel(channel)),'bot overlay disconnect');await finish();assert.equal(await stats.DuelResult.countDocuments({_id:botRun.id}),0,'bot fights never reach the leaderboard');
+ assert(!bans().some(c=>c.body?.data?.user_id==='698614112'),'the bot account is never timed out');
+ // Every simulated bot fight, under default and custom rules, ends with the bot's ultimate at a varying moment.
+ const battles=Array.from({length:3000},(_,i)=>domain.simulateBattle(undefined,i%3?null:'left',domain.DEFAULT_RULES,'right'));
+ assert(battles.every(b=>b.winner==='right'&&b.turns.at(-1).move==='ultimate'&&b.turns.at(-1).attacker==='right'),'the bot always wins with its ultimate');assert(new Set(battles.map(b=>b.turns.at(-1).at)).size>20,'the ultimate lands at different moments');
+ for(let i=0;i<300;i++){const rules={...domain.DEFAULT_RULES};for(const [k,[min,max,step]] of Object.entries(domain.RULE_LIMITS))rules[k]=min+step*Math.floor(Math.random()*((max-min)/step+1));if(rules.healMin>rules.healMax)[rules.healMin,rules.healMax]=[rules.healMax,rules.healMin];const b=domain.simulateBattle(undefined,null,rules,'right');assert(b.winner==='right'&&b.turns.at(-1).move==='ultimate','custom rules keep the bot rule');}
+}
 // Editors may duel (normal odds) and are never timed out; challenges last 30 seconds.
 const bansBeforeEditor=calls().filter(c=>c.path==='/helix/moderation/bans').length,modsBeforeEditor=mods().length;
 assert(!(await duelCommand(channel,'editor',false,'@bob')).error,'editors can challenge');let editorChallenge=(await svc.loadDuel(channel)).challenge;

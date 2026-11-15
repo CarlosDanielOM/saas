@@ -41,6 +41,17 @@ enraged streamer rolls 4% per turn (about 1 in 6 streamer fights) and everyone e
 Runs accepted before turn-based battles (no `turns`) still render and announce. Accepted battles finish even if OBS or
 the bot disconnects. The cron supervisor runs `duel.worker` independently.
 
+`!duel @domdimabot` (the bot account, `TWITCH_BOT_LOGIN`) also skips the accept step and never posts the
+accept/decline instructions: chat-only channels get "@viewer has challenged @domdimabot! The bot accepts. FIGHT!",
+overlay channels nothing until the winner. The run stores `bot: 'right'` and the bot always wins with its ultimate
+(`BOT_DUEL` in `model.ts`): from turn 4 on each bot turn rolls 80%, so the finisher lands at a random moment (fights
+last ~11–15 s). Until then a viewer blow that would knock the bot out leaves it at 1 HP (its next turn is the
+ultimate, no stolen turn), a bot blow that would knock the viewer out becomes the ultimate, and the viewer never
+rolls an ultimate. Channel rules still set HP, damage and the other odds. A streamer who challenges the bot stays
+enraged (and is never timed out). In the bot's own channel the bot is the streamer, so `!duel @domdimabot` there is an ordinary
+enraged-streamer fight (owner's decision, 2026-11-15). Bot fights are never tracked (no leaderboard row, no head-to-head); a losing
+viewer is timed out only when the channel turned loser timeouts on. Every other duel plays exactly as before.
+
 Battle rules are tunable per channel (`settings.rules`, `DEFAULT_RULES`/`RULE_LIMITS` in
 `dimabot/src/duel/model.ts`, mirrored in `dimasite/.../duel/duel-rules.ts`): HP, a damage
 percentage, stolen-turn/heavy/special/crit/shield/heal/combo chances, heal charges and amounts,

@@ -1,7 +1,8 @@
 import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import { error as logError } from '../utils/logger.js';
 import { RouletteError } from '../roulette/model.js';
-import { challengeDuel, acceptDuel, declineDuel, loadDuel, fightStreamer } from '../duel/service.js';
+import { challengeDuel, acceptDuel, declineDuel, loadDuel, fightStreamer, fightBot } from '../duel/service.js';
+import { TWITCH_BOT_LOGIN } from '../utils/header.js';
 
 interface DuelResponse { error: boolean; message: string; status?: number }
 /** Chat lines in the channel's duel language. The challenge always explains how to answer:
@@ -11,13 +12,15 @@ const lines = {
     challenge: (who: string, target: string) => `@${target}, ${who} has challenged you to a duel! To accept use "!duel accept" or decline with "!duel decline" within 30 seconds.`,
     challenger: (actor: string, enraged: boolean) => enraged ? `the enraged streamer @${actor}` : `@${actor}`,
     declined: (actor: string, challenger: string) => `@${actor} has declined the duel challenge from @${challenger}.`,
-    streamer: (actor: string, owner: string) => `@${actor} has challenged the streamer @${owner}! The enraged streamer accepts. FIGHT!`
+    streamer: (actor: string, owner: string) => `@${actor} has challenged the streamer @${owner}! The enraged streamer accepts. FIGHT!`,
+    bot: (actor: string, bot: string) => `@${actor} has challenged @${bot}! The bot accepts. FIGHT!`
   },
   es: {
     challenge: (who: string, target: string) => `@${target}, ¡${who} te ha retado a un duelo! Para aceptar usa "!duel accept" o rechaza con "!duel decline" en 30 segundos.`,
     challenger: (actor: string, enraged: boolean) => enraged ? `el streamer enfurecido @${actor}` : `@${actor}`,
     declined: (actor: string, challenger: string) => `@${actor} ha rechazado el duelo de @${challenger}.`,
-    streamer: (actor: string, owner: string) => `¡@${actor} ha retado al streamer @${owner}! El streamer enfurecido acepta. ¡A PELEAR!`
+    streamer: (actor: string, owner: string) => `¡@${actor} ha retado al streamer @${owner}! El streamer enfurecido acepta. ¡A PELEAR!`,
+    bot: (actor: string, bot: string) => `¡@${actor} ha retado a @${bot}! El bot acepta. ¡A PELEAR!`
   }
 };
 export async function duelCommand(channelID: string, user: string, _userMod: boolean, argument: string, _modID = '698614112'): Promise<DuelResponse> {
@@ -45,6 +48,12 @@ export async function duelCommand(channelID: string, user: string, _userMod: boo
       // Challenges against the streamer are accepted automatically.
       const run = await fightStreamer(channelID, actor, owner);
       return { error: false, message: run.mode === 'overlay' ? '' : lines[run.language].streamer(actor, owner) };
+    }
+    if (target === TWITCH_BOT_LOGIN) {
+      // The bot accepts at once (no accept/decline instructions) and always wins with its ultimate.
+      // In the bot's own channel it is the streamer, so the branch above runs (owner's choice).
+      const run = await fightBot(channelID, actor, target, actor === owner);
+      return { error: false, message: run.mode === 'overlay' ? '' : lines[run.language].bot(actor, target) };
     }
     const { language } = await challengeDuel(channelID, actor, target, actor === owner ? 'left' : null);
     const text = lines[language];

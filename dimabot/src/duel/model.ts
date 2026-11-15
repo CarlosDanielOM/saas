@@ -69,10 +69,11 @@ export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: 
 /** enraged marks the streamer's side: the channel owner fights with doubled odds. */
 /** Head-to-head wins of each side before this fight (overlay duels only). */
 export interface DuelRecord { left: number; right: number }
-export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number; enraged?: DuelSide | null }
+/** bot marks the bot account's side: it accepts at once and always wins with its ultimate (BOT_DUEL). */
+export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number; enraged?: DuelSide | null; bot?: DuelSide | null }
 export interface DuelRun {
   id: string; challenger: string; opponent: string; winner: DuelSide; mode: 'overlay' | 'chat';
-  fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; enraged: DuelSide | null;
+  fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; enraged: DuelSide | null; bot?: DuelSide | null;
   startedAt: number; endsAt: number; timeoutEnabled: boolean; timeoutSeconds: number; language: 'en' | 'es';
   phrases: { at: number; text: string }[]; phraseIndex: number;
   announcementAttempted: boolean; timeoutAttempted: boolean; completedAt: number | null;
@@ -123,6 +124,12 @@ const EXTRA_TURN_LEAD_MS = 250;
 // Chances are per mille per turn: rare for the enraged streamer, super rare for
 // everyone else, and never in the opening turns so every fight gets going first.
 export const ULTIMATE = { minTurn: 3, windup: 2800, duration: 3600 };
+// The bot account always ends its fights with its ultimate, at a random moment: from
+// ULTIMATE.minTurn on, each bot turn rolls ultimateChance out of 100. Until it lands, a viewer
+// blow that would knock the bot out leaves it at 1 HP (its next turn is the ultimate, no stolen
+// turn in between), a bot blow that would knock the viewer out becomes the ultimate, and the
+// viewer never rolls an ultimate. Channel rules still set HP, damage and the other odds.
+export const BOT_DUEL = { ultimateChance: 80 };
 // Base damage before the rules' damage percentage; windup is the time from the turn start to the hit.
 export const MOVES: Record<DuelMove, { min: number; max: number; windup: number; duration: number }> = {
   normal: { min: 10, max: 16, windup: 280, duration: 800 },
@@ -133,22 +140,25 @@ export const CHARACTERS: DuelCharacter[] = ['knight', 'ronin', 'mage'];
 const other = (side: DuelSide): DuelSide => side === 'left' ? 'right' : 'left';
 /** Turn-based fight with no predetermined winner: whoever reaches 0 HP first loses. */
 // The enraged streamer multiplies its heavy/special, crit and defense chances by streamerBoost.
-export function simulateBattle(roll: (max: number) => number = randomInt, enraged: DuelSide | null = null, rules: DuelRules = DEFAULT_RULES): DuelBattle {
+// bot is the bot account's side (BOT_DUEL); null in every other fight, which plays exactly as before.
+export function simulateBattle(roll: (max: number) => number = randomInt, enraged: DuelSide | null = null, rules: DuelRules = DEFAULT_RULES, bot: DuelSide | null = null): DuelBattle {
   const maxHp = rules.hp, healCharges = rules.healCharges, threshold = Math.round(maxHp * HEAL.threshold), rage = rules.streamerBoost / 100;
   const healRoll = () => rules.healMin + roll(rules.healMax - rules.healMin + 1);
   const left = CHARACTERS[roll(CHARACTERS.length)], rest = CHARACTERS.filter(character => character !== left);
   const fighters = { left, right: rest[roll(rest.length)] }, end = { fighters, enraged, maxHp, healCharges };
   const hp: Record<DuelSide, number> = { left: maxHp, right: maxHp }, turns: DuelTurn[] = [];
-  let attacker: DuelSide = roll(2) === 0 ? 'left' : 'right', at = FIGHT_START_MS, bonus = false;
+  let attacker: DuelSide = roll(2) === 0 ? 'left' : 'right', at = FIGHT_START_MS, bonus = false, lastStand = false;
   const heals: Record<DuelSide, number> = { left: 0, right: 0 };
+  const ultimate = (defender: DuelSide): DuelBattle => {
+    const damage = hp[defender];
+    turns.push({ at, hitAt: at + ULTIMATE.windup, attacker, move: 'ultimate', damage, raw: damage, crit: false, defended: false, heal: 0, comboHeal: 0, bonus });
+    return { ...end, turns, winner: attacker, duration: at + ULTIMATE.windup + KNOCKOUT_MS };
+  };
   // After SKILL_TURN_LIMIT turns every hit removes at least 10 HP, so the fight always ends.
   for (;;) {
     const skills = turns.length < SKILL_TURN_LIMIT, defender = other(attacker);
-    if (turns.length >= ULTIMATE.minTurn && roll(1000) < (attacker === enraged ? rules.streamerUltimate : rules.ultimate)) {
-      const damage = hp[defender];
-      turns.push({ at, hitAt: at + ULTIMATE.windup, attacker, move: 'ultimate', damage, raw: damage, crit: false, defended: false, heal: 0, comboHeal: 0, bonus });
-      return { ...end, turns, winner: attacker, duration: at + ULTIMATE.windup + KNOCKOUT_MS };
-    }
+    if (attacker === bot ? lastStand || !skills || turns.length >= ULTIMATE.minTurn && roll(100) < BOT_DUEL.ultimateChance
+      : defender !== bot && turns.length >= ULTIMATE.minTurn && roll(1000) < (attacker === enraged ? rules.streamerUltimate : rules.ultimate)) return ultimate(defender);
     if (skills && hp[attacker] <= threshold && heals[attacker] < healCharges && roll(100) < rules.healChance) {
       const heal = Math.min(maxHp - hp[attacker], healRoll());
       hp[attacker] += heal; heals[attacker]++;
@@ -162,7 +172,9 @@ export function simulateBattle(roll: (max: number) => number = randomInt, enrage
       const critical = roll(100) < rules.critChance * boost, hit = critical ? raw * 2 : raw;
       // Specials still roll the skill, but break through it at full damage.
       const defended = skills && roll(100) < rules.defenseChance * (defender === enraged ? rage : 1);
-      const damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
+      let damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
+      if (damage >= hp[defender] && attacker === bot) return ultimate(defender);
+      if (damage >= hp[defender] && defender === bot) { damage = Math.max(0, hp[defender] - 1); lastStand = true; }
       hp[defender] = Math.max(0, hp[defender] - damage);
       if (hp[defender] === 0) {
         turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical, defended, heal: 0, comboHeal: 0, bonus });
@@ -179,7 +191,7 @@ export function simulateBattle(roll: (max: number) => number = randomInt, enrage
       at += spec.duration + (comboHeal ? COMBO_HEAL.extra : 0);
     }
     // After a turn the attacker may steal the opponent's turn and strike again.
-    bonus = roll(100) < rules.extraTurnChance;
+    bonus = !lastStand && roll(100) < rules.extraTurnChance;
     if (bonus) at += EXTRA_TURN_LEAD_MS; else attacker = defender;
   }
 }
@@ -229,7 +241,7 @@ function highlight(turn: DuelTurn, names: Record<DuelSide, string>, fighters: Du
   return language === 'es' ? `¡${attacker} conecta un golpe pesado a ${defender}! (-${turn.damage} HP)` : `${attacker} lands a heavy blow on ${defender}! (-${turn.damage} HP)`;
 }
 export function createRun(challenge: DuelChallenge, config: DuelSettings, overlay: boolean, now: number): DuelRun {
-  const enraged = challenge.enraged ?? null, battle = simulateBattle(randomInt, enraged, config.rules), names = { left: challenge.challenger, right: challenge.opponent };
+  const enraged = challenge.enraged ?? null, bot = challenge.bot ?? null, battle = simulateBattle(randomInt, enraged, config.rules, bot), names = { left: challenge.challenger, right: challenge.opponent };
   const startedAt = now + 750; // Give connected sources one polling interval to receive the fight.
   const rank = (turn: DuelTurn) => turn.move === 'ultimate' ? 6 : turn.move === 'special' ? 5 : turn.move === 'heal' || turn.comboHeal ? 4 : turn.crit || turn.defended ? 3 : turn.bonus ? 2 : turn.move === 'heavy' ? 1 : 0;
   const notable = battle.turns.filter(turn => rank(turn) > 0).sort((a, b) => rank(b) - rank(a) || a.at - b.at).slice(0, 3);
@@ -238,7 +250,8 @@ export function createRun(challenge: DuelChallenge, config: DuelSettings, overla
   const available = [...flavour[config.language]];
   for (let index = phrases.length; index < 2; index++) phrases.push({ at: startedAt + Math.floor(battle.duration * (index + 1) / 3), text: available.splice(randomInt(available.length), 1)[0] });
   return { ...challenge, enraged, winner: battle.winner, fighters: battle.fighters, turns: battle.turns, mode: overlay ? 'overlay' : 'chat', startedAt, endsAt: startedAt + battle.duration,
-    maxHp: battle.maxHp, healCharges: battle.healCharges, tracked: overlay && tracksResults(config),
+    // Fights against the bot are decided in advance, so they never feed the leaderboard or rivalries.
+    maxHp: battle.maxHp, healCharges: battle.healCharges, tracked: overlay && tracksResults(config) && !bot,
     timeoutEnabled: config.timeoutEnabled, timeoutSeconds: config.timeoutSeconds, language: config.language,
     phrases: overlay ? [] : phrases.sort((a, b) => a.at - b.at),
     phraseIndex: 0, announcementAttempted: false, timeoutAttempted: false, completedAt: null };
