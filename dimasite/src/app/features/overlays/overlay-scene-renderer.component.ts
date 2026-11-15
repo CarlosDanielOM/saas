@@ -10,10 +10,13 @@ import { stateForWidget } from './overlay-widget-state';
 import type { WidgetPlacement, WidgetStates } from './overlay-widget-contract.generated';
 import { layoutSounds, type AlertSound, type OverlayWidget } from './overlay.model';
 import type { PreparedAsset } from './overlay-asset-cache';
-import { ALERT_READY_LIMIT_MS, sceneScale, waitsForPictures, type OverlayPlacementReport, type OverlayPlaybackId, type OverlayRenderJob } from './overlay-playback';
+import { ALERT_READY_LIMIT_MS, eventLook, lookFit, placementLayout, sceneScale, waitsForPictures, type PlacementLayout, type OverlayPlacementReport, type OverlayPlaybackId, type OverlayRenderJob } from './overlay-playback';
 import { waitForOverlayMedia } from './overlay-image-readiness';
 import { LanguageService } from '../../services/language.service';
 import { LucideAngularModule, Volume2, Zap } from 'lucide-angular';
+
+/** An alert design's canvas fills its box. */
+const FILL = { left: 0, top: 0, width: 100, height: 100 };
 
 /** The OBS visual composition. The editor supplies draft/sample data to this same renderer. */
 @Component({
@@ -52,9 +55,10 @@ import { LucideAngularModule, Volume2, Zap } from 'lucide-angular';
               <app-overlay-media [media]="media" [muted]="audioWidget(job) !== w.id" [reportSpeech]="!!job.event.tts && audioWidget(job) === w.id" (speechPlayback)="speechPlayback.emit({id:job.event.id,widgetId:w.id,report:$event})" [playLabel]="language.translate('overlayStudio.tapToPlay')" (started)="started.emit({id:job.event.id,widgetId:w.id,duration:$event})" (playbackBlocked)="issue.emit('autoplay')" (ended)="ended.emit({id:job.event.id,widgetId:w.id})" (failed)="failed.emit({id:job.event.id,widgetId:w.id})" />
             }
           } @else if (!job.event.tts) {
-            @if (job.event.layouts?.[w.designId || '']; as layout) {
+            <!-- A trigger look keeps its own aspect ratio inside the box (letterboxed, like object-fit: contain); an alert design fills its box. -->
+            @if (layoutFor(job,w); as play) { @let fit = fitFor(play,w); @let layout = play.layout;
               @for (part of layout.widgets; track part.id) { @if (part.visible) {
-                <div class="placement art" [attr.data-layer-id]="part.id" [attr.data-kind]="part.kind" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="part" [preparedSource]="job.assets?.get(part.assetId || '')?.url || ''" [playbackKey]="shown(job) ? (job.playbackKey ?? job.event.id) : 0" [duration]="layout.duration" [designObject]="true" [muted]="!playsVideoSound(job, w)" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (soundStarted)="soundStarted.emit()" /></div>
+                <div class="placement art" [attr.data-layer-id]="part.id" [attr.data-kind]="part.kind" [attr.data-look-layer]="play.look ? '' : null" [style.left.%]="fit.left + part.x / play.width * fit.width" [style.top.%]="fit.top + part.y / play.height * fit.height" [style.width.%]="part.width / play.width * fit.width" [style.height.%]="part.height / play.height * fit.height"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="part" [preparedSource]="job.assets?.get(part.assetId || '')?.url || ''" [playbackKey]="shown(job) ? (job.playbackKey ?? job.event.id) : 0" [duration]="layout.duration" [designObject]="true" [muted]="!playsVideoSound(job, w)" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (soundStarted)="soundStarted.emit()" /></div>
               } }
             }
           }
@@ -166,23 +170,28 @@ export class OverlaySceneRendererComponent {
   renderWidgets(job: OverlayRenderJob): readonly OverlayWidget[] { return job.pending ? job.widgets.filter(widget => job.pending!.has(widget.id)) : job.widgets; }
   audioWidget(job: OverlayRenderJob): string | undefined { return job.audioWidgetId ?? job.widgets[0]?.id; }
   layerIndex(job: OverlayRenderJob,widget: OverlayWidget) { return job.snapshot.widgets.findIndex(w => w.id === widget.id); }
-  designWidth(job: OverlayRenderJob,widget: OverlayWidget) { return job.snapshot.designs.find(d => d.id === widget.designId)?.width || 800; }
-  designHeight(job: OverlayRenderJob,widget: OverlayWidget) { return job.snapshot.designs.find(d => d.id === widget.designId)?.height || 240; }
-  mediaFor(job: OverlayRenderJob,widgetId: string) { return !job.event.tts || job.event.tts.ownerClientId === this.audioOwner() && this.audioWidget(job) === widgetId ? job.event.media : undefined; }
+  /** The layout this placement plays (a trigger's look or an alert box's design layout) and its canvas size. */
+  layoutFor(job: OverlayRenderJob,widget: OverlayWidget): PlacementLayout | null { return placementLayout(job.event,widget,job.snapshot.designs); }
+  /** Where the layout's canvas sits in the box, in %: a look is letterboxed, a design stretches to its box as before. */
+  fitFor(play: PlacementLayout,widget: OverlayWidget) { return play.look ? lookFit(play,widget) : FILL; }
+  /** A trigger with a look plays the look: its plain media never mounts. */
+  mediaFor(job: OverlayRenderJob,widgetId: string) { if (eventLook(job.event) && job.widgets.some(w => w.id === widgetId && w.kind === 'trigger')) return undefined;
+    return !job.event.tts || job.event.tts.ownerClientId === this.audioOwner() && this.audioWidget(job) === widgetId ? job.event.media : undefined; }
   soundsFor(job: OverlayRenderJob) {
     if (job.idle || job.event.tts || !this.shown(job)) return [];
-    return [...new Set(job.widgets.filter(w => w.kind === 'alert').map(w => w.designId!))].flatMap(id => {
-      const layout = job.event.layouts?.[id];
-      return layout ? layoutSounds(layout).map((config, index) => ({ id: id + ':' + (config.id ?? index), config, duration: layout.duration })) : [];
-    });
+    // Each layout's sounds play once per job, however many boxes show it (keyed per design, `$look` for a trigger look).
+    const plays = new Map<string, PlacementLayout>();
+    for (const w of job.widgets) if (w.kind === 'alert' || w.kind === 'trigger') { const play = this.layoutFor(job,w); if (play && !plays.has(play.key)) plays.set(play.key,play); }
+    return [...plays.values()].flatMap(({ key, layout }) => layoutSounds(layout).map((config, index) => ({ id: key + ':' + (config.id ?? index), config, duration: layout.duration })));
   }
   /**
    * Audio is emitted once per event, like the design's sounds: a video's own sound plays only in one placement per
-   * design, the job's audio placement when it shows that design, else the first placement that does.
+   * design (or trigger look), the job's audio placement when it shows that layout, else the first placement that does.
    */
   playsVideoSound(job: OverlayRenderJob, widget: OverlayWidget): boolean {
     if (job.idle || job.event.tts) return false;
-    const audio = this.audioWidget(job), same = job.widgets.filter(w => w.kind === 'alert' && w.designId === widget.designId);
+    const key = this.layoutFor(job,widget)?.key, audio = this.audioWidget(job);
+    const same = job.widgets.filter(w => w.kind === widget.kind && (w.kind === 'alert' || w.kind === 'trigger') && this.layoutFor(job,w)?.key === key);
     return (same.some(w => w.id === audio) ? audio : same[0]?.id) === widget.id;
   }
 }

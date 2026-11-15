@@ -8167,6 +8167,8 @@
     "testSent": "Prueba enviada a las fuentes conectadas de este overlay.",
     "testLiveEvent": "Evento para probar en OBS",
     "testLiveAlert": "Probar este overlay en OBS",
+    "testTriggerChoice": "Trigger para probar (aquí y en OBS)",
+    "testAnyTrigger": "Cualquier trigger",
     "liveControls": "Controles del overlay en vivo",
     "liveControlsBadge": "OBS",
     "liveControlsHelp": "Controla todas tus escenas de la Overlay Global conectadas. Los filtros usan la plataforma de origen de cada evento.",

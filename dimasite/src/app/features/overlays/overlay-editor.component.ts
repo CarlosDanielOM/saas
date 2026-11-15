@@ -1,7 +1,7 @@
 import { OverlaySceneRendererComponent } from './overlay-scene-renderer.component';
 import { OverlayAssetCache, type PreparedAsset } from './overlay-asset-cache';
 import { AssetLibraryService } from '../../shared/asset-library/asset-library.service';
-import { ALERT_READY_LIMIT_MS, alertPlacementIds, placementStartSeconds, placementMediaSeconds, placementMountSeconds, type OverlayRenderJob, type OverlayPlacementReport, type OverlayPlaybackId } from './overlay-playback';
+import { ALERT_READY_LIMIT_MS, absoluteLook, alertPlacementIds, eventLook, placementStartSeconds, placementMediaSeconds, placementMountSeconds, type TriggerLook, type OverlayRenderJob, type OverlayPlacementReport, type OverlayPlaybackId } from './overlay-playback';
 import { OverlayWidgetSettingsComponent } from './overlay-widget-settings.component';
 import { CustomWidgetsService, message as apiMessage, type CustomWidgetView } from './custom-widgets.service';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
@@ -35,6 +35,8 @@ import { ThemeService } from '../../services/theme.service';
 import { LayoutFocusService } from '../../services/layout-focus.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { OverlayTestMediaService, type TestChannel, type TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
+import type { TriggerRecord } from '../triggers/triggers.model';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OverlayTriggerFilterComponent } from './overlay-trigger-filter.component';
 import { placeTrigger, triggerPlacementMargin } from './overlay-trigger-placement';
 import { ClipsService } from '../clips/clips.service';
@@ -54,7 +56,7 @@ import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayS
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
 interface PointerSession { id: string; action: 'move' | 'resize'; startX: number; startY: number; original: OverlayWidget; canvas: DOMRect }
-interface MockEvent { serialized?: boolean; originalTargets?: string[]; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; assets?: Map<string, PreparedAsset>; texts?: Record<string, string>; preparing?: boolean; id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia; placements?: OverlayWidget[] }
+interface MockEvent { look?: TriggerLook; serialized?: boolean; originalTargets?: string[]; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; assets?: Map<string, PreparedAsset>; texts?: Record<string, string>; preparing?: boolean; id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia; placements?: OverlayWidget[] }
 type StudioPop = 'scenes' | 'obs' | 'menu';
 type MobileTab = 'layers' | 'add' | 'edit' | 'test' | 'more';
 type StudioPane = 'variants' | 'add' | 'layers' | 'designs' | 'timeline' | 'tester' | 'layer' | 'overlay';
@@ -108,6 +110,42 @@ export class OverlayEditorComponent {
   readonly confirmRotate = signal(false);
   readonly liveTestKind = signal<EventKind>('tts');
   readonly liveTesting = signal(false);
+  /** The trigger the Test panel plays, in the Studio and in OBS ('' = any trigger the scene's trigger boxes accept). */
+  readonly testTriggerId = signal('');
+  private readonly testTriggerList = signal<TriggerRecord[]>([]);
+  readonly testTriggerOptions = computed(() => {
+    const boxes = this.widgets().filter(w => w.visible && w.kind === 'trigger'); if (!boxes.length) return [];
+    const any = boxes.some(w => w.triggerIds === undefined), ids = new Set(boxes.flatMap(w => w.triggerIds ?? []));
+    return this.testTriggerList().filter(trigger => any || ids.has(trigger._id));
+  });
+  /** A choice the scene's boxes no longer accept falls back to any trigger. */
+  readonly chosenTestTrigger = computed(() => { const id = this.testTriggerId(); return id && this.testTriggerOptions().some(trigger => trigger._id === id) ? id : undefined; });
+  private readonly testMedia = inject(OverlayTestMediaService);
+  /** Where the channel's trigger list stands; `retry` is the panel-open count a failure waits to pass. */
+  private readonly testTriggerLoad = signal<{ channel: string; state: 'loading' | 'loaded' | 'failed'; failures: number; retry: number } | null>(null);
+  /** Counts each time the Test panel is shown or a trigger test is pressed: a failed list load tries again then. */
+  private readonly testTriggerRetry = signal(0);
+  private readonly testPanelShown = computed(() => this.compact() ? this.mobileTab() === 'test' : this.testOpen());
+  private readonly countTestPanelOpens = effect(() => { if (this.testPanelShown()) untracked(() => this.testTriggerRetry.update(n => n + 1)); });
+  /**
+   * The channel's triggers (the Test panel's trigger choice) load the first time the Test panel is shown or a trigger
+   * test is pressed, once per channel, and only when the scene has a trigger box: an editor that never opens Test
+   * makes no extra request. After a failure the next opening of the panel (or trigger test) tries again, at most 5
+   * failed attempts per channel.
+   */
+  private readonly loadTestTriggers = effect(() => {
+    if (!this.loaded() || !this.auth.hasValidSession() || !this.widgets().some(w => w.kind === 'trigger')) return;
+    const channel = this.channel, retry = this.testTriggerRetry(), load = this.testTriggerLoad(); if (!channel || !retry) return;
+    const same = load?.channel === channel, failures = same ? load.failures : 0;
+    if (same && (load.state !== 'failed' || retry <= load.retry || failures >= 5)) return;
+    untracked(() => {
+      this.testTriggerLoad.set({ channel, state: 'loading', failures, retry });
+      this.testMedia.getTriggers(channel).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: list => { if (this.channel !== channel) return; this.testTriggerList.set(list); this.testTriggerLoad.set({ channel, state: 'loaded', failures, retry }); },
+        error: () => { if (this.testTriggerLoad()?.channel === channel) this.testTriggerLoad.set({ channel, state: 'failed', failures: failures + 1, retry: this.testTriggerRetry() }); }
+      });
+    });
+  });
   readonly confirmDelete = signal(false);
   readonly recovery = signal<OverlayRecovery | null>(null);
   readonly storageError = signal(false);
@@ -281,7 +319,7 @@ export class OverlayEditorComponent {
     if (this.designDraft()) return [];
     const scene = this.renderScene();
     const active = [this.active(),...this.parallel()].filter((event): event is MockEvent => !!event && !event.preparing && !!event.snapshot);
-    const playing = active.map(event => ({ event:{ id:event.id,kind:event.kind,media:event.media,text:event.text,layouts:event.layouts },
+    const playing = active.map(event => ({ event:{ id:event.id,kind:event.kind,media:event.media,text:event.text,layouts:event.layouts,look:event.look },
       widgets:(event.placements ?? event.snapshot!.widgets.filter(w => event.targets?.includes(w.id))),snapshot:event.snapshot!,assets:event.assets,audioWidgetId:event.originalTargets?.[0] }));
     // A box's resting example hides as soon as a test for it starts preparing, so the
     // test appears whole instead of the example streaming in its pictures first.
@@ -1075,6 +1113,7 @@ export class OverlayEditorComponent {
   previewWidget(kind: EventKind): void {
     if (ALERT_EVENTS.includes(kind as AlertEvent)) this.designEvent.set(kind as AlertEvent);
     if (this.testBusy(kind)) return;
+    if (kind === 'trigger') this.testTriggerRetry.update(n => n + 1);
     this.revealStage();
     // Custom widgets get the same sample alert (viewer, amount and tier from the Test drawer).
     const widgetAlert = ALERT_EVENTS.includes(kind as AlertEvent) && this.customLayers();
@@ -1119,8 +1158,10 @@ export class OverlayEditorComponent {
     const widgets = snapshot.widgets.filter(w => targets.includes(w.id));
     const triggerIds = widgets.some(w => w.triggerIds === undefined) ? undefined : [...new Set(widgets.flatMap(w => w.triggerIds ?? []))];
     if (event.kind === 'trigger' && triggerIds?.length === 0) { this.notice.set('noMatchingTriggers'); this.finishEvent(event.id); return; }
-    void this.api.request<{media?:TestMedia;triggerId?:string;text?:string}>('POST',`${this.channel}/test`,{
-      kind:event.kind,destination:'preview',sceneId:this.sceneId(),triggerIds,language:this.language.currentLanguage()
+    // A trigger chosen in the Test panel ("Any trigger" sends none: the server picks one).
+    const triggerId = event.kind === 'trigger' ? this.chosenTestTrigger() : undefined;
+    void this.api.request<{media?:TestMedia;triggerId?:string;text?:string;look?:TriggerLook}>('POST',`${this.channel}/test`,{
+      kind:event.kind,destination:'preview',sceneId:this.sceneId(),triggerIds,...(triggerId ? {triggerId} : {}),language:this.language.currentLanguage()
     },90000).then(result => {
       if (canceled || !this.jobs.has(event.id)) return;
       if (!result.media) throw new Error(this.t('testPlaybackError'));
@@ -1128,7 +1169,9 @@ export class OverlayEditorComponent {
       const selected = event.kind === 'trigger' ? targets.filter(id => snapshot.widgets.some(w => w.id === id && matchesTrigger(w,media.triggerId))) : targets;
       if (!selected.length) { this.notice.set('noMatchingTriggers'); this.finishEvent(event.id); return; }
       const placements = snapshot.widgets.filter(w => selected.includes(w.id)).map(w => placeTrigger(w,snapshot,String(event.id)));
-      this.mountEvent({...event,preparing:false,media,text:result.text,snapshot,placements},selected); this.notice.set('mediaReady');
+      // The trigger's look (when it has one) plays in the trigger boxes instead of its media, as on OBS.
+      const look = event.kind === 'trigger' ? eventLook(result) : undefined;
+      this.mountEvent({...event,preparing:false,media,text:result.text,snapshot,placements,...(look ? {look:absoluteLook(look, this.api.base)} : {})},selected); this.notice.set('mediaReady');
     }).catch(error => { if (!canceled && this.jobs.has(event.id)) { this.error.set(error?.error?.message || this.t('testPlaybackError')); this.finishEvent(event.id); } });
   }
   private mountEvent(event: MockEvent,targets: string[]): void {
@@ -1138,7 +1181,7 @@ export class OverlayEditorComponent {
     this.active.update(current => current ? patch(current) : current); this.parallel.update(all => all.map(patch));
     // A designed alert's own clock starts when the renderer shows it (rendererReady).
     for (const widget of event.snapshot.widgets.filter(w => targets.includes(w.id))) {
-      const seconds = placementMountSeconds({id:event.id,kind:event.kind,media:event.media,layouts:event.layouts},widget);
+      const seconds = placementMountSeconds({id:event.id,kind:event.kind,media:event.media,layouts:event.layouts,look:event.look},widget);
       job.timers.set(widget.id,this.later(() => this.mediaFinished(event.id,widget.id),seconds*1000));
     }
   }
@@ -1152,7 +1195,7 @@ export class OverlayEditorComponent {
     const event = [this.active(),...this.parallel()].find(item => item?.id === id); if (!job || !event?.snapshot) return;
     for (const widget of event.snapshot.widgets.filter(w => job.pending.has(w.id))) {
       clearTimeout(job.timers.get(widget.id));
-      const seconds = placementStartSeconds({id,kind:event.kind,media:event.media,layouts:event.layouts},widget);
+      const seconds = placementStartSeconds({id,kind:event.kind,media:event.media,layouts:event.layouts,look:event.look},widget);
       job.timers.set(widget.id,this.later(() => this.mediaFinished(id,widget.id),seconds*1000));
     }
   }
@@ -1584,6 +1627,7 @@ export class OverlayEditorComponent {
     if (await this.persist()) this.confirmDelete.set(false);
   }
   selectAlertKind(event: Event): void { const kind = this.value(event) as AlertEvent; if (ALERT_EVENTS.includes(kind)) this.designEvent.set(kind); }
+  selectTestTrigger(event: Event): void { this.testTriggerId.set(this.value(event)); }
   selectLiveTest(event: Event): void {
     const kind = this.value(event) as EventKind; if (EVENT_KINDS.includes(kind)) this.liveTestKind.set(kind);
   }
@@ -1594,7 +1638,8 @@ export class OverlayEditorComponent {
     if (!window.confirm(this.t('confirmObsTest', { overlay: this.scene().name, event: this.t(kind + 'Name') }))) return;
     this.liveTesting.set(true); this.error.set('');
     try {
-      await this.api.request('POST', `${this.channel}/test`, { kind, sceneId: this.sceneId(), destination: 'obs', confirmed: true, language: this.language.currentLanguage(), user: this.sampleUser(), amount: Number(this.sampleAmount()), tier: this.sampleTier() }, 90000);
+      const triggerId = kind === 'trigger' ? this.chosenTestTrigger() : undefined;
+      await this.api.request('POST', `${this.channel}/test`, { kind, ...(triggerId ? { triggerId } : {}), sceneId: this.sceneId(), destination: 'obs', confirmed: true, language: this.language.currentLanguage(), user: this.sampleUser(), amount: Number(this.sampleAmount()), tier: this.sampleTier() }, 90000);
       this.notice.set('testSent');
     } catch(e) { this.error.set((e as {error?: {message?: string}})?.error?.message || this.t('testPlaybackError')); }
     finally { this.liveTesting.set(false); }

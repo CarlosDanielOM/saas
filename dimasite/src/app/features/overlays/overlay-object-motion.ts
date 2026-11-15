@@ -31,8 +31,15 @@ export function playObjectMotion(elements: { entrance: HTMLElement; exit: HTMLEl
   const animate = (node: HTMLElement, frames: Keyframe[], options: KeyframeAnimationOptions, phase: string) => {
     const animation = node.animate(frames, options); animation.id = 'alert-object-' + phase; animations.push(animation);
   };
-  const enter = !!keyframes?.enter || motion.enter === 'none' || reduced ? [{ opacity: 0 }, { opacity: 1 }] : transition(motion.enter);
-  animate(elements.entrance, enter, { duration: reduced || keyframes?.enter ? 1 : enterTime, delay, fill: 'both', easing: keyframes?.enter || motion.enter === 'none' || reduced ? 'steps(1, end)' : 'ease-out' }, 'enter');
+  // No entrance of its own (none, custom keyframes or reduced motion): hidden until its start, then shown. One hold
+  // over the whole alert with an instant switch at the start, not a 1 ms step after a delay: Chromium ends such a step
+  // at progress 0 once the delay is about a second or longer, which left the object invisible for the whole alert
+  // in real playback (scrubbing the timeline never showed it).
+  const from = Math.min(1, delay / total);
+  if (keyframes?.enter || motion.enter === 'none' || reduced) animate(elements.entrance, delay > 0
+    ? [{ opacity: 0, offset: 0 }, { opacity: 0, offset: from }, { opacity: 1, offset: from }, { opacity: 1, offset: 1 }]
+    : [{ opacity: 1 }, { opacity: 1 }], { duration: total, fill: 'both' }, 'enter');
+  else animate(elements.entrance, transition(motion.enter), { duration: enterTime, delay, fill: 'both', easing: 'ease-out' }, 'enter');
   if (!keyframes?.exit && motion.exit !== 'none') animate(elements.exit, reduced ? [{ opacity: 1 }, { opacity: 0 }] : transition(motion.exit).reverse().map(frame => ({ ...frame, ...(frame.offset == null ? {} : { offset: 1 - frame.offset }) })), { duration: reduced ? 1 : exitTime, delay: exitEnd - (reduced ? 1 : exitTime), fill: 'both', easing: reduced ? 'steps(1, end)' : 'ease-in' }, 'exit');
   if (!keyframes?.loop && !reduced && motion.loop !== 'none' && idleTime > 0) animate(elements.loop, loopFrames(motion.loop), { duration: motion.loopDuration * 1000, delay: delay + enterTime, iterations: idleTime / (motion.loopDuration * 1000), fill: 'none', easing: motion.loop === 'spin' ? 'linear' : 'ease-in-out' }, 'loop');
   // Gone after its end in every mode (no exit, built-in or custom exit, reduced motion): the last-created animation

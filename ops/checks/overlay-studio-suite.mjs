@@ -1,5 +1,5 @@
 // Runs the Overlay Studio checks. For saas-ops' five-minute check limit, verify the same candidate
-// with overlay-studio-{motion,editor,reliability,renderer,samples}-suite.mjs in sequence.
+// with overlay-studio-{motion,editor,reliability,renderer,looks,samples}-suite.mjs in sequence.
 // Checks are referenced by absolute path because verify runs this file from a copy.
 import { spawnSync } from 'node:child_process';
 const dir = process.env.SAAS_OVERLAY_CHECK_DIR || '/root/saas/ops/checks';
@@ -9,6 +9,8 @@ const batches = {
   editor: ['overlay-studio-redesign-browser.mjs', 'overlay-studio-browser.mjs', 'overlay-history-browser.mjs', 'overlay-trigger-filters-browser.mjs', 'overlay-connections-browser.mjs', 'overlay-controls-browser.mjs', 'overlay-free-browser.mjs'],
   reliability: ['overlay-alert-rendering-browser.mjs', 'overlay-draft-protection.mjs', 'overlay-reliability-browser.mjs', 'overlay-refresh-browser.mjs', 'overlay-recovery-browser.mjs', 'asset-library-browser.mjs', 'overlay-stacking-browser.mjs'],
   renderer: ['overlay-renderer-parity-browser.mjs', 'alert-timed-video-browser.mjs', 'overlay-cross-tab-browser.mjs', 'overlay-interactions-browser.mjs', 'overlay-widget-modules-browser.mjs', 'overlay-tts-text-browser.mjs', 'overlay-trigger-placement-browser.mjs'],
+  // Trigger looks on the OBS page and in the Studio Test path (about 100 s).
+  looks: ['trigger-look-runtime-browser.mjs'],
   samples: ['overlay-clip-designs.mjs', 'alert-studio-ast-readiness-browser.mjs', 'alert-studio-event-text-browser.mjs', 'alert-studio-image-readiness-browser.mjs', 'bits-rules-browser.mjs', 'overlay-studio-ux-touches-browser.mjs']
 };
 const batch = process.env.SAAS_OVERLAY_BATCH || 'all';

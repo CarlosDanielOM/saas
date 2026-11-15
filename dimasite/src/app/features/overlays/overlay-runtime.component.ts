@@ -1,5 +1,5 @@
 import { OverlaySceneRendererComponent } from './overlay-scene-renderer.component';
-import { placementStartSeconds, placementMediaSeconds, placementMountSeconds, alertPlacementIds, type OverlayPlacementReport, type OverlayPlaybackId } from './overlay-playback';
+import { placementStartSeconds, placementMediaSeconds, placementMountSeconds, placementLayout, eventLook, absoluteLook, alertPlacementIds, type OverlayPlacementReport, type OverlayPlaybackId, type TriggerLook } from './overlay-playback';
 import type { InteractionSnapshot } from './overlay-interaction.model';
 import type { WidgetStates, WidgetStateSnapshot } from './overlay-widget-contract.generated';
 import { acceptWidgetStates, WidgetStateTransport, type WidgetStateMessage } from './overlay-widget-state';
@@ -18,7 +18,7 @@ import { layoutSounds, matchesTrigger, type AlertEvent, type AlertLayout, type E
 import { placeTrigger } from './overlay-trigger-placement';
 import { LiveWidgetEnv } from './widget-runtime/live-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
-interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
+interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; look?: TriggerLook; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
 const layoutAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layout.widgets).filter(part => part.visible && (part.kind === 'image' || part.kind === 'video') && part.assetId).map(part => part.assetId!);
 /** Every sound of every layout; sounds without a Studio asset (server-resolved `url`) are not prepared. */
@@ -291,8 +291,13 @@ export class OverlayRuntimeComponent {
       if (!widgets.length) { this.finish(event.id); return; }
       if (full.media?.url.startsWith('/')) full.media.url = this.api.base + full.media.url;
       const assets = new Map<string, PreparedAsset>();
-      if (!full.media && !full.tts) {
-        const layouts = widgets.flatMap(w => full.layouts?.[w.designId || ''] ?? []);
+      // A trigger look carries plain playback URLs (no Studio assets): nothing to download first, but its text waits for the font.
+      const look = eventLook(full);
+      if (look) {
+        full.look = absoluteLook(look, this.api.base);
+        if (look.layout.widgets.some(part => part.visible && part.kind === 'text')) await Promise.race([this.fonts, new Promise(resolve => setTimeout(resolve, 1500))]);
+      } else if (!full.media && !full.tts) {
+        const layouts = widgets.flatMap(w => placementLayout(full, w)?.layout ?? []);
         const ids = new Set([...layoutAssets(layouts), ...soundAssets(layouts)]);
         await Promise.all([...[...ids].map(async id => {
           const asset = await this.assetCache.prepare(this.assetUrl(id));
