@@ -266,7 +266,7 @@ the same context. Events are saved before they are sent; reconnect = snapshot + 
 
 ## MCP surface
 
-The tool registry is shared with MCP. `surfaces` controls where a tool is available; `executableFields` identifies command-language text that MCP must check before applying a write. A read result may set `billable: false` when it should not be charged. Add every new site tool to `MCP_ALLOWLIST` or `MCP_EXCLUDED` in `tools/mcp.ts`; a test enforces the classification. See [MCP.md](./MCP.md) for execution, safety and billing.
+The tool registry is shared with MCP. `surfaces` controls where a tool is available; `executableFields` identifies command-language text that MCP must check before applying a write. A read result may set `billable: false` when it should not be charged. Add every new site tool to `MCP_ALLOWLIST` or `MCP_EXCLUDED` in `tools/mcp.ts`; a test enforces the classification. For MCP, a tool may supply complete `mcpDescription` text; non-reads must supply `mcpAnnotations`. Shared text is in `tools/mcp_text.ts`, and `tools/mcp_descriptions.test.ts` checks MCP descriptions, hints and unchanged website descriptions. See [MCP.md](./MCP.md) for execution, safety, billing and call logs.
 
 ## Frontend (dimasite `src/app/features/assistant/`)
 

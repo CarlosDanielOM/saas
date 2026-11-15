@@ -11,6 +11,8 @@ for (const prefix of ['', 'es/']) {
   const html = await response.text();
   for (const fact of facts) assert.ok(html.includes(fact), `${prefix}connect-ai-apps: missing ${fact}`);
   assert.match(html, prefix ? /1 crédito/ : /1 AI credit/);
+  assert.ok(html.includes('Cursor'), `${prefix}connect-ai-apps: recognized Cursor`);
+  assert.ok(html.includes(prefix ? 'DomDimaBot guarda durante 90 días un registro breve de cada llamada a una herramienta (qué herramienta se usó, qué app la llamó, si funcionó y cuántos créditos consumió) para ayudar con soporte; no guarda lo que la app envió ni recibió.' : 'DomDimaBot keeps a short record of each tool call (which tool, which app, whether it worked and the credits it used) for 90 days to help with support; it does not keep what the app sent or got back.'), `${prefix}connect-ai-apps: call record notice`);
   // Admins need the owner's explicit AI apps (MCP) grant; the balance check is free.
   assert.match(html, prefix ? /Apps de IA \(MCP\)/ : /AI apps \(MCP\)/, `${prefix}connect-ai-apps: AI apps permission`);
   const dashboard = await (await fetch(`${base}/${prefix}dashboard/`)).text();

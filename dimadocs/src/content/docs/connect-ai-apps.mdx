@@ -17,7 +17,7 @@ Connect an AI app to Dima using MCP to let it read or manage a channel. This is 
 3. Choose your own channel or a channel whose owner gave you **AI apps (MCP)** access in **Settings → Team**. Full access alone is not enough. Review what the app can do and the notice that tool calls use that channel's AI credits.
 4. Only continue if you started this connection yourself. Choose **Allow connection** or **Deny**.
 
-Dima recognizes Claude (claude.ai, Desktop, and mobile), Claude Code, ChatGPT, Codex CLI, VS Code, Zed, and goose. Other apps can still connect but appear as unverified. Cursor is not recognized because it does not yet support Client ID Metadata Documents.
+Dima recognizes Claude (claude.ai, Desktop, and mobile), Claude Code, ChatGPT, Codex CLI, VS Code, Zed, goose, and Cursor. Other apps can still connect but appear as unverified.
 
 ### Claude Code
 
@@ -66,6 +66,8 @@ Most calls that read channel data or change something cost **1 AI credit** from 
 When the channel runs out of AI credits, paid calls that read channel data or make changes stop until credits are added; checking the balance remains free. See [Plans and credits](/plans/).
 
 ## Manage connections
+
+DomDimaBot keeps a short record of each tool call (which tool, which app, whether it worked and the credits it used) for 90 days to help with support; it does not keep what the app sent or got back.
 
 Open [Connected apps](https://domdimabot.com/oauth/connections) to see apps grouped by app and channel. You can disconnect one connection or the whole app from a channel.
 
