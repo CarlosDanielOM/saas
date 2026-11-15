@@ -54,13 +54,16 @@ class Target:
     health: str = "/"
     runtime: str = "node"
     output: str = ""
+    # Memory cap of the verify candidate. Cron runs every TypeScript worker: ~3.4 GiB steady and
+    # ~4.9 GiB right after start in production (2026-11-15), so it gets more room than the rest.
+    test_memory: str = "3g"
 
 
 TARGETS = {
     "analytics": Target("dima-analytics", "analytics", "dima-analytics", command=("node", "src/index.mjs"), port=3210, health="/health"),
     "api": Target("dimabot", "api-server", "dima-server", command=("node", "dist/server/index.js"), port=3000, health="/config/site/analytics"),
     "bot": Target("dimabot", "chat-bot", "dima-bot", command=("node", "dist/bot/index.js")),
-    "cron": Target("dimabot", "dima-cron", "dima-cron", command=("node", "dist/workers/cron.index.js")),
+    "cron": Target("dimabot", "dima-cron", "dima-cron", command=("node", "dist/workers/cron.index.js"), test_memory="6g"),
     "piper": Target("dimabot", "piper-tts", "piper-tts", dockerfile="dockerfile.piper", port=5000, health="/voices", runtime="python3"),
     "embeddings": Target("dimabot", "lfm2.5-embeddings", "lfm2.5-embeddings", dockerfile="dockerfile.lfm2-embeddings", port=8080, health="/health", runtime="python3"),
     "dimafx-server": Target("dimafx", "dimafx-server", "dimafx-server", compose="docker-compose.yml", context="server", dockerfile="Dockerfile", port=8080, health="/health"),
@@ -553,7 +556,7 @@ class Ops:
         self.add_resource(path, receipt, "container", name)
         env_args = [part for key, value in env.items() for part in ("--env", key + "=" + value)]
         self.docker("create", "--pull=never", "--name", name, *self.labels(receipt["run"]),
-                    "--network", network, "--memory", "3g", "--cpus", "2", "--pids-limit", "512",
+                    "--network", network, "--memory", target.test_memory, "--cpus", "2", "--pids-limit", "512",
                     "--security-opt", "no-new-privileges", "--cap-drop", "ALL", *env_args,
                     receipt["image"], *target.command, capture=True)
         obj = self.inspect("container", name)
