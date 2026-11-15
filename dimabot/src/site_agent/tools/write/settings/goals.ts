@@ -67,8 +67,10 @@ async function state(channelId: string) {
     return { revision: doc?.revision ?? 0, goals: (doc?.goals ?? []) as Goal[] };
 }
 
-async function saveGoals(ctx: Pick<ToolContext, 'channelId' | 'lang'>, kind: 'create' | 'edit' | 'delete', body: unknown, revision: number, id?: string): Promise<void> {
-    try { await changeGoal(ctx.channelId, kind, body, revision, id); }
+/** One guarded goals write. Returns what it saved (undo data comes from that, never from a read after the write). */
+async function saveGoals(ctx: Pick<ToolContext, 'channelId' | 'lang'>, kind: 'create' | 'edit' | 'delete', body: unknown, revision: number, id?: string): Promise<{ goals: Goal[]; id: string | undefined }> {
+    let saved: Awaited<ReturnType<typeof changeGoal>>;
+    try { saved = await changeGoal(ctx.channelId, kind, body, revision, id); }
     catch (error) {
         if (error instanceof GoalError && error.code === 'conflict') throw new ToolConflictError(tr(ctx.lang, 'Goals changed since this was prepared. Nothing was changed; ask again for a fresh proposal.', 'Las metas cambiaron desde que se preparó este cambio. No se cambió nada; vuelve a pedirlo.'));
         if (error instanceof GoalError) throw new Error(error.message);
@@ -76,6 +78,7 @@ async function saveGoals(ctx: Pick<ToolContext, 'channelId' | 'lang'>, kind: 'cr
     }
     // Same as the route: OBS widgets reading StreamElements "*-goal" values follow the Goals card.
     requestWidgetSessionRefresh(ctx.channelId);
+    return { goals: saved.goals, id: saved.id };
 }
 
 const goalTarget = (lang: Lang, goal: { id: string | null; name: string }) => ({ type: 'goal', id: goal.id, label: goal.name || tr(lang, 'Goal', 'Meta') });
@@ -146,9 +149,9 @@ export const createGoal: AgentTool<GoalCreateInput> = {
         return { type: 'approval', proposal };
     },
     async apply(proposal, ctx) {
-        const { body, revision, knownIds } = proposal.payload as { body: Record<string, unknown>; revision: number; knownIds: string[] };
-        await saveGoals(ctx, 'create', body, revision);
-        const created = (await state(ctx.channelId)).goals.find((goal) => !knownIds.includes(goal.id));
+        const { body, revision } = proposal.payload as { body: Record<string, unknown>; revision: number };
+        const saved = await saveGoals(ctx, 'create', body, revision);
+        const created = saved.goals.find((goal) => goal.id === saved.id);
         return {
             result: { created: true, id: created?.id ?? null },
             change: {
@@ -228,8 +231,7 @@ export const updateGoal: AgentTool<GoalUpdateInput> = {
     },
     async apply(proposal, ctx) {
         const { id, body, revision, before } = proposal.payload as { id: string; body: Record<string, unknown>; revision: number; before: Record<string, unknown> };
-        await saveGoals(ctx, 'edit', body, revision, id);
-        const saved = (await state(ctx.channelId)).goals.find((goal) => goal.id === id);
+        const saved = (await saveGoals(ctx, 'edit', body, revision, id)).goals.find((goal) => goal.id === id);
         return {
             result: { saved: true, id },
             change: { area: 'goals', target: proposal.target, before: proposal.before, after: proposal.after, undo: saved ? { id, before, after: goalView(saved) } : null, summary: proposal.title }

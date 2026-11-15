@@ -5,8 +5,10 @@ import { applyProposal, fakeEffects, makeCtx, propose, undoChange } from './test
 process.env.SECRET_KEY ??= 'tool-test-secret';
 
 // --- fakes -------------------------------------------------------------------------------------
-const events: { subs: any[]; calls: string[]; activated: boolean } = { subs: [], calls: [], activated: true };
-const goals: { doc: any; calls: any[] } = { doc: null, calls: [] };
+const events: { subs: any[]; calls: string[]; activated: boolean; afterWrite: (() => void) | null } = { subs: [], calls: [], activated: true, afterWrite: null };
+const goals: { doc: any; calls: any[]; afterWrite: (() => void) | null } = { doc: null, calls: [], afterWrite: null };
+/** Someone else's save landing right after the tool's write (where apply used to read the state again). */
+const landed = (store: { afterWrite: (() => void) | null }) => { const hook = store.afterWrite; store.afterWrite = null; hook?.(); };
 const bits: { revision: number; rules: any[] } = { revision: 0, rules: [] };
 const realEventsubService = await import('../../../../server/services/eventsub_config.service.js');
 const realGoalsService = await import('../../../../goals/service.js');
@@ -20,11 +22,20 @@ mock.module('../../../../server/services/eventsub_config.service.js', {
         createChannelEventsub: async (channelID: string, body: any) => {
             events.calls.push(`create:${body.type}`);
             events.subs.push({ _id: `id-${events.subs.length + 1}`, channelID, type: body.type, version: body.version, condition: body.condition, enabled: true, ...body.config });
-            return { status: 201, body: { error: false, data: events.subs.at(-1) } };
+            const data = { _id: events.subs.at(-1)._id, type: body.type };
+            landed(events);
+            return { status: 201, body: { error: false, data } };
         },
-        updateChannelEventsub: async (_channelID: string, id: string, body: any) => {
+        // Like the service: the guard is part of the write (null = missing), `unset` removes fields in the same write.
+        updateChannelEventsub: async (_channelID: string, id: string, body: any, options: { guard?: Record<string, unknown>; unset?: string[] } = {}) => {
             events.calls.push(`update:${id}`);
-            Object.assign(events.subs.find((sub) => sub._id === id), body);
+            const sub = events.subs.find((item) => item._id === id);
+            if (Object.entries(options.guard ?? {}).some(([key, value]) => JSON.stringify(sub[key] ?? null) !== JSON.stringify(value ?? null))) {
+                return { status: 409, body: { error: true, code: 'changed', message: 'The chat event changed since it was read' } };
+            }
+            Object.assign(sub, body);
+            for (const key of options.unset ?? []) delete sub[key];
+            landed(events);
             return { status: 200, body: { error: false } };
         },
         deleteChannelEventsub: async (_channelID: string, id: string) => {
@@ -42,10 +53,14 @@ mock.module('../../../../goals/service.js', {
             const { GoalError, newGoal } = await import('../../../../goals/model.js');
             if ((goals.doc?.revision ?? 0) !== revision) throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
             const list = [...(goals.doc?.goals ?? [])];
-            if (action === 'create') list.push(newGoal(input, 'free', `g${list.length + 1}`, Date.now()));
+            const created = action === 'create' ? newGoal(input, 'free', `g${list.length + 1}`, Date.now()) : null;
+            if (created) list.push(created);
             if (action === 'edit') { const index = list.findIndex((goal) => goal.id === id); list[index] = { ...list[index], name: input.name, target: input.target, ...(input.actions ? { actions: input.actions } : {}) }; }
             if (action === 'delete') list.splice(list.findIndex((goal) => goal.id === id), 1);
             goals.doc = { _id: '100', revision: revision + 1, goals: list };
+            const saved = { revision: revision + 1, goals: structuredClone(list), id: created?.id ?? id };
+            landed(goals);
+            return saved;
         }
     }
 });
@@ -87,8 +102,8 @@ const { createBitsRule, updateBitsRule, deleteBitsRule } = await import('./bits_
 const { ToolConflictError, ToolInputError } = await import('../../../types.js');
 
 beforeEach(() => {
-    events.subs = []; events.calls = []; events.activated = true;
-    goals.doc = null; goals.calls = [];
+    events.subs = []; events.calls = []; events.activated = true; events.afterWrite = null;
+    goals.doc = null; goals.calls = []; goals.afterWrite = null;
     bits.revision = 0; bits.rules = [];
 });
 
@@ -150,6 +165,17 @@ test('delete_chat_event: never for stream online/offline; undo subscribes again 
     assert.equal(events.subs.at(-1).enabled, false);
 });
 
+test('create_chat_event: undo data comes from the write, so an edit landing right after it is never removed by undo', async () => {
+    const ctx = makeCtx();
+    const proposal = await propose(createChatEvent, { type: 'channel.follow', fields: { message: 'Welcome $(user)!' } }, ctx);
+    events.afterWrite = () => { events.subs[0].message = 'Edited on the page'; };
+    const { change } = await applyProposal(createChatEvent, proposal, ctx);
+    assert.deepEqual((change!.undo as any).after, { enabled: true, message: 'Welcome $(user)!' }, 'what the insert stored, not a read after it');
+    await assert.rejects(undoChange(createChatEvent, change!, ctx),
+        (error: Error) => error instanceof ToolConflictError && /\(message\)/.test(error.message) && !error.message.includes('Edited on the page'));
+    assert.deepEqual(events.calls, ['create:channel.follow'], 'the edited event was not deleted');
+});
+
 // --- goals ---------------------------------------------------------------------------------------
 
 test('goals: plan gates and limits, AST action effects, revision compare-and-set, undo create, delete has no undo', async () => {
@@ -185,6 +211,22 @@ test('goals: plan gates and limits, AST action effects, revision compare-and-set
     assert.equal(deleteGoal.undo, undefined);
     goals.doc = { _id: '100', revision: 0, goals: [{ id: 'a' }, { id: 'b' }] };
     await assert.rejects(createGoal.run(createGoal.validate({ name: 'x', metric: 'follows', mode: 'total', target: 1 }), ctx), /allows 2 goals/);
+});
+
+test('goals: undo data comes from the write itself, so an edit landing right after it is never taken for the assistant\'s', async () => {
+    const ctx = makeCtx();
+    goals.afterWrite = () => { goals.doc.goals[0].name = 'Renamed on the page'; goals.doc.revision++; };
+    const created = await applyProposal(createGoal, await propose(createGoal, { name: 'Follows', metric: 'follows', mode: 'total', target: 100 }, ctx), ctx);
+    assert.equal((created.change!.undo as any).after.name, 'Follows');
+    await assert.rejects(undoChange(createGoal, created.change!, ctx), /edited after it was created/);
+    assert.equal(goals.doc.goals.length, 1, 'the renamed goal was not deleted');
+
+    const edit = await propose(updateGoal, { id: 'g1', target: 150 }, ctx);
+    goals.afterWrite = () => { goals.doc.goals[0].target = 175; goals.doc.revision++; };
+    const edited = await applyProposal(updateGoal, edit, ctx);
+    assert.equal((edited.change!.undo as any).after.target, 150);
+    await assert.rejects(undoChange(updateGoal, edited.change!, ctx), /edited again/);
+    assert.equal(goals.doc.goals[0].target, 175, 'the later edit stays');
 });
 
 // --- Bits rules ----------------------------------------------------------------------------------

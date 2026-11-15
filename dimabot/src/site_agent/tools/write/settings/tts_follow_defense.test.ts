@@ -109,7 +109,7 @@ test('update_tts_settings: an edit between the apply\'s read and its write wins 
     const ctx = makeCtx();
     const proposal = await propose(updateTtsSettings, { maxQueue: 9, stripLinks: false }, ctx);
     ttsDb.beforeNextWrite(() => { ttsRow().queue.maxItems = 4; });
-    await assert.rejects(applyProposal(updateTtsSettings, proposal, ctx), (error: Error) => error instanceof ToolConflictError && /Maximum messages waiting: 4/.test(error.message));
+    await assert.rejects(applyProposal(updateTtsSettings, proposal, ctx), (error: Error) => error instanceof ToolConflictError && /\(Maximum messages waiting\)/.test(error.message) && !/4/.test(error.message), 'names the field, never its stored value');
     assert.equal(ttsRow().queue.maxItems, 4, 'the concurrent edit survives');
     assert.equal(ttsRow().filters.stripLinks, true, 'nothing of the proposal was written');
 });
@@ -196,7 +196,7 @@ test('update_follow_defense_settings: an edit between the read and the write win
     const proposal = await propose(updateFollowDefenseSettingsTool, { attackThreshold: 800, silentDurationSeconds: 120 }, ctx);
     followDb.beforeNextWrite(() => { followRow().attackThreshold = 900; }, guardedWrite);
     await assert.rejects(applyProposal(updateFollowDefenseSettingsTool, proposal, ctx),
-        (error: Error) => error instanceof ToolConflictError && /Attack threshold \(empty = dynamic\): 900/.test(error.message));
+        (error: Error) => error instanceof ToolConflictError && /Attack threshold \(empty = dynamic\)/.test(error.message) && !/900/.test(error.message), 'names the field, never its stored value');
     assert.equal(followRow().attackThreshold, 900, 'the concurrent edit survives');
     assert.equal(followRow().silentDurationSeconds, DEFAULT_SETTINGS.silentDurationSeconds, 'nothing of the proposal was written');
 

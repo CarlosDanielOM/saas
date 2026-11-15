@@ -167,6 +167,20 @@ function proposalBase(ctx: ToolContext, tool: string, title: string, event: Cata
 /** Fields stored on the subscription document for `keys`. */
 const stored = (doc: Record<string, unknown> | null, keys: string[]) => pickPaths(doc ?? {}, keys);
 
+/** The new subscription document as the insert stores it: the config plus the schema defaults (no read after the write). */
+const inserted = (config: Record<string, unknown>) => new EventsubSchema({ ...config }).toObject() as unknown as Record<string, unknown>;
+
+/**
+ * The fields an update change has to put back as missing (its `missing`, kept since 2026-11-15). Older records only
+ * say null for such a field (undo used to skip it, leaving the change in place): there null counts as missing, which
+ * reads the same as a field really stored as null.
+ */
+function missingOf(data: { before: Record<string, unknown>; after: Record<string, unknown>; missing?: unknown }): string[] {
+    const keys = Object.keys(data.after);
+    if (Array.isArray(data.missing)) return data.missing.filter((key): key is string => typeof key === 'string' && keys.includes(key));
+    return keys.filter((key) => data.before[key] === null || data.before[key] === undefined);
+}
+
 export const createChatEvent: AgentTool<TypeInput> = {
     name: 'create_chat_event',
     kind: 'write',
@@ -220,12 +234,15 @@ export const createChatEvent: AgentTool<TypeInput> = {
         await assertEventPinned(ctx, proposal, body.type);
         const result = await createChannelEventsub(ctx.channelId, body);
         if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not create the chat event'));
-        const created = await channelEventsub(ctx.channelId, body.type);
+        // Undo data from the write itself: a read now could already hold someone's edit, which undo would then remove.
+        const madeId = (result.body.data as { _id?: unknown } | undefined)?._id;
+        const createdId = madeId ? String(madeId) : (await channelEventsub(ctx.channelId, body.type))?._id;
+        const id = createdId ? String(createdId) : null;
         return {
             result: { created: true, type: body.type },
             change: {
-                area: 'chat_events', target: { ...proposal.target, id: created?._id ? String(created._id) : null }, before: null, after: proposal.after,
-                undo: { type: body.type, id: created?._id ? String(created._id) : null, after: stored(created, Object.keys(after)) },
+                area: 'chat_events', target: { ...proposal.target, id }, before: null, after: proposal.after,
+                undo: { type: body.type, id, after: stored(inserted(body.config), Object.keys(after)) },
                 summary: proposal.title
             }
         };
@@ -292,18 +309,22 @@ export const updateChatEvent: AgentTool<TypeInput> = {
         const result = await updateChannelEventsub(ctx.channelId, id, after, { guard: { ...stored(current, Object.keys(expected)), ...(pinned ? storedText(current) : {}) } });
         if (result.status === 409 && result.body.code === 'changed') conflict(ctx.lang, 'This chat event changed while saving. Nothing was changed; ask again for a fresh proposal.', 'Este evento de chat cambió mientras se guardaba. No se cambió nada; vuelve a pedirlo.');
         if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not update the chat event'));
+        // Fields the event did not have (before says null for them): undo removes them again.
+        const missing = Object.keys(after).filter((key) => (current as Record<string, unknown>)[key] === undefined);
         return {
             result: { saved: true, type },
-            change: { area: 'chat_events', target: proposal.target, before: proposal.before, after: proposal.after, undo: { id, type, before, after }, summary: proposal.title }
+            change: { area: 'chat_events', target: proposal.target, before: proposal.before, after: proposal.after, undo: { id, type, before, after, missing }, summary: proposal.title }
         };
     },
     async undo(change, ctx) {
-        const data = change.undo as { id: string; before: Record<string, unknown>; after: Record<string, unknown> };
+        const data = change.undo as { id: string; before: Record<string, unknown>; after: Record<string, unknown>; missing?: string[] };
         const current = await EventsubSchema.findOne({ _id: data.id, channelID: ctx.channelId }).lean();
         if (!current) conflict(ctx.lang, 'This chat event was removed, so the change cannot be undone.', 'Este evento de chat se eliminó; el cambio no se puede deshacer.');
         assertUnchanged(current, data.after, ctx.lang, tr(ctx.lang, 'The chat event', 'El evento de chat'));
-        const restore = Object.fromEntries(Object.entries(data.before).filter(([, value]) => value !== null));
-        const result = await updateChannelEventsub(ctx.channelId, data.id, restore, { guard: stored(current, Object.keys(data.after)) });
+        // One guarded write: the values it had back, and the fields it did not have removed again.
+        const missing = missingOf(data);
+        const restore = Object.fromEntries(Object.entries(data.before).filter(([key]) => !missing.includes(key)));
+        const result = await updateChannelEventsub(ctx.channelId, data.id, restore, { guard: stored(current, Object.keys(data.after)), ...(missing.length ? { unset: missing } : {}) });
         if (result.status === 409 && result.body.code === 'changed') conflict(ctx.lang, 'This chat event was edited again while undoing, so it was left as it is now.', 'Este evento de chat se volvió a editar mientras se deshacía; se dejó como está ahora.');
         if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not restore the chat event'));
     }

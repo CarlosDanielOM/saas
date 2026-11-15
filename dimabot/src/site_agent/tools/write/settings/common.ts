@@ -49,22 +49,18 @@ export function display(values: Record<string, unknown>, labels: Record<string, 
     return Object.fromEntries(Object.entries(values).map(([path, value]) => [labels[path]?.[lang] ?? path, value]));
 }
 
-function shown(value: unknown): string {
-    const text = typeof value === 'string' ? JSON.stringify(value) : stableJson(value);
-    return text.length > 80 ? `${text.slice(0, 77)}…` : text;
-}
-
 /**
- * Compare-and-set on path-keyed values: throws ToolConflictError naming what changed since the
- * proposal (or since the change, for undo). `labels` make the message readable.
+ * Compare-and-set on path-keyed values: throws ToolConflictError naming the fields that changed since the
+ * proposal (or since the change, for undo). `labels` make the message readable. Never the stored values:
+ * they are people-authored text, and this message reaches MCP clients outside the untrusted-data wrapper.
  */
 export function assertUnchanged(current: unknown, expected: Record<string, unknown>, lang: Lang, what: string, labels: Record<string, FieldLabel> = {}): void {
     const changed = Object.keys(expected).filter((path) => !sameValue(getPath(current, path) ?? null, expected[path] ?? null));
     if (!changed.length) return;
-    const parts = changed.slice(0, 4).map((path) => `${labels[path]?.[lang] ?? path}: ${shown(getPath(current, path) ?? null)}`);
+    const names = changed.slice(0, 6).map((path) => labels[path]?.[lang] ?? path).join(', ') + (changed.length > 6 ? ', …' : '');
     throw new ToolConflictError(tr(lang,
-        `${what} changed since this was prepared (${parts.join('; ')}). Nothing was changed; ask again for a fresh proposal.`,
-        `${what} cambió desde que se preparó este cambio (${parts.join('; ')}). No se cambió nada; vuelve a pedirlo para preparar uno nuevo.`));
+        `${what} changed since this was prepared (${names}). Nothing was changed; read the current values again, then ask for a fresh proposal.`,
+        `${what} cambió desde que se preparó este cambio (${names}). No se cambió nada; vuelve a leer los valores actuales y luego pide uno nuevo.`));
 }
 
 export function conflict(lang: Lang, en: string, es: string): never {

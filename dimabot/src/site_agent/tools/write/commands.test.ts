@@ -682,3 +682,35 @@ test('undo records from before repeats were tracked refuse to strand a repeat, a
     await updateCommandTool.undo!(oldRename, ctx());
     assert.equal(dice.cmd, 'dice');
 });
+
+test('a repeat someone adds right after the command write is never taken for the change\'s own, so undo does not strand it', async () => {
+    // The page adds a repeat for the command at the first timer read after the command write (where apply used to
+    // read the repeat again); apply now reads nothing after its writes, so then it simply lands before the undo.
+    let written = false, added: string | null = null, pending = 'x';
+    const addRepeat = (name: string) => { if (added !== name) { added = name; timerDb.seed({ name, message: 'posted on the page', frequency: 20 }); } };
+    const fakeFindOne = CustomTimerSchema.findOne;
+    const spy = mock.method(CustomTimerSchema, 'findOne', function (this: unknown, ...args: unknown[]) {
+        if (written && added === null) addRepeat(pending);
+        return (fakeFindOne as (...a: unknown[]) => unknown).apply(this, args);
+    });
+    try {
+        db.beforeNextWrite(() => { written = true; });
+        const created = json((await createCommandTool.apply!(await propose(createCommandTool, { name: 'x', body: 'hello' }), ctx())).change!);
+        addRepeat('x');
+        assert.equal((created.undo as Raw).repeatAfter, null, 'no repeat when this change wrote the command');
+        await assert.rejects(createCommandTool.undo!(created, ctx()), (error: unknown) => error instanceof ToolConflictError && /repeat of !x changed after/.test(error.message));
+        assert.ok(find('x') && timer('x'), 'the command and the repeat added on the page both stay');
+
+        db.seed({ name: 'y', cmd: 'y', func: 'y', message: 'old reply', cooldown: 10 });
+        written = false; added = null; pending = 'y';
+        const proposal = await propose(updateCommandTool, { name: '!y', body: 'new reply' });
+        db.beforeNextWrite(() => { written = true; });
+        const reworded = json((await updateCommandTool.apply!(proposal, ctx())).change!);
+        addRepeat('y');
+        assert.equal((reworded.undo as Raw).repeatAfter, null);
+        await assert.rejects(updateCommandTool.undo!(reworded, ctx()), (error: unknown) => error instanceof ToolConflictError && /repeat of !y changed after/.test(error.message));
+        assert.deepEqual([find('y')?.message, timer('y')?.message], ['new reply', 'posted on the page'], 'the reply is not put back out of step with the repeat');
+    } finally {
+        spy.mock.restore();
+    }
+});
