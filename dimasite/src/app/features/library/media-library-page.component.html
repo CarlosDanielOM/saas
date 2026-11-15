@@ -380,8 +380,8 @@
         @if (deleteBlocked()) {
           <p class="lf-note">{{ t('modules.library.delete.inUseHint') }}</p>
           <ul class="lf-usage-list">
-            @for (name of deleteUsage().triggers; track $index) {
-              <li><span class="lf-tag">{{ t('modules.library.delete.trigger') }}</span> {{ name }}</li>
+            @for (use of deleteUsage().triggers; track $index) {
+              <li><span class="lf-tag">{{ t(use.look ? 'modules.library.delete.triggerLook' : 'modules.library.delete.trigger') }}</span> {{ use.name }}</li>
             }
             @for (name of deleteUsage().fx; track $index) {
               <li><span class="lf-tag">DimaFX</span> {{ name }}</li>

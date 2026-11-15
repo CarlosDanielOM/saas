@@ -63,6 +63,8 @@ export interface TriggerLookSummary {
   updatedAt: string;
   objectCount: number;
   soundCount: number;
+  /** Library item ids the look uses (its objects and sounds): those files count as in use. */
+  mediaIds?: string[];
 }
 
 /**
@@ -223,6 +225,8 @@ export interface TriggerTestPayload {
   url: string;
   mediaType: string;
   volume: number;
+  /** Who pressed Test (the signed-in user): a look's `$(user)` shows them. Empty fields are left out. */
+  firedBy?: { login?: string; name?: string };
 }
 
 /** The trigger a look belongs to, as the Triggers page or Overlay Studio knows it. */

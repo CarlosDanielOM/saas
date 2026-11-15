@@ -48,14 +48,14 @@ const TYPE = { 'image/png': 'image', 'image/gif': 'gif', 'audio/wav': 'audio', '
 function item(n, name, file, alias) {
   const f = files[file], mediaType = TYPE[f.mime];
   const asset = { _id: hex(n), displayName: alias ?? name, fileName: file, extension: file.split('.').pop(), mimeType: f.mime, mediaType, bytes: f.body.length,
-    ownerChannelID: owner.id, ownerChannelName: owner.login, scope: 'private', marketplaceStatus: 'not_listed', storageUrl: `https://media.fixture.invalid/${file}`, playbackUrl: `https://media.fixture.invalid/${file}` };
+    ownerChannelID: owner.id, ownerChannelName: owner.login, scope: 'private', marketplaceStatus: 'not_listed', storageUrl: `https://media.fixture.invalid/${file}`, playbackUrl: `https://media.fixture.invalid/${file}?k=fx${n}` };
   return { _id: hex(n + 100), assetID: asset._id, relationType: 'owner_upload', localAlias: null, quotaBytesCharged: 0, assetScope: 'private', mediaType, isActive: true, asset };
 }
 const trigger = (n, name, libraryItem, extra = {}) => ({ _id: hex(500 + n), name, channel: owner.login, channelID: owner.id, rewardID: '', file: name, type: 'media', mediaType: libraryItem.asset.mimeType,
   isEnabled: true, cost: 0, cooldown: 0, prompt: '', volume: 100, libraryItemID: libraryItem._id, assetID: libraryItem.assetID, reward: null, ...extra });
 const GONE = hex(999);
 
-function initialData({ plan = 'pro', manyPictures = false } = {}) {
+function initialData({ plan = 'pro', manyPictures = false, extra = false } = {}) {
   const library = [item(1, 'Big_Clip', 'clip.webm'), item(2, 'Portrait', 'portrait.png'), item(3, 'Spark', 'spark.gif'), item(4, 'Chime', 'chime.wav'), item(5, 'Drum', 'drum.wav'), item(6, 'Wide', 'wide.png')];
   if (manyPictures) for (let i = 0; i < 6; i++) library.push(item(20 + i, 'Extra_' + i, 'wide.png'));
   const [clip, portrait, , chime, drum] = library;
@@ -68,6 +68,16 @@ function initialData({ plan = 'pro', manyPictures = false } = {}) {
     { id: 'text-1', kind: 'text', name: 'Title', x: 100, y: 80, width: 600, height: 120, visible: true, locked: false, text: 'Big moment $(channel)', fontSize: 64 },
     { id: 'image-1', kind: 'image', name: 'Old picture', x: 200, y: 260, width: 300, height: 300, visible: true, locked: false, mediaId: GONE }
   ], sounds: [{ id: 'sound-1', mediaId: drum._id, name: 'Drum', volume: 0.8, delay: 0, fadeIn: 0, fadeOut: 0 }] } } });
+  if (extra) {
+    // Muted (volume 0); its look uses its own file twice, Drum (also in Looked_Trigger's look) and Chime (Sound_Trigger's file).
+    const wide = library[5], muted = trigger(6, 'Muted_Trigger', wide, { volume: 0 });
+    triggers.push(muted);
+    looks.set(muted._id, { revision: 1, look: { width: 1280, height: 720, revision: 1, updatedAt: new Date().toISOString(), layout: { duration: 5, widgets: [
+      { id: 'image-1', kind: 'image', name: 'Wide A', x: 0, y: 0, width: 320, height: 180, visible: true, locked: false, mediaId: wide._id },
+      { id: 'image-2', kind: 'image', name: 'Wide B', x: 400, y: 0, width: 320, height: 180, visible: true, locked: false, mediaId: wide._id },
+      { id: 'text-1', kind: 'text', name: 'Thanks', x: 100, y: 400, width: 600, height: 120, visible: true, locked: false, text: 'Thanks!', fontSize: 48 }
+    ], sounds: [{ id: 'sound-1', mediaId: drum._id, name: 'Drum', volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }, { id: 'sound-2', mediaId: chime._id, name: 'Chime', volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }] } } });
+  }
   return { library, triggers, looks, meta: { planTier: plan, quotaBytesUsed: 0, quotaBytesLimit: 1_000_000_000 } };
 }
 function editorForm(data, look) {
@@ -78,7 +88,9 @@ function editorForm(data, look) {
   if (layout.sounds) layout.sounds = layout.sounds.map(s => { const hit = find(s.mediaId); return hit ? { ...s, url: hit.asset.playbackUrl, mediaType: 'audio' } : { ...s, unavailable: true }; });
   return { ...look, layout };
 }
-const summary = look => look && ({ revision: look.revision, width: look.width, height: look.height, updatedAt: look.updatedAt, objectCount: look.layout.widgets.length, soundCount: look.layout.sounds?.length ?? 0 });
+/** The list/create/update summary (contract section 3): `mediaIds` = library items the look references, each once. */
+const summary = look => look && ({ revision: look.revision, width: look.width, height: look.height, updatedAt: look.updatedAt, objectCount: look.layout.widgets.length, soundCount: look.layout.sounds?.length ?? 0,
+  mediaIds: [...new Set([...look.layout.widgets.map(w => w.mediaId), ...(look.layout.sounds ?? []).map(s => s.mediaId)].filter(Boolean))] });
 
 function studioState() {
   const layer = (id, kind, x, y, width, height, extra = {}) => ({ id, kind, x, y, width, height, visible: true, locked: false, ...extra });
@@ -92,7 +104,7 @@ const errors = [];
 async function until(predicate, label, tries = 240) { for (let i = 0; i < tries; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error('Timed out: ' + label); }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-async function open({ width = 1280, dark = true, touch = false, lang = 'en', as = 'owner', plan = 'pro', manyPictures = false, path = 'triggers', libraryDelay = 0, recoveryOffer = false } = {}) {
+async function open({ width = 1280, dark = true, touch = false, lang = 'en', as = 'owner', plan = 'pro', manyPictures = false, path = 'triggers', libraryDelay = 0, recoveryOffer = false, extra = false } = {}) {
   const user = as === 'owner' ? owner : helper;
   const app = { name: user.display_name, email: 'fixture@example.invalid', language: lang, plan_tier: plan, actived: true, chat_enabled: true, twitch_user_id: user.id,
     has_permissions: true, up_to_date_permissions: true, administrating: as === 'owner' ? [] : [{ channelID: owner.id, channelName: owner.login }] };
@@ -108,9 +120,9 @@ async function open({ width = 1280, dark = true, touch = false, lang = 'en', as 
       scenes: state.scenes.map(({ publicId: _p, published: _pub, revision: _r, ...scene }) => ({ ...scene, name: 'Recovered gameplay' })), sceneId: 'main', designEvent: 'follow', variantId: null, selectedId: null };
     await context.addInitScript(({ key, draft }) => { if (sessionStorage.getItem('fixture-offer')) return; sessionStorage.setItem('fixture-offer', '1'); localStorage.setItem(key, JSON.stringify(draft)); }, { key: OFFERED_KEY, draft });
   }
-  const data = initialData({ plan, manyPictures });
+  const data = initialData({ plan, manyPictures, extra });
   // delay: { get, put } in ms for the look routes; failGet answers the look GET with a 500.
-  const ctx = { data, requests: [], puts: [], deletes: [], uploads: [], renders: [], studioPuts: [], next: null, studio: studioState(), sockets: [], delay: {}, failGet: false };
+  const ctx = { data, requests: [], puts: [], deletes: [], uploads: [], renders: [], renderBodies: [], sends: [], patches: [], refuseDelete: null, studioPuts: [], next: null, studio: studioState(), sockets: [], delay: {}, failGet: false };
   // Every socket attempt is recorded (and refused): embedded mode must never try one.
   await context.routeWebSocket(/.*/, ws => { ctx.sockets.push(ws.url()); ws.close(); });
   context.on('request', request => ctx.requests.push(request.method() + ' ' + request.url()));
@@ -146,14 +158,25 @@ async function open({ width = 1280, dark = true, touch = false, lang = 'en', as 
         body = { look: null, volume: t.volume, revision: entry.revision + 1 };
       } else body = { look: editorForm(data, entry.look), volume: t.volume, revision: entry.revision };
     }
-    else if (p === `/triggers/${owner.id}/look/render`) { ctx.renders.push(json.texts); body = json.texts.map(text => text.replaceAll('$(channel)', owner.login)); }
+    // Like the API: a sample viewer (`user`, default Luna) stands in for whoever fires the trigger.
+    else if (p === `/triggers/${owner.id}/look/render`) { ctx.renders.push(json.texts); ctx.renderBodies.push(json); body = json.texts.map(text => text.replaceAll('$(channel)', owner.login).replaceAll('$(user)', typeof json.user === 'string' ? json.user : 'Luna')); }
     else if (p === `/triggers/library/${owner.id}/upload`) {
       const multipart = request.postDataBuffer().toString('latin1'); ctx.uploads.push(multipart);
       const added = item(40 + ctx.uploads.length, (multipart.match(/name="name"\r\n\r\n([^\r]*)/) || [])[1] || 'Upload', multipart.includes('Content-Type: audio/wav') ? 'chime.wav' : 'wide.png');
       data.library.unshift(added); body = added;
     }
     else if (p === `/triggers/library/${owner.id}`) { if (libraryDelay) await sleep(libraryDelay); return route.fulfill({ json: { error: false, status: 200, data: data.library, total: data.library.length, meta: data.meta } }); }
-    else if (p === `/triggers/${owner.id}/send`) body = {};
+    else if (p === `/triggers/${owner.id}/send`) { ctx.sends.push(json); body = {}; }
+    else if (method === 'DELETE' && p.startsWith(`/triggers/library/${owner.id}/`)) {
+      if (ctx.refuseDelete) return fail(409, 'media_in_use', ctx.refuseDelete);
+      const id = p.split('/').pop(); data.library = data.library.filter(entry => entry._id !== id); body = {};
+    }
+    else if (method === 'PATCH' && new RegExp(`^/triggers/${owner.id}/[0-9a-f]{24}$`).test(p)) {
+      ctx.patches.push(structuredClone(json));
+      const t = data.triggers.find(x => x._id === p.split('/').pop()); Object.assign(t, json.name ? { name: json.name } : {}, 'volume' in json ? { volume: json.volume } : {});
+      const l = data.looks.get(t._id)?.look; const { look: _l, ...rest } = t; body = l ? { ...rest, look: summary(l) } : rest;
+    }
+    else if (p === `/extensions/dimafx/${owner.id}/items`) body = [];
     else if (p === `/triggers/${owner.id}`) body = data.triggers.map(t => { const l = data.looks.get(t._id)?.look; const { look: _l, ...rest } = t; return l ? { ...rest, look: summary(l) } : rest; });
     else if (p.startsWith('/overlays/triggers/')) return route.fulfill({ body: '<!doctype html><title>Trigger overlay</title>', contentType: 'text/html' });
     else if (p === `/overlay-studio/${owner.id}`) { if (method === 'PUT') { ctx.studioPuts.push(structuredClone(json)); ctx.studio = { ...ctx.studio, revision: ctx.studio.revision + 1, scenes: json.scenes.map(s => ({ ...s, publicId: 'a'.repeat(48), revision: 3 })), designs: json.designs }; } body = ctx.studio; }
@@ -164,8 +187,9 @@ async function open({ width = 1280, dark = true, touch = false, lang = 'en', as 
   });
   const page = await context.newPage(); page.setDefaultTimeout(12000);
   page.on('pageerror', e => errors.push(e.message)); ctx.downloads = 0; page.on('download', () => ctx.downloads++);
-  await page.goto(`${base}/${owner.login}/modules/${path === 'studio' ? 'overlays' : 'triggers'}`);
+  await page.goto(`${base}/${owner.login}/modules/${path === 'studio' ? 'overlays' : path === 'library' ? 'library' : 'triggers'}`);
   if (path === 'studio') await page.locator('app-overlay-editor .stage').waitFor();
+  else if (path === 'library') await page.locator('app-media-library-page .lf-lib-row:not(.lf-lib-row--skeleton)').first().waitFor();
   else await page.locator('app-triggers-page .lf-trigger').first().waitFor();
   return { context, page, ctx, user };
 }
@@ -649,6 +673,170 @@ try {
     await page.locator('app-trigger-look-dialog').getByRole('button', { name: 'Close' }).click(); await dialog(page).waitFor({ state: 'detached' });
     await context.close();
   }
+  // 8. Who fired it, files used by looks, volume 0 and signed media links (contract sections 1–3).
+  const textRow = page => page.locator('.layers .layer-row').filter({ hasText: 'Title' }).locator('.layer');
+  const template = page => page.locator('.studio-pane.properties textarea');
+  const insertButton = page => page.locator('.studio-pane.properties app-overlay-look-user-token button');
+  const HINT = {
+    en: '$(user) shows whoever fired the trigger: the chatter who ran the command or the viewer who redeemed the reward. When nobody did (for example a timer) it shows "Viewer", and previews here use a sample name.',
+    es: '$(user) muestra a quien activó el trigger: quien usó el comando en el chat o quien canjeó la recompensa. Si nadie lo activó (por ejemplo, un temporizador) aparece "Viewer", y aquí la vista previa usa un nombre de ejemplo.'
+  };
+  async function openTextInspector(page) {
+    await openStudio(page, 'layers'); await textRow(page).click(); await openStudio(page, 'layer');
+    await template(page).waitFor();
+  }
+  const fieldState = page => template(page).evaluate(el => ({ value: el.value, focused: document.activeElement === el, caret: el.selectionStart }));
+  const mediaRow = (page, name) => page.locator('app-triggers-page .lf-media-row').filter({ has: page.locator('strong', { hasText: new RegExp(`^${name}$`) }) });
+  {
+    const { context, page, ctx } = await open({ width: 1280, extra: true });
+    // Files used by a look count as in use: distinct triggers, own file or inside the look.
+    const usage = async name => { const r = mediaRow(page, name); return { chip: await r.locator('.lf-chip--ok').innerText().catch(() => ''), use: await r.getByRole('button', { name: `Create a trigger with ${name}` }).count() }; };
+    await mediaRow(page, 'Drum').waitFor();
+    assert.deepEqual(await usage('Drum'), { chip: 'In 2 triggers', use: 0 }, 'Drum: only inside two looks, counted, no Use');
+    assert.deepEqual(await usage('Wide'), { chip: 'In 1 trigger', use: 0 }, 'Wide: own file + twice in the same look = one trigger');
+    assert.deepEqual(await usage('Chime'), { chip: 'In 2 triggers', use: 0 }, 'Chime: own file of one trigger + in another look');
+    assert.deepEqual(await usage('Portrait'), { chip: 'In 2 triggers', use: 0 }, 'Portrait: own file of two triggers');
+    assert.deepEqual(await usage('Spark'), { chip: '', use: 1 }, 'Spark: unused, Use offered');
+    // Signed playback links are used unchanged (query string kept).
+    await until(() => ctx.requests.some(r => r === 'GET https://media.fixture.invalid/wide.png?k=fx6'), 'thumbnail requested with its signed link');
+    assert.equal(ctx.requests.some(r => /media\.fixture\.invalid\/[a-z]+\.(png|gif|wav|webm)$/.test(r)), false, 'no media request without the signature');
+    await shot(page, 'triggers-media-in-use-desktop-dark');
+    // A delete the API refuses (a look uses the file) shows the API's own message.
+    ctx.refuseDelete = 'Drum is used in the look of Looked_Trigger. Remove it from the look first.';
+    await mediaRow(page, 'Drum').getByRole('button', { name: 'Remove Drum from your media' }).click();
+    await page.locator('app-confirmation-modal .modal-btn--confirm').click();
+    await until(() => page.locator('app-toast-container').innerText().then(t => t.includes(ctx.refuseDelete)), 'refused delete: the API message is shown');
+    assert.equal(await mediaRow(page, 'Drum').count(), 1, 'refused delete keeps the file');
+    ctx.refuseDelete = null;
+    // Volume 0: the row, the edit dialog and what it sends back.
+    const muted = row(page, 'Muted_Trigger');
+    assert.equal((await muted.locator('.lf-trigger__vol').innerText()).trim(), '0%', 'row shows 0%');
+    await muted.getByRole('button', { name: 'Edit Muted_Trigger', exact: true }).click();
+    const form = page.locator('.lf-modal--form'); await form.waitFor();
+    assert.equal(await form.locator('.lf-range').inputValue(), '0', 'slider at 0'); assert.equal(await form.locator('.lf-label__value').innerText(), '0%');
+    await form.locator('.lf-modal__footer .lf-btn--primary').click(); await form.waitFor({ state: 'detached' });
+    assert.equal(ctx.patches.length, 1); assert.equal(ctx.patches[0].volume, 0, 'edit dialog sends 0 back');
+    await until(() => muted.locator('.lf-trigger__vol').innerText().then(t => t.trim() === '0%'), 'row still 0% after saving');
+    // Test: the /send body says who pressed it (the signed-in user).
+    await muted.getByRole('button', { name: 'Test Muted_Trigger on the overlay' }).click();
+    // Opening the test sends once; the dialog's button sends again.
+    await until(() => ctx.sends.length === 1, 'test sent on open');
+    await page.locator('.lf-modal--test .lf-modal__footer .lf-btn--primary:not([disabled])').click();
+    await until(() => ctx.sends.length === 2, 'test sent again');
+    for (const sent of ctx.sends) {
+      assert.deepEqual(sent.firedBy, { login: owner.login, name: owner.display_name }, 'firedBy = session user');
+      assert.equal(sent.triggerId, hex(506)); assert.equal(sent.url, 'https://media.fixture.invalid/wide.png?k=fx6', 'send uses the signed link unchanged');
+    }
+    await page.locator('.lf-modal--test .lf-modal__close').click(); await page.locator('.lf-modal--test').waitFor({ state: 'detached' });
+    // The look editor: hint, insert at the cursor / appended, keyboard, undo/redo, render with the sample name, save.
+    await openLook(page, 'Looked_Trigger');
+    await openTextInspector(page);
+    assert.equal(await page.locator('#look-text-hint').innerText(), HINT.en);
+    assert.equal(await template(page).getAttribute('aria-describedby'), 'look-text-hint');
+    assert.equal(await insertButton(page).innerText().then(t => t.replace(/\s+/g, ' ').trim()), 'Insert who fired it $(user)');
+    const undo = page.locator('.history-toolbar .tb').nth(0), redo = page.locator('.history-toolbar .tb').nth(1);
+    await template(page).click(); await page.keyboard.press('Control+Home'); for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
+    await insertButton(page).click();
+    await until(() => fieldState(page).then(s => s.value === 'Big $(user)moment $(channel)'), 'inserted at the cursor');
+    await until(() => fieldState(page).then(s => s.focused && s.caret === 11), 'focus kept, cursor after the token');
+    await until(() => page.locator('.stage app-overlay-scene-renderer').innerText().then(t => t.includes('Big Lunamoment lookfixture')), 'canvas shows the sample name');
+    assert.ok(ctx.renders.some(texts => texts.includes('Big $(user)moment $(channel)')), 'rendered through the look route');
+    assert.equal(ctx.renderBodies.every(b => !('user' in b)), true, 'the API default sample name is used');
+    await undo.click(); await until(() => fieldState(page).then(s => s.value === 'Big moment $(channel)'), 'undo the insert');
+    await redo.click(); await until(() => fieldState(page).then(s => s.value === 'Big $(user)moment $(channel)'), 'redo the insert');
+    // Not in the field: appended (with a space).
+    await page.locator('#look-text-hint').click();
+    assert.equal((await fieldState(page)).focused, false);
+    await insertButton(page).click();
+    await until(() => fieldState(page).then(s => s.value === 'Big $(user)moment $(channel) $(user)' && s.focused), 'appended when not focused');
+    // Keyboard: Tab from the field to the action and Enter inserts at the field's cursor.
+    await template(page).focus(); await page.keyboard.press('Control+Home'); await page.keyboard.press('Tab');
+    assert.equal(await insertButton(page).evaluate(el => document.activeElement === el), true, 'Tab reaches the action');
+    await page.keyboard.press('Enter');
+    await until(() => fieldState(page).then(s => s.value === '$(user)Big $(user)moment $(channel) $(user)' && s.focused && s.caret === 7), 'keyboard insert at the cursor');
+    await undo.click(); await until(() => fieldState(page).then(s => s.value === 'Big $(user)moment $(channel) $(user)'), 'keyboard insert is one undo step');
+    // Two activations within one frame (no render in between) both land, one after the other.
+    await template(page).focus(); await page.keyboard.press('Control+Home');
+    await page.evaluate(() => { const b = document.querySelector('.studio-pane.properties app-overlay-look-user-token button'); b.click(); b.click(); });
+    await until(() => fieldState(page).then(s => s.value === '$(user)$(user)Big $(user)moment $(channel) $(user)' && s.focused && s.caret === 14), 'two quick inserts both kept');
+    // Typing right after an insert, before any render, is kept (a keystroke = text at the cursor + an input event).
+    await page.evaluate(() => {
+      document.querySelector('.studio-pane.properties app-overlay-look-user-token button').click();
+      const f = document.querySelector('.studio-pane.properties textarea'); f.setRangeText('!', f.selectionStart, f.selectionEnd, 'end'); f.dispatchEvent(new InputEvent('input', { bubbles: true, data: '!', inputType: 'insertText' }));
+    });
+    await sleep(400);
+    let state = await fieldState(page);
+    assert.equal(state.value, '$(user)$(user)$(user)!Big $(user)moment $(channel) $(user)', 'typing right after an insert is kept'); assert.equal(state.caret, 22, 'cursor after the typed text');
+    // Focus moved on past the action (field → Insert → next control): a later Insert appends, no stale cursor.
+    await template(page).focus(); await page.keyboard.press('Control+Home'); await page.keyboard.press('Tab');
+    assert.equal(await insertButton(page).evaluate(el => document.activeElement === el), true);
+    await page.keyboard.press('Tab');
+    assert.equal(await insertButton(page).evaluate(el => document.activeElement !== el), true, 'focus moved on');
+    await insertButton(page).click();
+    await until(() => fieldState(page).then(s => s.value === '$(user)$(user)$(user)!Big $(user)moment $(channel) $(user) $(user)'), 'appended after focus moved on');
+    await shot(page, 'look-text-insert-desktop-dark');
+    await axe(page, 'app-trigger-look-dialog', 'text inspector desktop dark');
+    await page.locator('.look-save').click();
+    await until(() => ctx.puts.length === 1, 'saved');
+    assert.equal(ctx.puts[0].layout.widgets.find(w => w.id === 'text-1').text, '$(user)$(user)$(user)!Big $(user)moment $(channel) $(user) $(user)', 'saved template: every insert and the typing');
+    // New text objects in a look still start with plain text.
+    await openStudio(page, 'add'); await page.locator('.palette-item[data-kind=text]').click();
+    await openStudio(page, 'layer'); assert.equal((await template(page).inputValue()).includes('$('), false, 'new text starts plain');
+    await closeLook(page); await page.locator('app-overlay-look-prompt [data-action=discard]').click(); await dialog(page).waitFor({ state: 'detached' });
+    await context.close();
+  }
+  // The media library page counts look use the same way, names the looks, and shows a refused delete's API message.
+  {
+    const { context, page, ctx } = await open({ width: 390, touch: true, path: 'library', extra: true });
+    const libRow = name => page.locator('app-media-library-page .lf-lib-row').filter({ has: page.locator('.lf-lib-row__name', { hasText: new RegExp(`^${name}$`) }) });
+    const tags = async name => (await libRow(name).locator('.lf-tag--ok, .lf-tag--muted').allInnerTexts()).map(t => t.trim());
+    assert.deepEqual(await tags('Drum'), ['In 2 triggers']); assert.deepEqual(await tags('Wide'), ['In 1 trigger']); assert.deepEqual(await tags('Chime'), ['In 2 triggers']);
+    assert.deepEqual(await tags('Spark'), ['Not used yet']);
+    await libRow('Drum').getByRole('button', { name: 'Delete Drum' }).click();
+    const modal = page.locator('app-media-library-page [role=alertdialog]'); await modal.waitFor();
+    assert.deepEqual((await modal.locator('.lf-usage-list li').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim()), ['Trigger look Looked_Trigger', 'Trigger look Muted_Trigger'], 'look uses are named as looks');
+    await shot(page, 'library-delete-look-use-390-dark');
+    await axe(page, 'app-media-library-page [role=alertdialog]', 'library in-use dialog');
+    await modal.getByRole('button', { name: 'Close' }).click(); await modal.waitFor({ state: 'detached' });
+    ctx.refuseDelete = 'Spark is used in a trigger look. Remove it from the look first.';
+    await libRow('Spark').getByRole('button', { name: 'Delete Spark' }).click(); await modal.waitFor();
+    await modal.getByRole('button', { name: 'Delete', exact: true }).click();
+    await until(() => page.locator('app-toast-container').innerText().then(t => t.includes(ctx.refuseDelete)), 'library: refused delete shows the API message');
+    assert.equal(await overflow(page), false, 'library 390');
+    await context.close();
+  }
+  // Alert designs keep their own text inspector (no insert action, the alert tokens hint).
+  {
+    const { context, page } = await open({ width: 1280, path: 'studio' });
+    await openStudio(page, 'designs'); await page.locator('.design-row__actions button').first().click(); await page.locator('.design-event-tabs').waitFor();
+    await openStudio(page, 'layers'); await page.locator('.layers .layer-row[data-layer-id=follow-text] .layer').click(); await openStudio(page, 'layer');
+    await template(page).waitFor();
+    assert.equal(await page.locator('app-overlay-look-user-token').count(), 0, 'no insert action in alert designs');
+    await page.locator('.studio-pane.properties .lf-note').getByText('Use $(user) for the event user', { exact: false }).first().waitFor();
+    await context.close();
+  }
+  // Spanish, phones (touch) and desktop, dark and light: the action fits, is a 44 px target, passes axe.
+  for (const [width, dark, lang] of [[320, true, 'en'], [390, true, 'es'], [390, false, 'en'], [1280, false, 'es']]) {
+    const touch = width < 640, tag = `${width}-${dark ? 'dark' : 'light'}-${lang}`;
+    const { context, page, ctx } = await open({ width, dark, touch, lang, extra: true });
+    if (width === 390) { await mediaRow(page, 'Drum').scrollIntoViewIfNeeded(); await shot(page, `triggers-media-in-use-${tag}`); }
+    assert.equal(await overflow(page), false, 'triggers page ' + tag);
+    await openLook(page, 'Looked_Trigger'); await openTextInspector(page);
+    assert.equal(await page.locator('#look-text-hint').innerText(), HINT[lang], 'hint ' + tag);
+    const box = await insertButton(page).boundingBox(), pane = await page.locator('.studio-pane.properties').boundingBox();
+    assert.ok(box.height >= 44 && box.width >= 44, 'touch target ' + tag + ' ' + JSON.stringify(box));
+    assert.ok(box.x >= pane.x - 1 && box.x + box.width <= pane.x + pane.width + 1, 'action fits the pane ' + tag);
+    if (touch) await insertButton(page).tap(); else await insertButton(page).click();
+    await until(() => fieldState(page).then(s => s.value === 'Big moment $(channel) $(user)' && s.focused), 'insert ' + tag);
+    await until(() => page.locator('.stage app-overlay-scene-renderer').innerText().then(t => t.includes('Big moment lookfixture Luna')), 'sample name on canvas ' + tag);
+    await template(page).evaluate(el => el.blur());
+    await insertButton(page).scrollIntoViewIfNeeded();
+    await shot(page, `look-text-insert-${tag}`);
+    assert.equal(await overflow(page), false, 'editor ' + tag);
+    await axe(page, 'app-trigger-look-dialog', 'text inspector ' + tag);
+    assert.ok(ctx.requests.some(r => r.includes('media.fixture.invalid/drum.wav?k=fx5') || r.includes('?k=fx')), 'signed links in use ' + tag);
+    await context.close();
+  }
   // Screenshot matrix for visual review (only when screenshots are asked for): 390 touch and 1280, dark and light.
   if (shots && process.env.SAAS_LOOK_SHOT_MATRIX) for (const [width, dark] of [[390, true], [390, false], [1280, true], [1280, false]]) {
     const tag = `${width}-${dark ? 'dark' : 'light'}`, touch = width < 640;
@@ -669,5 +857,5 @@ try {
     await studio.context.close();
   }
   assert.deepEqual(errors, [], 'no page errors');
-  console.log('PASS trigger look editor (observed through DOM, network, storage, dialogs and history only): Triggers page dialog (lazy, isolated from Overlay Studio, owner + admin), seeds (video/picture/audio, measured lengths), trigger media picker (kinds, search, previews, upload rules), timeline end grip, save body + revision, status, unsaved/remove prompts, validation + conflict reload, removed files, master volume; Overlay Studio in place: unsaved overlay edits + undo/redo + Test drawer kept, overlay recovery copy written on entry and never containing the look, offered recovery copy untouched and banner back after return, fresh-editor restore, tab-close and history-navigation prompts; late look answers after look B / an alert design change nothing; one PUT per double click; library slower than triggers; missing trigger file; history navigation prompt on the Triggers page; admin failed GET without Studio requests; no sockets; EN/ES, dark/light, 320/390/1280, axe');
+  console.log('PASS trigger look editor (observed through DOM, network, storage, dialogs and history only): Triggers page dialog (lazy, isolated from Overlay Studio, owner + admin), seeds (video/picture/audio, measured lengths), trigger media picker (kinds, search, previews, upload rules), timeline end grip, save body + revision, status, unsaved/remove prompts, validation + conflict reload, removed files, master volume; Overlay Studio in place: unsaved overlay edits + undo/redo + Test drawer kept, overlay recovery copy written on entry and never containing the look, offered recovery copy untouched and banner back after return, fresh-editor restore, tab-close and history-navigation prompts; late look answers after look B / an alert design change nothing; one PUT per double click; library slower than triggers; missing trigger file; history navigation prompt on the Triggers page; admin failed GET without Studio requests; no sockets; who fired it (look text hint EN/ES, insert $(user) at the cursor / appended / by keyboard with undo/redo, sample name on the canvas, saved template, none in alert designs, Test sends firedBy); files used by looks in use on the Triggers and library pages (distinct per trigger, look-only = no Use) and refused deletes show the API message; volume 0 kept through the edit dialog; signed media links used unchanged; EN/ES, dark/light, 320/390/1280, axe');
 } finally { await browser.close(); }

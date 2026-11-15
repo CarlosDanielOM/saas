@@ -186,9 +186,17 @@ export class TriggersService {
       libraryItemID: trigger.libraryItemID ? String(trigger.libraryItemID) : null,
       cost: Number(trigger.cost || 0),
       cooldown: Number(trigger.cooldown || 0),
-      volume: Number(trigger.volume || 100),
+      volume: this.normalizeVolume(trigger.volume),
+      look: trigger.look ? { ...trigger.look, mediaIds: Array.isArray(trigger.look.mediaIds) ? trigger.look.mediaIds.map(String) : [] } : trigger.look,
       reward: trigger.reward ? this.normalizeReward(trigger.reward) : null
     };
+  }
+
+  /** 0 is a real volume (muted); only a missing or unreadable value falls back to 100. */
+  private normalizeVolume(value: unknown): number {
+    if (value === null || value === undefined || value === '') return 100;
+    const volume = Number(value);
+    return Number.isFinite(volume) ? Math.max(0, Math.min(100, volume)) : 100;
   }
 
   private normalizeReward(reward: LinkedRewardRecord): LinkedRewardRecord {

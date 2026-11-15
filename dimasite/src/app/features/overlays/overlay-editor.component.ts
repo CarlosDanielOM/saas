@@ -37,6 +37,7 @@ import { OverlayTriggerMediaPickerComponent, type TriggerMediaKind } from './ove
 import { OverlayTriggerLooksComponent } from './overlay-trigger-looks.component';
 import { OverlayLookPromptComponent } from './overlay-look-prompt.component';
 import { TriangleAlert } from 'lucide-angular';
+import { OverlayLookUserTokenComponent } from './overlay-look-user-token.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { ThemeService } from '../../services/theme.service';
 import { LayoutFocusService } from '../../services/layout-focus.service';
@@ -91,7 +92,7 @@ const tenthsUp = (n: number) => Math.ceil(n * 10 - 1e-6) / 10;
 const NO_SOUNDS: readonly AlertSound[] = [];
 const tenthsDown = (n: number) => Math.floor(n * 10 + 1e-6) / 10;
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlaySoundsComponent, OverlayVideoPlaybackComponent, OverlayTriggerMediaPickerComponent, OverlayTriggerLooksComponent, OverlayLookPromptComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
+  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlaySoundsComponent, OverlayVideoPlaybackComponent, OverlayTriggerMediaPickerComponent, OverlayTriggerLooksComponent, OverlayLookPromptComponent, OverlayLookUserTokenComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -820,6 +821,8 @@ export class OverlayEditorComponent {
     return end >= duration ? undefined : end;
   }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
+  /** Look mode's "insert who fired it": the new template text, as its own undo step. */
+  insertLookText(text: string): void { if (this.lookSession() && this.selected()?.kind === 'text') this.edit(() => this.patchSelected({ text }), null); }
   /** A file picked for the sounds panel: a new sound (default settings), or a new file that keeps the sound's timing. */
   useSound(asset: DesignAsset): void {
     const target = this.soundPicker(); this.soundPicker.set(null);

@@ -9,6 +9,7 @@ import {
   signal,
   viewChild
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -66,7 +67,8 @@ interface UploadFormState {
 }
 
 interface ItemUsage {
-  triggers: string[];
+  /** Distinct triggers using the file; `look` = only inside that trigger's look, not as its own file. */
+  triggers: { name: string; look: boolean }[];
   fx: string[];
 }
 
@@ -237,9 +239,13 @@ export class MediaLibraryPageComponent implements OnDestroy {
       return current;
     };
     for (const trigger of this.triggers() ?? []) {
-      const item = (trigger.libraryItemID && byId.get(trigger.libraryItemID))
+      const own = (trigger.libraryItemID && byId.get(trigger.libraryItemID))
         || (trigger.assetID && byAsset.get(trigger.assetID));
-      if (item) entry(item).triggers.push(trigger.name);
+      if (own) entry(own).triggers.push({ name: trigger.name, look: false });
+      for (const id of new Set(trigger.look?.mediaIds ?? [])) {
+        const item = byId.get(id);
+        if (item && item !== own) entry(item).triggers.push({ name: trigger.name, look: true });
+      }
     }
     for (const fx of this.fxItems() ?? []) {
       const item = fx.assetID ? byAsset.get(fx.assetID) : undefined;
@@ -653,7 +659,10 @@ export class MediaLibraryPageComponent implements OnDestroy {
       },
       error: (err: unknown) => {
         this.deleting.set(false);
-        this.toast.error(this.t('modules.library.delete.errorTitle'), err instanceof Error ? err.message : this.t('modules.library.delete.errorMessage'));
+        // The API says why it refused (for example a trigger look still uses the file).
+        const apiMessage = err instanceof HttpErrorResponse ? (err.error as { message?: unknown } | null)?.message : null;
+        this.toast.error(this.t('modules.library.delete.errorTitle'),
+          typeof apiMessage === 'string' && apiMessage ? apiMessage : err instanceof Error ? err.message : this.t('modules.library.delete.errorMessage'));
       }
     });
   }

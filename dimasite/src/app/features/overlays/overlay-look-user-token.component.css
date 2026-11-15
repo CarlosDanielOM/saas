@@ -1,0 +1,15 @@
+/* Tokens are inherited from the Studio editor (light and dark); fallbacks are the light values. */
+:host { display: block; min-width: 0; }
+.insert {
+  display: inline-flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; max-width: 100%; min-height: 44px;
+  padding: 0.45rem 0.8rem; border: 1px solid var(--btn-border, rgba(15, 17, 21, 0.1)); border-radius: 0.75rem;
+  background: var(--btn, #eef0f5); color: var(--fg, #14151a); font: inherit; font-size: 0.84rem; font-weight: 700;
+  line-height: 1.25; text-align: left; cursor: pointer; touch-action: manipulation;
+}
+.insert:hover { border-color: color-mix(in srgb, var(--accent, #7c3aed) 45%, transparent); }
+.insert:focus-visible { outline: 2px solid var(--accent, #7c3aed); outline-offset: 2px; }
+.insert lucide-icon { flex-shrink: 0; color: var(--accent, #7c3aed); }
+.insert code {
+  padding: 0.1rem 0.4rem; border-radius: 0.4rem; background: var(--accent-soft, rgba(124, 58, 237, 0.12));
+  color: var(--fg, #14151a); font-family: var(--mono, ui-monospace, monospace); font-size: 0.78rem; font-weight: 600;
+}

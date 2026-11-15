@@ -104,7 +104,9 @@ try {
       for (const width of [320, 390, 1280]) {
         await page.setViewportSize({ width, height: 1000 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `No overflow ${width}`);
-        await page.locator('.lf-save-bar').screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/published-${dark ? 'dark' : 'light'}-${width}.png` });
+        // The phone layout may hide the save bar behind a tab: capture the visible layout instead.
+        const bar = page.locator('.lf-save-bar').first(), path = `${process.env.SAAS_SCREENSHOT_DIR}/published-${dark ? 'dark' : 'light'}-${width}.png`;
+        if (await bar.isVisible()) await bar.screenshot({ path }); else await page.screenshot({ path });
       }
     }
   }

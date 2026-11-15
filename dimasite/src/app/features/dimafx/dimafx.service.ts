@@ -92,7 +92,8 @@ export class DimafxService {
       assetID: item.assetID ? String(item.assetID) : null,
       bitsPrice: Number(item.bitsPrice || 0),
       durationMs: Number(item.durationMs || 0),
-      volume: Number(item.volume || 100),
+      // 0 is a real volume (silent); only a missing or unreadable value falls back to 100.
+      volume: item.volume === null || item.volume === undefined || !Number.isFinite(Number(item.volume)) ? 100 : Number(item.volume),
       sortOrder: Number(item.sortOrder || 0),
       tts: item.tts ?? null,
       thumbnailUrl: item.thumbnailUrl || item.asset?.playbackUrl || '',

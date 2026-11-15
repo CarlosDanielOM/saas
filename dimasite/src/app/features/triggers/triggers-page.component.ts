@@ -331,12 +331,15 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     return this.triggers().filter((trigger) =>
       [trigger.name, trigger.reward?.title].filter(Boolean).join(' ').toLowerCase().includes(query));
   });
+  /** Per library item: how many distinct triggers use it, as their own file or inside their look. */
   private readonly libraryUsage = computed(() => {
     const usage = new Map<string, number>();
+    const items = this.libraryItems();
     for (const trigger of this.triggers()) {
-      const item = this.libraryItems().find((entry) => entry._id === trigger.libraryItemID)
-        || this.libraryItems().find((entry) => entry.assetID === trigger.assetID);
-      if (item) usage.set(item._id, (usage.get(item._id) ?? 0) + 1);
+      const own = items.find((entry) => entry._id === trigger.libraryItemID) || items.find((entry) => entry.assetID === trigger.assetID);
+      const used = new Set<string>(trigger.look?.mediaIds ?? []);
+      if (own) used.add(own._id);
+      for (const id of used) usage.set(id, (usage.get(id) ?? 0) + 1);
     }
     return usage;
   });
@@ -1107,8 +1110,13 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       volume: trigger.volume
     };
 
+    // Who pressed Test: a look's `$(user)` shows them (the preview frame doesn't need it).
+    const viewer = this.sessionAuth.session()?.twitchUser;
+    const login = viewer?.login?.trim(), name = viewer?.display_name?.trim();
+    const firedBy = login || name ? { firedBy: { ...(login ? { login } : {}), ...(name ? { name } : {}) } } : {};
+
     this.isSendingTest.set(true);
-    this.triggersService.sendTrigger(channelId, payload).subscribe({
+    this.triggersService.sendTrigger(channelId, { ...payload, ...firedBy }).subscribe({
       next: () => {
         this.isSendingTest.set(false);
         this.postPreviewTrigger(payload);

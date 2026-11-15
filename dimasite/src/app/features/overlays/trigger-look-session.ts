@@ -30,6 +30,12 @@ export function storedLookLayout(layout: AlertLayout): AlertLayout {
   return { ...rest, widgets: layout.widgets.map(storedWidget), ...(sounds.length ? { sounds } : {}) };
 }
 
+/** The library items a stored look layout references (objects and sounds), each once. */
+export function lookMediaIds(layout: AlertLayout): string[] {
+  const ids = [...layout.widgets.map(w => w.mediaId), ...layoutSounds(layout).map(s => s.mediaId)];
+  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id !== ''))];
+}
+
 /**
  * Look mode's data: loading or seeding a trigger's look, saving it with the loaded revision, removing it, text
  * previews and the trigger's master volume. Only `/triggers` routes: never Overlay Studio state.
@@ -107,7 +113,7 @@ export class TriggerLookSession {
     const state = await this.api.save(this.target.channelID, this.target.triggerId, { width: design.width, height: design.height, layout, revision: this.revision });
     this.accept(state); this.changed = true; this.baseline.set(this.fingerprint(design));
     this.summary = { revision: state.revision, width: design.width, height: design.height, updatedAt: state.look?.updatedAt ?? new Date().toISOString(),
-      objectCount: layout.widgets.length, soundCount: layoutSounds(layout).length };
+      objectCount: layout.widgets.length, soundCount: layoutSounds(layout).length, mediaIds: state.look?.mediaIds ?? lookMediaIds(layout) };
   }
 
   /** Removes the look: the trigger plays its plain file everywhere again. */
