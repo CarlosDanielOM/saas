@@ -307,11 +307,20 @@ const postsAlone = (minutes: number, lang: Lang) => l(lang,
 const refusedWrite = (error: unknown) => error instanceof ToolConflictError || error instanceof CommandMutationError
     || error instanceof CommandCooldownError || error instanceof CommandBlocksRequestError;
 
-/** The command's repeat right after a change, kept in the undo data: undo first checks it is still like this. */
+/**
+ * The command's repeat right after a change, kept in the undo data: undo first checks it is still like this.
+ * Never read after the change's writes (a repeat someone adds right then would pass for this change's): a change
+ * that moves the repeat keeps what that write stored; one that does not reads the link BEFORE writing, with the
+ * command as the write will leave it (`linkAfter`).
+ */
 async function repeatAsLeft(ctx: { channelId: string }, command: LeanCommand): Promise<TimerSnapshot | null> {
     const timer = await commandRepeat(ctx.channelId, command);
     return timer ? timerSnapshot(timer) : null;
 }
+
+/** What links a command to its repeat (trigger, display name, kind), as a write body or stored command leaves it. */
+const linkAfter = (command: { cmd?: unknown; name?: unknown; activation?: unknown; reserved?: unknown }): LeanCommand =>
+    ({ cmd: command.cmd, name: command.name, activation: command.activation, reserved: command.reserved }) as unknown as LeanCommand;
 
 /**
  * Before an undo that deletes, renames or re-words the command: its repeat must still be as this
@@ -488,6 +497,7 @@ export const createCommandTool: AgentTool<CreateInput> = {
             cooldown: input.cooldown, userLevel: level, userLevelName: LEGACY_USER_LEVEL_NAMES[level], enabled: input.enabled,
             description: input.description,
         };
+        const linked = repeat ? null : await repeatAsLeft(ctx, linkAfter(body));
         let outcome;
         try {
             outcome = await changeWithRepeat(ctx, repeat, false, label, () => createChannelCommand(ctx.channelId, body));
@@ -501,7 +511,7 @@ export const createCommandTool: AgentTool<CreateInput> = {
             target: { type: 'command', id: String(stored._id), label },
             before: null,
             after: proposal.after,
-            undo: { op: 'create', id: String(stored._id), expected: commandSnapshot(stored), ...(repeatUndo ? { repeat: repeatUndo } : {}), repeatAfter: await repeatAsLeft(ctx, stored) },
+            undo: { op: 'create', id: String(stored._id), expected: commandSnapshot(stored), ...(repeatUndo ? { repeat: repeatUndo } : {}), repeatAfter: repeat ? outcome.saved : linked },
             summary: repeat?.to ? `Created ${label} (repeats every ${repeat.to.minutes} min)` : `Created ${label}`,
         };
         return { result: { created: true, id: String(stored._id), trigger: label, ...(repeat?.to ? { repeatsEveryMinutes: repeat.to.minutes } : {}) }, change };
@@ -809,6 +819,9 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
         // The change counts on the command's repeat being the timer the proposal saw (or on there being none).
         if (repeat) await assertRepeatLink(ctx, current, repeat.from, label);
         const hasChanges = Object.keys(changes).length > 0;
+        const moved = repeat !== undefined && repeatDiffers(repeat.from, repeat.to);
+        const leftAs = linkAfter({ ...current, ...updateBody(current, changes) });
+        const linked = !moved && canRepeat(leftAs) ? await repeatAsLeft(ctx, leftAs) : null;
         let outcome;
         try {
             outcome = await changeWithRepeat(ctx, repeat, false, label, async () => hasChanges
@@ -818,7 +831,6 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
             throw serviceError(error, label, ctx.lang);
         }
         const stored = outcome.result;
-        const moved = repeat !== undefined && repeatDiffers(repeat.from, repeat.to);
         const repeatUndo: RepeatMove | null = moved ? { from: outcome.saved, to: repeat!.from ? repeatTarget(repeat!.from) : null } : null;
         const newLabel = triggerLabel(stored);
         const change: ChangeRecordInput = {
@@ -828,7 +840,7 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
             after: proposal.after,
             undo: {
                 op: 'update', id, restore: hasChanges ? restoreBody(current, changes) : {}, expected: commandSnapshot(stored),
-                ...(repeatUndo ? { repeat: repeatUndo } : {}), ...(canRepeat(stored) ? { repeatAfter: await repeatAsLeft(ctx, stored) } : {}),
+                ...(repeatUndo ? { repeat: repeatUndo } : {}), ...(canRepeat(stored) ? { repeatAfter: moved ? outcome.saved : linked } : {}),
             },
             summary: `Updated ${newLabel}`,
         };

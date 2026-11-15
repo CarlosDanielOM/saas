@@ -111,16 +111,22 @@ export async function goalSnapshot(channel: string, now = Date.now()) {
   return { plan, limit: goalLimit(plan), metrics: goalMetrics(plan), revision: state?.revision ?? 0, goals, twitch, serverTime: now };
 }
 
-// A single channel document provides atomic slot allocation and stale-edit detection.
-export async function changeGoal(channel: string, action: 'create' | 'edit' | 'delete', input: unknown, expectedRevision: number, id?: string): Promise<void> {
+/**
+ * A single channel document provides atomic slot allocation and stale-edit detection.
+ * Returns what this write saved: the goal list at the revision it produced, and the id of a created goal.
+ * Callers that keep undo data use it instead of reading again, where another save may already have landed.
+ */
+export async function changeGoal(channel: string, action: 'create' | 'edit' | 'delete', input: unknown, expectedRevision: number, id?: string): Promise<{ revision: number; goals: Goal[]; id: string | undefined }> {
   const plan = await goalPlan(channel), state = await GoalSet.findById(channel).lean();
   if ((state?.revision ?? 0) !== expectedRevision) throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
   const goals = [...(state?.goals ?? [])];
   let createdMonthly: Goal | undefined;
+  let createdId: string | undefined;
   if (action === 'create') {
     if (goals.length >= goalLimit(plan)) throw new GoalError('limit', 'Your plan goal limit has been reached', 409);
     const goal = newGoal(input, plan, randomUUID(), Date.now());
     goals.push(goal);
+    createdId = goal.id;
     if (goal.mode === 'monthly') createdMonthly = goal;
   } else {
     const index = goals.findIndex(goal => goal.id === id);
@@ -153,6 +159,7 @@ export async function changeGoal(channel: string, action: 'create' | 'edit' | 'd
   // Deleted goal IDs never return. A concurrent delivery may leave an unreachable receipt,
   // but cannot affect another goal or resurrect deleted configuration.
   if (action === 'delete') await GoalContribution.deleteMany({ channel, goal: id }, { writeConcern: durable });
+  return { revision: expectedRevision + 1, goals, id: action === 'create' ? createdId : id };
 }
 
 /** Saves (or removes, with no actions) the actions for one Twitch goal type. Same revision check as goal edits. */

@@ -395,6 +395,11 @@ export interface EventsubUpdateOptions {
      * The route never sets it.
      */
     guard?: Record<string, unknown>;
+    /**
+     * Stored fields to remove in the same write, e.g. an undo putting back a field the event did not have
+     * (a setting added to the catalog later). Names in the body win. The route never sets it.
+     */
+    unset?: string[];
     /** The owner console: skips the raid field list, "can't be disabled", plan gates and tier limits. */
     override?: boolean;
 }
@@ -431,8 +436,9 @@ export async function updateChannelEventsub(channelID: string, id: string, rawBo
 
     // The owner console (`override`) edits like the database: no raid field list, no "can't be disabled",
     // no plan gate or tier limit. Its route only ever sends the stored chat settings (see admin_site).
+    const unset = (options.unset ?? []).filter(key => !Object.prototype.hasOwnProperty.call(body, key));
     if (eventsub.type === 'channel.raid' && !options.override) {
-        if (Object.keys(body).some(key => !RAID_EVENT_FIELDS.has(key)) || body.enabled !== undefined && typeof body.enabled !== 'boolean'
+        if ([...Object.keys(body), ...unset].some(key => !RAID_EVENT_FIELDS.has(key)) || body.enabled !== undefined && typeof body.enabled !== 'boolean'
             || body.message !== undefined && typeof body.message !== 'string') {
             return { status: 400, body: { error: true, message: 'Invalid raid event settings' } };
         }
@@ -479,9 +485,12 @@ export async function updateChannelEventsub(channelID: string, id: string, rawBo
         }
     }
 
+    const update = unset.length
+        ? { ...(Object.keys(body).length ? { $set: body } : {}), $unset: Object.fromEntries(unset.map(key => [key, 1])) }
+        : body;
     const updatedEventsub = await EventsubSchema.findOneAndUpdate(
         { _id: id, channelID, ...(options.guard ?? {}) },
-        body,
+        update,
         { new: true }
     ).lean();
 

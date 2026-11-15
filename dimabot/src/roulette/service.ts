@@ -72,6 +72,23 @@ function apply(state: State, action: Action, now: number): string {
 }
 /** One channel document is the atomic boundary across API, bot and cron processes. */
 export async function execute(channelId: string, action: Action, requestKey?: string, expectedRevision?: number, actor?: DrawActor) {
+  const done = await commit(channelId, [action], requestKey, expectedRevision, actor);
+  return { revision: done.revision, result: done.results[0], replayed: done.replayed };
+}
+/**
+ * Several actions as ONE write: applied in order to the same state and saved under one revision, so
+ * either all of them land or none (any refusal, or `expectedRevision` no longer current, writes
+ * nothing). Returns each action's result, the revision the write produced and the state it saved
+ * (callers that keep undo data use it instead of reading again, where another save may already
+ * have landed). No idempotency key; spins can't be batched.
+ */
+export async function executeAll(channelId: string, actions: Action[], expectedRevision?: number): Promise<{ revision: number; results: string[]; state: State }> {
+  if (!actions.length || actions.length > domain.IMPORT_LIMIT) domain.fail('invalid', `Give 1–${domain.IMPORT_LIMIT} roulette actions`);
+  if (actions.some(a => a.operation === 'start')) domain.fail('invalid', 'A spin cannot be part of a batch');
+  const done = await commit(channelId, actions, undefined, expectedRevision);
+  return { revision: done.revision, results: done.results, state: done.state };
+}
+function checkSources(action: Action): void {
   if ((action.operation === 'add' || action.operation === 'update') && action.data?.action !== undefined) {
     const source = domain.actionSource(action.data.action);
     if (source && parse(source).error) domain.fail('invalid_action', 'Invalid AST syntax in item action');
@@ -83,21 +100,27 @@ export async function execute(channelId: string, action: Action, requestKey?: st
         throw new domain.RouletteError('invalid_action', `Prize ${i + 1}: Invalid AST syntax in item action`, 400, i + 1);
     });
   }
+}
+async function commit(channelId: string, list: Action[], requestKey?: string, expectedRevision?: number, actor?: DrawActor) {
+  list.forEach(checkSources);
   if (actor && (typeof actor.userId !== 'string' || typeof actor.userLogin !== 'string' || typeof actor.userDisplayName !== 'string'
     || actor.userId.length > 100 || actor.userLogin.length > 100 || actor.userDisplayName.length > 120 || (actor.argument?.length ?? 0) > 2000)) domain.fail('invalid', 'Invalid draw actor');
   if (requestKey !== undefined) domain.text(requestKey, 'Idempotency-Key', 128);
   if (expectedRevision !== undefined) domain.integer(expectedRevision, 'revision', 0);
+  // Receipts (single actions only) fingerprint the action as before.
+  const action = list[0];
   const fingerprint = hash(JSON.stringify(actor ? { ...action, actor } : action)); const receiptKey = requestKey ? hash(requestKey) : null;
   for (let retry = 0; retry < 20; retry++) {
     const doc = await load(channelId); const now = Date.now();
     const receipt = receiptKey && doc.receipts.find(r => r.key === receiptKey && now - r.at < 86400000);
     if (receipt) {
       if (receipt.fingerprint !== fingerprint) domain.fail('idempotency_conflict', 'Idempotency key was used for a different action', 409);
-      return { revision: doc.revision, result: receipt.result, replayed: true };
+      return { revision: doc.revision, results: [receipt.result], replayed: true, state: doc.state };
     }
     if (expectedRevision !== undefined && expectedRevision !== doc.revision) domain.fail('revision_conflict', 'State changed; refresh before saving', 409);
     domain.settle(doc.state, now);
-    const result = apply(doc.state, action, now);
+    const results = list.map(item => apply(doc.state, item, now));
+    const result = results[0];
     const actions = doc.actions ?? [];
     if (action.operation === 'start') {
       const draw = doc.state.draw!;
@@ -119,7 +142,7 @@ export async function execute(channelId: string, action: Action, requestKey?: st
     const saved = await RouletteChannel.updateOne({ _id: channelId, revision: doc.revision }, {
       $set: { actions: savedActions, actionDueAt: actionDue(savedActions), state: doc.state, dueAt: due(doc.state), receipts: receipts.slice(-200) }, $inc: { revision: 1 },
     });
-    if (saved.modifiedCount) return { revision: doc.revision + 1, result, replayed: false };
+    if (saved.modifiedCount) return { revision: doc.revision + 1, results, replayed: false, state: doc.state };
   }
   return domain.fail('busy', 'Roulette is busy; retry with the same idempotency key', 409);
 }
