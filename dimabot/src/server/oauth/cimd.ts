@@ -36,7 +36,7 @@ type Fetcher = (url: string) => Promise<Fetched>;
 
 /** Exact client_id URLs of known MCP apps. Each document was fetched and validated on 2026-11-14; source per entry.
  *  Not listed: Claude's `/confidential_client` (private_key_jwt only, refused here), ChatGPT/Codex per-callback ids
- *  (`chatgpt.com/oauth/<callback_id>/client.json`, opaque; sent to servers without RFC 9207 `iss`), Cursor (no CIMD). */
+ *  (`chatgpt.com/oauth/<callback_id>/client.json`, opaque; sent to servers without RFC 9207 `iss`). */
 export const RECOGNIZED_CIMD_CLIENTS: readonly string[] = [
     // Claude (claude.ai, Desktop, mobile): the vendor-hosted document (client_name "Claude"); Anthropic's
     // claude.com/docs/connectors/building/enterprise-managed-auth.md pairs it with the /confidential_client variant.
@@ -53,7 +53,11 @@ export const RECOGNIZED_CIMD_CLIENTS: readonly string[] = [
     // Zed: zed-industries/zed crates/context_server/src/oauth.rs `CIMD_URL`.
     'https://zed.dev/oauth/client-metadata.json',
     // goose: aaif-goose/goose crates/goose/src/oauth/mod.rs `CLIENT_METADATA_URL`.
-    'https://goose-docs.ai/oauth/client-metadata.json'
+    'https://goose-docs.ai/oauth/client-metadata.json',
+    // Cursor: the vendor-hosted document, fetched and validated 2026-11-15 (client_name "Cursor", public client,
+    // cursor.com callbacks plus localhost:8787 and grok.com/connectors-oauth-exchange-code/); a Cursor session has
+    // used it in production since 2026-11-15.
+    'https://cursor.com/oauth/mcp-client.json'
 ];
 /** Code-level kill switch, same member format as the `oauth:cimd:deny` set: an exact client_id or `host:<hostname>`. */
 const DENIED_CIMD_CLIENTS: readonly string[] = [];

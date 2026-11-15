@@ -287,15 +287,39 @@ result = await refresh(token.refresh_token);
 assert.equal(result.status, 200);
 assert.notEqual(result.body.refresh_token, token.refresh_token);
 assert.equal((await get('/v1/me', result.body.access_token)).status, 200);
-assert.equal((await refresh(token.refresh_token)).status, 400, 'reuse revokes family');
+// 60 s grace: the replaced token answers with the same successor; the record is sealed (no plaintext token).
+const graceKey = `oauth:refresh:grace:${digest(token.refresh_token)}`;
+const graceTtl = await redis.ttl(graceKey);
+assert.ok(graceTtl > 0 && graceTtl <= 60, `grace TTL ${graceTtl}`);
+assert.equal((await redis.get(graceKey)).includes('dima_rt_'), false, 'grace record holds no plaintext token');
+assert.equal((await refresh(token.refresh_token, { scope: 'profile:read' })).status, 400, 'grace keeps the scope check');
+assert.equal((await post('/oauth/token', { grant_type: 'refresh_token', refresh_token: token.refresh_token,
+  client_id: 'unknown-client' })).status, 400, 'grace keeps the client check');
+const replay = await refresh(token.refresh_token);
+assert.equal(replay.status, 200, 'replay within the grace');
+assert.equal(replay.body.refresh_token, result.body.refresh_token, 'same successor');
+assert.notEqual(replay.body.access_token, result.body.access_token);
+assert.equal((await get('/v1/me', replay.body.access_token)).status, 200);
+assert.equal((await get('/v1/me', result.body.access_token)).status, 200, 'the session lives');
+// Grace over (its record expired): reuse revokes the family.
+await redis.del(graceKey);
+assert.equal((await refresh(token.refresh_token)).status, 400, 'reuse outside the grace revokes family');
 assert.equal((await get('/v1/me', result.body.access_token)).status, 401);
 const closed = once(ws, 'close');
 ws.send(JSON.stringify({ type: 'ping', id: 'after-revoke' }));
 assert.equal((await closed)[0], 4401);
 
 const race = await mint('profile:read');
-assert.deepEqual((await Promise.all([refresh(race.refresh_token), refresh(race.refresh_token)])).map(item => item.status).sort(), [200, 400]);
-assert.equal((await get('/v1/me', race.access_token)).status, 401, 'concurrent refresh fails closed');
+const raced = await Promise.all([refresh(race.refresh_token), refresh(race.refresh_token), refresh(race.refresh_token)]);
+assert.deepEqual(raced.map(item => item.status), [200, 200, 200], 'concurrent refreshes all succeed');
+assert.equal(new Set(raced.map(item => item.body.refresh_token)).size, 1, 'one successor');
+for (const item of raced) assert.equal((await get('/v1/me', item.body.access_token)).status, 200);
+assert.equal((await get('/v1/me', race.access_token)).status, 200, 'concurrent refresh keeps the session');
+assert.equal(await OAuthRefreshToken.countDocuments({ session_id: race.session_id }), 2, 'losers left no refresh records');
+const raceNext = await refresh(raced[0].body.refresh_token);
+assert.equal(raceNext.status, 200);
+assert.equal((await refresh(race.refresh_token)).status, 400, 'replay after the successor rotated revokes');
+assert.equal((await get('/v1/me', raceNext.body.access_token)).status, 401);
 const expiring = await mint('profile:read');
 await redis.del(`oauth:access:${digest(expiring.access_token)}`);
 assert.equal((await get('/v1/me', expiring.access_token)).status, 401);

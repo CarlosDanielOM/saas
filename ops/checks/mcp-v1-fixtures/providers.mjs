@@ -9,8 +9,14 @@ async function cache() {
 }
 
 export const CIMD_CLIENT = 'https://client.example.com/oauth/mcp-client.json';
+// An exact RECOGNIZED_CIMD_CLIENTS entry, served locally: its fetches use the reserved slots and their own budget.
+export const RECOGNIZED_CLIENT = 'https://claude.ai/oauth/mcp-oauth-client-metadata';
 const cimd = await import('/app/dist/server/oauth/cimd.js');
-cimd.__setCimdFetcherForTests(async url => url === CIMD_CLIENT
+cimd.__setCimdFetcherForTests(async url => url === RECOGNIZED_CLIENT
+  ? { status: 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }, body: JSON.stringify({
+      client_id: RECOGNIZED_CLIENT, client_name: 'Claude', redirect_uris: ['http://localhost:5555/callback'],
+      token_endpoint_auth_method: 'none' }) }
+  : url === CIMD_CLIENT
   ? { status: 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }, body: JSON.stringify({
       client_id: CIMD_CLIENT, client_name: 'Check MCP Client', redirect_uris: ['http://localhost:5555/callback'],
       token_endpoint_auth_method: 'none', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] }) }

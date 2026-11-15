@@ -319,8 +319,45 @@ result = await mcp(reader, 'tools/list');
 assert.equal(result.status, 401);
 await redis.sRem('oauth:cimd:deny', CIMD);
 
+// CIMD fetch limits (last: they use up this process's shared fetch budget for a minute). Only real fetches count.
+const RECOGNIZED = 'https://claude.ai/oauth/mcp-oauth-client-metadata';
+const failKey = id => `oauth:cimd:fail:${digest(id)}`;
+const authorizeFrom = (client, clientId) => http('GET', `/oauth/authorize?${new URLSearchParams({ client_id: clientId,
+  response_type: 'code', redirect_uri: CALLBACK, scope: 'channel:read', code_challenge: digest(rand()), code_challenge_method: 'S256',
+  resource: MCP })}`, { headers: { 'X-Real-IP': '162.158.10.1', 'CF-Connecting-IP': client } });
+const junk = id => `https://junk-${id}.example.com/oauth/client.json`;
+for (let i = 0; i < 10; i++) {
+  result = await authorizeFrom('203.0.113.60', junk(`a${i}`));
+  assert.deepEqual([result.status, result.body], [400, { error: 'invalid_client' }]);
+  assert.equal(await redis.exists(failKey(junk(`a${i}`))), 1, 'a fetched 404 is negatively cached');
+}
+result = await authorizeFrom('203.0.113.60', junk('a10'));
+assert.deepEqual([result.status, result.body], [400, { error: 'invalid_client' }], 'source over budget: same error shape');
+assert.equal(await redis.exists(failKey(junk('a10'))), 0, 'a local limit is never negatively cached');
+result = await authorizeFrom('203.0.113.60', junk('a0'));
+assert.equal(result.status, 400, 'negative-cache hits need no budget');
+result = await authorizeFrom('203.0.113.61', CIMD);
+assert.equal(result.status, 302);
+assert.equal(new URL(result.headers.location).origin, 'https://domdimabot.com', 'another source still connects');
+// Use up the shared per-minute budget for unknown ids from fresh sources (10 each), until a fresh source is refused.
+let exhausted = false;
+for (let n = 0; n < 13 && !exhausted; n++) for (let i = 0; i < 10 && !exhausted; i++) {
+  const id = junk(`s${n}-${i}`);
+  result = await authorizeFrom(`198.51.100.${n + 10}`, id);
+  assert.equal(result.status, 400);
+  exhausted = await redis.exists(failKey(id)) === 0;
+}
+assert.ok(exhausted, 'the shared budget for unknown client ids ran out');
+result = await authorizeFrom('198.51.100.200', CIMD);
+assert.deepEqual([result.status, result.body], [400, { error: 'invalid_client' }], 'an unknown app now waits for the next minute');
+result = await authorizeFrom('198.51.100.201', RECOGNIZED);
+assert.equal(result.status, 302, 'a recognized app is not starved');
+const recognizedRequest = new URL(result.headers.location).searchParams.get('request');
+result = await api('GET', `/oauth/requests/${recognizedRequest}`);
+assert.deepEqual([result.body.client_name, result.body.recognized], ['Claude', true]);
+
 console.log('PASS MCP v1.1: parallel calls + batch limits + call log; CIMD sign-in + admin channel choice (explicit mcp:admin, not *, owner-only grant), audience, PRM/challenges/step-up, host boundary, tool list, '
-  + 'reads/writes charged once, free credit balance, safe-body guard, undo, credits exhaustion, live rights, denylist');
+  + 'reads/writes charged once, free credit balance, safe-body guard, undo, credits exhaustion, live rights, denylist, CIMD fetch budgets');
 await mongo.disconnect();
 await redis.quit();
 process.exit(0);
