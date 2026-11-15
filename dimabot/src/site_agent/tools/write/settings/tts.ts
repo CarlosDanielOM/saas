@@ -7,6 +7,7 @@ import { EXPRESSIVE_TTS_TAGS } from '../../../../utils/tts/expressive_tts_tags.u
 import { ToolInputError, type AgentTool, type ChangeProposal, type ToolContext } from '../../../types.js';
 import { asObject, bool, int, oneOf, str } from '../../util.js';
 import { assertUnchanged, changedPaths, channelName, conflict, display, pickPaths, requireSomething, routeMessage, tr, type FieldLabel } from './common.js';
+import { MCP_APPLIES } from '../../mcp_text.js';
 
 /** Text to Speech settings (Modules → Text to Speech). Route: PUT /speech/settings/:channelID (`tts:manage`). */
 
@@ -101,6 +102,16 @@ export const updateTtsSettings: AgentTool<TtsInput> = {
         'voiceTagsOn / voiceTagsOff (Fish voice tags like whisper, laugh, excited that viewers may use or not).',
         'Only send fields that change. The user approves before anything is saved; it can be undone. The Speech URL is never shown here: tell the user to copy it from the TTS page.'
     ].join(' '),
+    mcpDescription: [
+        'Change Text to Speech settings (Modules → Text to Speech). TTS reads chat messages aloud on stream through the Speech URL browser source in OBS (the !s command, TTS functions in commands, rewards).',
+        'Fields: enabled (through MCP only false, to turn channel TTS off; turning it on lets every stored TTS use speak again, so that is done on the website); provider = default voice engine: "piper" (one English voice Ryan and one Spanish voice Ald, cheapest, works with no credits), "kokoro" (preset voices), "fish" (cloned voices, the only engine that reads voice tags, most credits);',
+        'defaultLanguage (en/es, picks the Piper voice); kokoroVoice (a Kokoro preset id such as af_heart or ef_dora); fishVoice (built-in gojo, rias_gremory, toji_fushiguro, carlos_bodoque, a saved favorite nickname, or a 32-character Fish voice ID; it does not switch the engine, set provider "fish" too);',
+        'skipEmotes (remove emote names), stripLinks (links become [link]), normalizeWhitespace (collapse spaces), maxLength (30–500 characters, longer messages are cut), maxQueue (1–20 messages waiting, counting the one playing);',
+        'playEverywhere (off, the default: each message plays on one open Speech URL that can play it and moves to another copy if that one fails; on: every open copy plays every message at once, e.g. OBS plus a second PC);',
+        'voiceTagsOn / voiceTagsOff (Fish voice tags like whisper, laugh, excited that viewers may use or not).',
+        'Only send fields that change. The Speech URL is never shown here: tell the user to copy it from the TTS page.', MCP_APPLIES
+    ].join(' '),
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: {
         type: 'object',
         additionalProperties: false,

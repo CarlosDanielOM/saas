@@ -458,7 +458,8 @@ test('listing: allowlist ∩ the requester\'s tools ∩ the token\'s scopes, wit
     const create = all.find((tool) => tool.name === 'create_command')!;
     assert.match(create.description, /applies right away/);
     assert.match(create.description, /reply functions/);
-    assert.deepEqual(create.annotations, { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false });
+    // This fake declares no mcpAnnotations: a write then gets the spec's cautious hints.
+    assert.deepEqual(create.annotations, { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true });
     assert.equal(all.find((tool) => tool.name === 'delete_command')!.annotations.destructiveHint, true);
     assert.equal(all.find((tool) => tool.name === 'undo_change')!.annotations.destructiveHint, true);
 

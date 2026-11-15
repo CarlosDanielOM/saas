@@ -75,11 +75,6 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
     navigate: 'site UI (moves the browser)',
 };
 
-/** Extra words for a tool's MCP description (replaces the generic command-text note). */
-export const MCP_NOTES: Readonly<Record<string, string>> = {
-    update_tts_settings: ' Through MCP, Text to Speech can be turned off but not on: turning it on is done on the website.',
-};
-
 /** MCP-only tools (never in the site registry). */
 export const MCP_ONLY_TOOLS: readonly string[] = ['list_recent_changes', 'undo_change', 'get_ai_credits'];
 

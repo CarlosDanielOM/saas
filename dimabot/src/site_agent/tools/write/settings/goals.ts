@@ -4,6 +4,7 @@ import { requestWidgetSessionRefresh } from '../../../../widget_feed/session-ref
 import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type Lang, type ToolContext } from '../../../types.js';
 import { asObject, int, oneOf, str } from '../../util.js';
 import { bodyEffects, conflict, mergeEffects, sameValue, tr } from './common.js';
+import { MCP_APPLIES, mcpCommandText } from '../../mcp_text.js';
 
 /**
  * Goals (the dashboard Goals card; also OBS goal widgets). Routes: POST/PATCH/DELETE /goals/:channelID
@@ -94,6 +95,14 @@ export const createGoal: AgentTool<GoalCreateInput> = {
         'target: the number to reach. completionAction runs once when the goal is reached; failureAction when a fixed, rolling or monthly goal ends unreached (message = chat text, ast = command body).',
         'Plan limits: Free 2 goals, Premium 3, Pro 4. Currency goals and Twitch goal actions are set up on the page. The user approves first; undo deletes the new goal.'
     ].join(' '),
+    mcpDescription: [
+        'Create a goal (dashboard → Goals; OBS goal widgets show it). metric: follows, subs, or bits (Bits need Premium/Pro). mode: total (counts from now on), current (the channel\'s current follower/sub total; follows and subs only),',
+        'fixed (between startsAt and endsAt, ISO dates with a time zone offset), rolling (the last windowSeconds, up to 90 days), monthly (resets each month in timeZone, an IANA zone like America/Mexico_City).',
+        'target: the number to reach. completionAction runs once when the goal is reached; failureAction when a fixed, rolling or monthly goal ends unreached (message = chat text, ast = command body).',
+        'Plan limits: Free 2 goals, Premium 3, Pro 4. Calling again creates another goal. Currency goals, Twitch goal actions and deleting goals are done on the website.',
+        mcpCommandText(), MCP_APPLIES
+    ].join(' '),
+    mcpAnnotations: { destructive: false, idempotent: false, openWorld: false },
     parameters: {
         type: 'object', additionalProperties: false, required: ['name', 'metric', 'mode', 'target'],
         properties: {
@@ -172,6 +181,10 @@ export const updateGoal: AgentTool<GoalUpdateInput> = {
     kind: 'write',
     permissions: GOAL_PERMISSIONS,
     description: 'Edit a goal (dashboard → Goals): its name, target, and the actions when it is reached (completionAction) or missed (failureAction; fixed, rolling and monthly goals only). Pass null to remove an action. Metric and counting mode cannot change: delete and create a new goal instead. Goal ids come from get_settings area "goals". The user approves first; it can be undone.',
+    mcpDescription: 'Edit a goal (dashboard → Goals): its name, target, and the actions when it is reached (completionAction) or missed (failureAction; fixed, rolling and monthly goals only). Pass null to remove an action. '
+        + 'Metric and counting mode cannot change: create a new goal instead (goals are deleted on the website). Goal ids come from get_settings area "goals". A changed action only runs if the goal has not been reached yet. '
+        + mcpCommandText('The goal\'s other stored actions are checked too.') + ' ' + MCP_APPLIES,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: {
         type: 'object', additionalProperties: false, required: ['id'],
         properties: {

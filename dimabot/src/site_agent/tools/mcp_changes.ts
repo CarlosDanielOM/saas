@@ -111,6 +111,8 @@ export const undoChangeTool: AgentTool<{ changeId: string }> = {
         + 'list: it puts back what was there before, only if nothing changed it since (otherwise it says what changed and '
         + 'leaves it as it is). It needs the same permission and plan as the original change. Changes made on the website '
         + 'are undone on the website. An undo can\'t be undone.',
+    // Undoing a chat event change subscribes or unsubscribes on Twitch; the same undo again finds it already undone.
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: true },
     parameters: {
         type: 'object',
         properties: { changeId: { type: 'string', description: 'id from list_recent_changes.' } },

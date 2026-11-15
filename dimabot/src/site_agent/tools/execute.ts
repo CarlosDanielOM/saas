@@ -19,7 +19,7 @@ import { permissionChecker, resolveAccess, roleFor, type ChannelAccess } from '.
 import { applyProposal, changeFromApply, recordChange, type LateApply, type RecordChangeInput } from '../changes.js';
 import { CreditError, releaseToolCredits, reserveToolCredits, settleToolCredits, toolPrice, type CreditReservation } from '../credits.js';
 import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type ChangeRecordInput, type ExecutableCheck, type JsonSchema, type Requester, type ToolContext, type ToolOutcome } from '../types.js';
-import { MCP_ALLOWLIST, MCP_NOTES, requiredScope, ToolDeniedError } from './mcp.js';
+import { MCP_ALLOWLIST, requiredScope, ToolDeniedError } from './mcp.js';
 import { mcpOnlyTools } from './mcp_changes.js';
 import { getTool, planAllows, toolsFor } from './registry.js';
 import { checkSafeBody } from './safe_body.js';
@@ -120,23 +120,31 @@ const planName = (tool: AgentTool) => tool.minPlan === 'pro' ? 'Pro' : 'Premium'
 // Listing
 // ---------------------------------------------------------------------------
 
-const WRITE_NOTE = ' Through MCP the change applies right away (there is no approval card); it is logged and can be undone with undo_change or from the website\'s Changes list.';
-const BODY_NOTE = ' Command text it writes or makes reachable (stored text included) may only use reply functions (names, arguments, random numbers, counters, math, text helpers, event values, Twitch reads); anything else, #(other commands) and blocks are set up on the website.';
+// Fallback only: every allowlisted write has its own mcpDescription and mcpAnnotations (mcp_descriptions.test.ts).
+const WRITE_NOTE = ' Through MCP the change applies right away and is logged; undo_change reverts it.';
+const BODY_NOTE = ' Command text it writes or makes reachable (stored text included) may only use reply functions (names, arguments, random numbers, counters, math, text helpers, event values, Twitch reads); anything else is set up on the website.';
+/** Hints for a tool that declares none: reads are safe; a write is assumed to overwrite, repeat and reach Twitch (the spec's defaults). */
+const READ_HINTS = { destructive: false, idempotent: true, openWorld: false };
+const WRITE_HINTS = { destructive: true, idempotent: false, openWorld: true };
 
-function listing(tool: AgentTool): McpToolListing {
+/** One tool as MCP lists it: its MCP description (or the website one plus the MCP notes), the price, explicit hints. */
+export function listing(tool: AgentTool): McpToolListing {
     const credits = toolPrice(tool, 'mcp');
-    const siteWrite = tool.kind === 'write' && !MCP_ONLY.has(tool.name);
-    const description = tool.description + (siteWrite ? WRITE_NOTE : '') + (Object.hasOwn(MCP_NOTES, tool.name) ? MCP_NOTES[tool.name] : tool.executableFields ? BODY_NOTE : '')
+    const read = isRead(tool);
+    const notes = tool.kind === 'write' && !MCP_ONLY.has(tool.name) ? WRITE_NOTE + (tool.executableFields ? BODY_NOTE : '') : '';
+    const description = (tool.mcpDescription ?? tool.description + notes)
         + (credits > 0 ? ` Costs ${credits} AI credit${credits === 1 ? '' : 's'} from the channel.` : '');
+    const hints = tool.mcpAnnotations ?? (read ? READ_HINTS : WRITE_HINTS);
     return {
         name: tool.name,
         description,
         inputSchema: tool.parameters,
         annotations: {
-            readOnlyHint: isRead(tool),
-            destructiveHint: /^(delete|remove)_/.test(tool.name) || tool.name === 'undo_change',
-            idempotentHint: isRead(tool),
-            openWorldHint: false,
+            readOnlyHint: read,
+            // Only meaningful for tools that change something.
+            destructiveHint: !read && hints.destructive,
+            idempotentHint: hints.idempotent,
+            openWorldHint: hints.openWorld,
         },
         credits,
     };

@@ -17,6 +17,7 @@ import { asObject, bool, int, str, stableJson } from '../util.js';
 import { describeCommandEffects } from '../effects.js';
 import { deleteTimerIfUnchanged, updateTimerIfUnchanged } from '../../../commands/timer_manager.command.js';
 import { validateTimerEditInterval } from '../../../utils/timer_policy.js';
+import { MCP_APPLIES, mcpCommandText } from '../mcp_text.js';
 import {
     checkGuarded, MAX_TIMER_MESSAGE, MAX_TIMER_NAME, moveRepeat, readTimer, REPEAT_RULES, RepeatRefused, timerChangedFields, timerCommand,
     timerConflict, timerGuard, timerLabel as label, timerSnapshot, type TimerRow, type TimerSnapshot,
@@ -92,6 +93,14 @@ export const updateTimerTool: AgentTool<UpdateInput> = {
         + 'Send only what changes; the user approves a card first. To start or stop a command\'s repeat use '
         + 'update_command repeatMinutes; this tool cannot create timers. ' + REPEAT_RULES + ' A timer whose interval no '
         + 'longer fits the plan keeps running but needs a valid interval before any other edit.',
+    mcpDescription:
+        'Change a timer from list_timers: minutes (interval), enabled (pause or resume it), and message (stand-alone timers '
+        + 'only: a command\'s repeat posts the command\'s reply, so change that with update_command). Send only what changes. '
+        + 'To start or stop a command\'s repeat use update_command repeatMinutes; this tool cannot create timers. Repeat '
+        + 'rules by plan are in create_command. A timer whose interval no longer fits the plan keeps running but needs a '
+        + 'valid interval before any other edit. ' + mcpCommandText('Its stored message is checked too when this resumes it or makes it post more often.')
+        + ' ' + MCP_APPLIES,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: {
         type: 'object',
         properties: {
@@ -227,6 +236,9 @@ export const deleteTimerTool: AgentTool<{ name: string }> = {
     name: 'delete_timer',
     description: 'Propose deleting a timer from list_timers (for a command\'s repeat this stops the repeating and keeps the command). '
         + 'The user approves a card first; it can be undone from the Changes list. To pause it instead, use update_timer enabled=false.',
+    mcpDescription: 'Delete a timer from list_timers (for a command\'s repeat this stops the repeating and keeps the command). '
+        + 'To pause it instead, use update_timer enabled=false. ' + MCP_APPLIES,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: {
         type: 'object',
         properties: { name: { type: 'string', maxLength: MAX_NAME, description: 'Timer name from list_timers.' } },

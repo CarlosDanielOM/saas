@@ -6,6 +6,7 @@ import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal,
 import { createHash } from 'node:crypto';
 import { asObject, bool, int, oneOf, stableJson, str } from '../../util.js';
 import { assertPinned, bodyEffects, conflict, mergeEffects, sameValue, tr } from './common.js';
+import { MCP_APPLIES, mcpCommandText, mcpStoredText } from '../../mcp_text.js';
 
 /**
  * Roulettes (Modules → Roulette). Routes: /roulettes/:channelID/... need `*` (owner or full-access
@@ -158,6 +159,10 @@ export const createRoulette: AgentTool<RouletteCreateInput> = {
     kind: 'write',
     permissions: ROULETTE_PERMISSIONS,
     description: 'Create a roulette (Modules → Roulette): a prize wheel, cards, reel or elimination draw shown in OBS and spun from chat or the page. name and alias (lowercase, unique, used in commands) are required. Add prizes after with add_roulette_items. Up to 20 roulettes. The user approves first; undo deletes it while it is still empty.',
+    mcpDescription: 'Create a roulette (Modules → Roulette): a prize wheel, cards, reel or elimination draw shown in OBS and spun from chat or the page. name and alias (lowercase, unique, used in commands) are required. Add prizes after with add_roulette_items. Up to 20 roulettes. '
+        + 'Applies immediately and is logged; undo_change deletes it while it is still empty.',
+    // The same alias again is refused.
+    mcpAnnotations: { destructive: false, idempotent: true, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['name', 'alias'], properties: configSchema },
     label: (_input, lang) => tr(lang, 'Preparing the roulette…', 'Preparando la ruleta…'),
     validate: (raw) => ({ config: configInput(asObject(raw), true) }),
@@ -203,6 +208,9 @@ export const updateRoulette: AgentTool<RouletteUpdateInput> = {
     kind: 'write',
     permissions: ROULETTE_PERMISSIONS,
     description: 'Change a roulette\'s setup (Modules → Roulette): name, alias, design (wheel, cards, reel, elimination), cardSize, spin durationSeconds, colors, and settings (insertion, duplicate names, what happens to the winner, shuffle before each spin, show on start, hide after). Only the fields you send change. Not possible while it is spinning. The user approves first; it can be undone.',
+    mcpDescription: 'Change a roulette\'s setup (Modules → Roulette): name, alias, design (wheel, cards, reel, elimination), cardSize, spin durationSeconds, colors, and settings (insertion, duplicate names, what happens to the winner, shuffle before each spin, show on start, hide after). Only the fields you send change. Not possible while it is spinning. '
+        + mcpStoredText('Every winner action of the roulette') + ' ' + MCP_APPLIES,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['roulette'], properties: { roulette: rouletteRef, ...configSchema } },
     label: (_input, lang) => tr(lang, 'Preparing the roulette change…', 'Preparando el cambio de la ruleta…'),
     validate(raw) {
@@ -259,6 +267,9 @@ export const addRouletteItems: AgentTool<RouletteItemsInput> = {
     kind: 'write',
     permissions: ROULETTE_PERMISSIONS,
     description: `Add prizes to a roulette (Modules → Roulette → prizes, like Import prizes): each item has a label, optional weight (chance per copy, default 1), count (copies/slots, default 1) and winnerAction (a command body that runs when it wins, e.g. $(tts ...) or a timeout: check it carefully). All or nothing, up to ${MAX_ITEMS_PER_CALL} per call. With the "increase" duplicate setting, a repeated label adds copies to the existing prize. Design limits: cards 50–100 copies, reel 60, elimination 100. The user approves first; it can be undone.`,
+    mcpDescription: `Add prizes to a roulette (Modules → Roulette → prizes, like Import prizes): each item has a label, optional weight (chance per copy, default 1), count (copies/slots, default 1) and winnerAction (a command body that runs when it wins). All or nothing, up to ${MAX_ITEMS_PER_CALL} per call; calling again adds them again. With the "increase" duplicate setting, a repeated label adds copies to the existing prize. Design limits: cards 50–100 copies, reel 60, elimination 100. `
+        + mcpCommandText('Every stored winner action of the roulette is checked too.') + ' ' + MCP_APPLIES,
+    mcpAnnotations: { destructive: false, idempotent: false, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['roulette', 'items'], properties: { roulette: rouletteRef, items: { type: 'array', minItems: 1, maxItems: MAX_ITEMS_PER_CALL, items: itemSchema } } },
     label: (_input, lang) => tr(lang, 'Preparing the prizes…', 'Preparando los premios…'),
     validate(raw) {
@@ -342,6 +353,9 @@ export const updateRouletteItem: AgentTool<RouletteItemUpdateInput> = {
     kind: 'write',
     permissions: ROULETTE_PERMISSIONS,
     description: 'Edit one roulette prize (Modules → Roulette): label, weight (chance per copy), count (copies) or winnerAction (command body run when it wins; empty text removes it). Item ids come from get_settings area "roulettes". The user approves first; it can be undone.',
+    mcpDescription: 'Edit one roulette prize (Modules → Roulette): label, weight (chance per copy), count (copies) or winnerAction (command body run when it wins; empty text removes it). Item ids come from get_settings area "roulettes". '
+        + mcpCommandText('Every other winner action of the roulette is checked too.') + ' ' + MCP_APPLIES,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['roulette', 'itemId'], properties: { roulette: rouletteRef, itemId: { type: 'string' }, label: { type: 'string', maxLength: 120 },
         weight: { type: 'integer', minimum: 1 }, count: { type: 'integer', minimum: 1, maximum: 10000 }, winnerAction: { type: 'string', maxLength: 8000 } } },
     label: (_input, lang) => tr(lang, 'Preparing the prize change…', 'Preparando el cambio del premio…'),
@@ -409,6 +423,9 @@ export const removeRouletteItem: AgentTool<RouletteItemRemoveInput> = {
     kind: 'write',
     permissions: ROULETTE_PERMISSIONS,
     description: 'Remove one prize (and all its copies) from a roulette (Modules → Roulette). Item ids come from get_settings area "roulettes". The user approves first; undo adds the prize back (as a new prize at the end).',
+    mcpDescription: 'Remove one prize (and all its copies) from a roulette (Modules → Roulette). Item ids come from get_settings area "roulettes". The other prizes then win more often: '
+        + mcpStoredText('their winner actions') + ' Applies immediately and is logged; undo_change adds the prize back (as a new prize at the end).',
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['roulette', 'itemId'], properties: { roulette: rouletteRef, itemId: { type: 'string' } } },
     label: (_input, lang) => tr(lang, 'Preparing to remove the prize…', 'Preparando para quitar el premio…'),
     validate(raw) {

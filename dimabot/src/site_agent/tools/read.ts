@@ -159,6 +159,12 @@ export const channelOverviewTool: AgentTool<Record<string, never>> = {
         + 'setup or live status. In chat only = custom commands and the bot reply work, but features that need the '
         + 'streamer\'s Twitch approval (built-in moderation commands, alerts/chat events, channel points, polls) '
         + 'stay locked until full access is granted on the dashboard.',
+    mcpDescription:
+        'The channel at a glance: login, plan (and until when a paid plan runs), bot setup (not in chat / in chat only / '
+        + 'full access), whether the stream is live now (title, category, viewers), and the role of the account this app '
+        + 'acts for (owner or admin). Call it first when an answer depends on the plan, the bot setup or live status. In chat '
+        + 'only = custom commands and bot replies work, but built-in moderation commands, alerts, chat events, channel points '
+        + 'and polls stay locked until the streamer gives the bot full access from the dashboard.',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     kind: 'read',
     permissions: ['dashboard:view'],

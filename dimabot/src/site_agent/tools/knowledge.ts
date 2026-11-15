@@ -36,6 +36,13 @@ export const searchDocsTool: AgentTool<SearchDocsToolInput> = {
         + 'do not fit, search again with other words (feature names, function names like $(random), commands like !s). The docs '
         + 'index in your instructions already lists every page and section id, so you can read from it directly when the right '
         + 'section is obvious. lang defaults to the user\'s language; when nothing matches, results come from the other language.',
+    mcpDescription:
+        'Search the official DomDimaBot docs (this bot, its website and its features) by topic. Returns the best matching '
+        + 'sections: id, page, heading, url, a short snippet and the section size in tokens. Snippets are only previews: before '
+        + 'answering about syntax, functions, limits, plans, permissions or steps, read the section with read_docs. Use a few '
+        + 'keywords or a short question ("tts voice per viewer", "contador de muertes"); if nothing fits, try other words '
+        + '(feature names, function names like $(random), commands like !s). Pass lang (en or es) to match the user; when '
+        + 'nothing matches, results come from the other language.',
     parameters: {
         type: 'object',
         properties: {
@@ -103,6 +110,12 @@ export const readDocsTool: AgentTool<ReadDocsToolInput> = {
         + 'returns just that subsection with its parent id. scope "topic" (the default for a bare page path like "/tts") returns the '
         + 'whole page and the list of its section ids. Prefer one section; read the topic when you need the whole page. Long text '
         + 'comes in pages: when the result has nextPage, call again with page = nextPage. Unknown ids return the closest ids. Cite the url.',
+    mcpDescription:
+        'Read DomDimaBot docs text by id. A section id is a page path + "#" + anchor, e.g. "/tts#choose-a-voice-engine"; Spanish '
+        + 'pages start with /es/. Get ids from search_docs, or read a page path like "/tts" (scope "topic") for the whole page '
+        + 'and its section ids. scope "section" (the default when the id has "#") returns that section; a subsection id returns '
+        + 'just that subsection with its parent id. Prefer one section. Long text comes in pages: call again with page = '
+        + 'nextPage. Unknown ids return the closest ids. Cite the url.',
     parameters: {
         type: 'object',
         properties: {
