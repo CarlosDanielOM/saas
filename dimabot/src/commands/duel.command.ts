@@ -51,7 +51,7 @@ export async function duelCommand(channelID: string, user: string, _userMod: boo
     }
     if (target === TWITCH_BOT_LOGIN) {
       // The bot accepts at once (no accept/decline instructions) and always wins with its ultimate,
-      // except against its creator, who always wins instead.
+      // except against the logins in BOT_DUEL.winners, who always win instead.
       // In the bot's own channel it is the streamer, so the branch above runs (owner's choice).
       const run = await fightBot(channelID, actor, target, actor === owner);
       return { error: false, message: run.mode === 'overlay' ? '' : lines[run.language].bot(actor, target) };

@@ -42,7 +42,7 @@ result=await settle({},false);assert(!result.recorded,'chat duels are never reco
 result=await settle({leaderboard:false,rivalries:false},true);assert(!result.recorded,'both switches off: nothing recorded');
 result=await settle({leaderboard:false},true);assert(result.recorded,'rivalries alone still record results');
 assert.equal(await stats.DuelResult.countDocuments({channel}),3);
-// Fights against the bot are never recorded; its creator always wins, everyone else loses.
+// Fights against the bot are never recorded; listed winners (BOT_DUEL.winners) always win, everyone else loses.
 for(const [challenger,victor,line] of [['alice','right',/^@domdimabot has won the duel against @alice with \d+ HP left\.$/],['cdom201','left',/^@cdom201 has won the duel against @domdimabot with \d+ HP left\.$/]]){
  const before=chats().length;result=await settle({},true,false,{challenger,opponent:'domdimabot',bot:'right',victor});assert.equal(result.run.winner,victor);assert.equal(result.run.tracked,false);assert(!result.recorded,'bot fights are never recorded');
  const sent=chats().slice(before).map(c=>c.body.message);assert(sent.some(m=>line.test(m)),'winner line: '+JSON.stringify(sent));}

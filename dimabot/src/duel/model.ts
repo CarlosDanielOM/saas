@@ -71,7 +71,7 @@ export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: 
 export interface DuelRecord { left: number; right: number }
 /**
  * bot marks the bot account's side (it accepts at once). victor is the side that always wins with
- * its ultimate (BOT_DUEL): the bot, or the bot's creator when the creator challenges it.
+ * its ultimate (BOT_DUEL): the bot, or a listed winner (its creator and friends) who challenges it.
  */
 export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number; enraged?: DuelSide | null; bot?: DuelSide | null; victor?: DuelSide | null }
 export interface DuelRun {
@@ -132,9 +132,9 @@ export const ULTIMATE = { minTurn: 3, windup: 2800, duration: 3600 };
 // Until it lands, a blow that would knock the victor out leaves it at 1 HP (its next turn is the
 // ultimate, no stolen turn in between), a victor blow that would knock the other side out
 // becomes the ultimate, and the other side never rolls an ultimate. Channel rules still set HP,
-// damage and the other odds. The victor is the bot, except against its creator (a gag: the
-// creator defeats the creation), who gets the same rule against it.
-export const BOT_DUEL = { ultimateChance: 80, creator: 'cdom201' };
+// damage and the other odds. The victor is the bot, except against the logins in winners (its
+// creator and friends, a gag), who get the same rule against it.
+export const BOT_DUEL: { ultimateChance: number; winners: readonly string[] } = { ultimateChance: 80, winners: ['cdom201', 'nerfoscar'] };
 // Base damage before the rules' damage percentage; windup is the time from the turn start to the hit.
 export const MOVES: Record<DuelMove, { min: number; max: number; windup: number; duration: number }> = {
   normal: { min: 10, max: 16, windup: 280, duration: 800 },

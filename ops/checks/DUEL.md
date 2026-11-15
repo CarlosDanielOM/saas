@@ -50,9 +50,9 @@ ultimate, no stolen turn), a bot blow that would knock the viewer out becomes th
 rolls an ultimate. Channel rules still set HP, damage and the other odds. A streamer who challenges the bot stays
 enraged (and is never timed out). In the bot's own channel the bot is the streamer, so `!duel @domdimabot` there is an ordinary
 enraged-streamer fight (owner's decision, 2026-11-15).
-The one exception is the bot's creator (`BOT_DUEL.creator`, `cdom201`): the run stores `victor: 'left'` and the same
-rule runs reversed, so the creator always wins with an ultimate and the bot never fires one (the usual winner line,
-no special text: owner's decision). Every other challenger gets `victor: 'right'`. Bot fights are never tracked (no leaderboard row, no head-to-head); a losing
+The exceptions are the logins in `BOT_DUEL.winners` (`cdom201`, the creator, and `nerfoscar`): the run stores
+`victor: 'left'` and the same rule runs reversed, so they always win with an ultimate and the bot never fires one (the
+usual winner line, no special text: owner's decision). Every other challenger gets `victor: 'right'`. Bot fights are never tracked (no leaderboard row, no head-to-head); a losing
 viewer is timed out only when the channel turned loser timeouts on. Every other duel plays exactly as before.
 
 Battle rules are tunable per channel (`settings.rules`, `DEFAULT_RULES`/`RULE_LIMITS` in

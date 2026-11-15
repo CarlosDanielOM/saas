@@ -113,10 +113,10 @@ export async function challengeDuel(id: string, challenger: string, opponent: st
 /** Challenging the streamer skips the accept step: the enraged streamer always fights. */
 export const fightStreamer = (id: string, challenger: string, streamer: string) => fightAtOnce(id, { challenger, opponent: streamer, enraged: 'right' });
 /**
- * The bot account accepts at once and always wins with its ultimate, except against its creator,
- * who always wins instead (BOT_DUEL). A challenging streamer stays enraged.
+ * The bot account accepts at once and always wins with its ultimate, except against the logins in
+ * BOT_DUEL.winners (its creator and friends), who always win instead. A challenging streamer stays enraged.
  */
-export const fightBot = (id: string, challenger: string, bot: string, streamer: boolean) => fightAtOnce(id, { challenger, opponent: bot, enraged: streamer ? 'left' : null, bot: 'right', victor: challenger === BOT_DUEL.creator ? 'left' : 'right' });
+export const fightBot = (id: string, challenger: string, bot: string, streamer: boolean) => fightAtOnce(id, { challenger, opponent: bot, enraged: streamer ? 'left' : null, bot: 'right', victor: BOT_DUEL.winners.includes(challenger) ? 'left' : 'right' });
 async function fightAtOnce(id: string, sides: Pick<DuelChallenge, 'challenger' | 'opponent' | 'enraged' | 'bot' | 'victor'>): Promise<DuelRun> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
