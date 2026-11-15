@@ -226,6 +226,38 @@ assert.ok(change.undoneAt, 'the change is marked undone');
 events = await billing();
 assert.equal(events.reduce((sum, event) => sum + event.metadata.credits, 0), events.length, 'one credit per billed call');
 
+// v1.1 parallel tool calls: 16 at once on one connection all run (12 at a time, the rest wait their turn), each charged once.
+const billedBeforeParallel = (await billing()).length;
+const parallel = await Promise.all(Array.from({ length: 16 }, () => tool(writer, 'list_commands')));
+assert.deepEqual(parallel.map(item => item.error), Array(16).fill(false), parallel.find(item => item.error)?.text);
+assert.equal((await billing()).length, billedBeforeParallel + 16, 'every parallel call charged exactly once');
+// Batches (old 2025-03-26 clients): every message counts against the limits; more than 20 is refused.
+const batch = (token, messages, version = '2025-03-26') => http('POST', '/mcp', { host: 'mcp.domdimabot.com',
+  headers: { Authorization: `Bearer ${token}`, 'MCP-Protocol-Version': version },
+  body: messages.map(([method, params]) => ({ jsonrpc: '2.0', id: ++rpcId, method, ...(params ? { params } : {}) })) });
+result = await batch(writer, [['ping'], ['tools/list'], ['tools/call', { name: 'search_docs', arguments: { query: 'timers' } }]]);
+assert.equal(result.status, 200, result.text.slice(0, 300));
+assert.equal(Array.isArray(result.body) && result.body.length, 3, 'one answer per message');
+result = await batch(writer, Array.from({ length: 21 }, () => ['ping']));
+assert.equal(result.status, 400);
+assert.equal(result.body.error.code, -32600);
+// The call log: one row per tool call, refusals with their code and message, app and person, no arguments.
+const logRows = await mongo.connection.db.collection('mcp_call_logs').find({ channelId: OWNER }).toArray();
+assert.ok(logRows.length >= 24, `call log rows: ${logRows.length}`);
+const refusedRow = logRows.find(row => row.code === 'unsafe_content');
+assert.ok(refusedRow, 'the refused $(ban) write is logged');
+assert.equal(refusedRow.outcome, 'blocked');
+assert.equal(refusedRow.problem, true);
+assert.match(refusedRow.reason, /Not applied/);
+assert.equal(refusedRow.client.name, 'Check MCP Client');
+assert.equal(refusedRow.user.id, ADMIN);
+assert.equal(refusedRow.user.role, 'admin');
+const writeRow = logRows.find(row => row.tool === 'create_command' && row.outcome === 'ok');
+assert.ok(writeRow?.changeId, 'a logged write keeps its change id');
+assert.equal(writeRow.charged, 1);
+assert.ok(logRows.every(row => !('arguments' in row) && !JSON.stringify(row).includes('welcome!')), 'arguments are never stored');
+assert.ok(logRows.every(row => row.expiresAt > new Date(Date.now() + 80 * 86_400_000)), 'kept 90 days');
+
 // Step-up: a read-only token gets 403 insufficient_scope on a write, before anything runs.
 start = await begin('channel:read');
 result = await api('POST', `/oauth/requests/${start.location.searchParams.get('request')}/decision`, { approve: true, channel_id: OWNER }, 'mcp-browser-owner');
@@ -279,7 +311,7 @@ result = await mcp(reader, 'tools/list');
 assert.equal(result.status, 401);
 await redis.sRem('oauth:cimd:deny', CIMD);
 
-console.log('PASS MCP v1: CIMD sign-in + admin channel choice (explicit mcp:admin, not *, owner-only grant), audience, PRM/challenges/step-up, host boundary, tool list, '
+console.log('PASS MCP v1.1: parallel calls + batch limits + call log; CIMD sign-in + admin channel choice (explicit mcp:admin, not *, owner-only grant), audience, PRM/challenges/step-up, host boundary, tool list, '
   + 'reads/writes charged once, free credit balance, safe-body guard, undo, credits exhaustion, live rights, denylist');
 await mongo.disconnect();
 await redis.quit();

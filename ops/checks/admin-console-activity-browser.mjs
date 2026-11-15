@@ -55,6 +55,12 @@ const DIAGNOSTICS = [
   row(6, 'voice', { name: 'playback', outcome: 'failed', reason: 'play_error', ref: { type: 'activity', id: 'p2' },
     data: { provider: 'piper', chars: 18, heard: false, pages: 1, endReason: 'play-error' } }),
   row(7, 'voice', { name: 'playback', outcome: 'skipped', reason: 'tts_skipped', data: { provider: 'kokoro', heard: true, pages: 1, endReason: 'skip' } }),
+  // AI apps over MCP: a refused write, a charged read, a write whose result came late.
+  row(8, 'mcp', { name: 'create_command', outcome: 'blocked', reason: 'unsafe_content', text: 'Not applied: $(ban): bans a viewer.',
+    data: { app: 'Claude', toolKind: 'write', role: 'admin' } }),
+  row(9, 'mcp', { name: 'list_commands', outcome: 'ok', reason: null, text: null, credits: 1, data: { app: 'Cursor', toolKind: 'read', role: 'owner' } }),
+  row(10, 'mcp', { name: 'update_command', outcome: 'failed', reason: 'outcome_unknown', text: 'This change took too long.',
+    data: { app: 'ChatGPT', toolKind: 'write', late: 'applied' } }),
 ];
 const PAGE2 = [FIRST[5], ...Array.from({ length: 12 }, (_, i) => row(60 * 3 + i * 20, i % 2 ? 'command' : 'twitch_event', { name: i % 2 ? '!lurk' : 'channel.cheer', data: i % 2 ? {} : { amount: 100 } }))];
 const SUMMARY = {
@@ -391,6 +397,9 @@ try {
     'Voice message from Mossy_Fern played',
     "Voice message from Mossy_Fern didn't play: the speech page couldn't start the sound (often a hidden OBS source)",
     'Voice message from Mossy_Fern not finished: a mod skipped it',
+    'Claude: “create command” refused for Mossy_Fern: the command text could act on the stream',
+    'Cursor used “list commands” for Mossy_Fern',
+    'ChatGPT: “update command” failed for Mossy_Fern: it took too long, result unknown',
   ]);
   const details = await page.locator('[data-feed-row]').evaluateAll((els) => els.map((el) => el.querySelector('.feed-row__detail')?.textContent?.trim() ?? null));
   assert.equal(details[1], 'The bot replied how to use it');
@@ -411,7 +420,12 @@ try {
   assert.match(await open(5), /Ended as\s+couldn't start the sound/);
   // Tone: a failure is red, a setting at work (turned off, usage) is muted, a played message is ok.
   const tones = await rows.evaluateAll((els) => els.map((el) => el.dataset.tone));
-  assert.deepEqual(tones, ['danger', 'muted', 'muted', 'danger', 'ok', 'danger', 'muted']);
+  assert.deepEqual(tones, ['danger', 'muted', 'muted', 'danger', 'ok', 'danger', 'muted', 'warn', 'accent', 'danger']);
+  assert.match(details[9] ?? '', /it landed later/);
+  const app = await open(7);
+  assert.match(app, /App\s+Claude/);
+  assert.match(app, /Acting as\s+Admin/);
+  assert.match(app, /Tool type\s+Change/);
   // The filter sheet explains what a problem is.
   await openSheet();
   assert.match(await page.locator('[data-feed-sheet]').innerText(), /Turned off, cooldowns and other skips on purpose aren't problems\./);

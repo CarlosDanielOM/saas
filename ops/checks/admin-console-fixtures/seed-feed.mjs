@@ -204,6 +204,25 @@ export async function seedFeed(db, redis, now, ObjectId) {
     const turnOutcome = { 1: 'ok', 2: 'failed', 3: 'skipped' };
     for (const [n, row] of turns.slice(0, 3).entries()) expect(`assistant:${row._id}`, row.at, 'assistant', turnOutcome[n + 1], row.channelId, { id: row.user.id, login: row.user.login }, { text: row.message });
 
+    // ---- mcp_call_logs (AI apps over MCP) ----
+    const mcpCall = (n, at, fields) => ({
+        _id: `feed-mcp-${n}`, at, ms: 640, channelId: A, channelLogin: FEED_LOGINS.alpha, user: { id: A, login: FEED_LOGINS.alpha, role: 'owner' },
+        client: { id: 'https://claude.ai/oauth/mcp-oauth-client-metadata', name: 'Claude' }, sessionId: 'SECRET-session', tool: 'list_commands', kind: 'read',
+        outcome: 'ok', code: '', reason: '', problem: false, charged: 1, changeId: null, late: null, expiresAt: new Date(at.getTime() + 90 * 86_400_000), ...fields
+    });
+    const mcpCalls = [
+        mcpCall(1, t(7), {}),
+        mcpCall(2, t(97), { channelId: B, channelLogin: FEED_LOGINS.bravo, user: { id: X.id, login: X.login, role: 'admin' }, tool: 'create_command', kind: 'write',
+            outcome: 'blocked', code: 'unsafe_content', reason: 'Not applied: $(ban): bans a viewer.', problem: true, charged: 0 }),
+        mcpCall(3, tie, { tool: 'update_command', kind: 'write', outcome: 'failed', code: 'outcome_unknown', reason: 'This change took too long.', problem: true, charged: 0, late: 'applied' }),
+        mcpCall(4, t(99), { tool: 'get_command', outcome: 'blocked', code: 'permission_denied', reason: 'No permission.', problem: false, charged: 0 }),
+        mcpCall(5, tooOld, {})
+    ];
+    await db.collection('mcp_call_logs').insertMany(mcpCalls);
+    for (const row of mcpCalls.slice(0, 4)) {
+        expect(`mcp:${row._id}`, row.at, 'mcp', row.outcome, row.channelId, { id: row.user.id, login: row.user.login }, { reason: row.code || undefined, text: row.reason || null });
+    }
+
     // ---- docs assistant (Dragonfly) ----
     const answer = (id, at, question) => redis.hSet(`docs_assistant:answer:${id}`, {
         at: at.toISOString(), lang: 'en', page: 'https://docs.example.test/en/commands/?ref=SECRET', turn: '1', question, answer: 'SECRET-answer-body',
@@ -245,7 +264,8 @@ export async function cleanup(db, redis) {
         db.collection('stream_operations_receipts').deleteMany({ _id: FEED_EVENT_KEYS.stream }),
         db.collection('moderation_decisions').deleteMany({ _id: { $in: Array.from({ length: 6 }, (_, i) => sha(`feed-decision-${i + 1}`)) } }),
         db.collection('ai_usage_receipts').deleteMany({ entryId: { $regex: '^feed-usage-' } }),
-        db.collection('site_agent_turn_logs').deleteMany({ _id: { $regex: '^feed-turn-' } })
+        db.collection('site_agent_turn_logs').deleteMany({ _id: { $regex: '^feed-turn-' } }),
+        db.collection('mcp_call_logs').deleteMany({ _id: { $regex: '^feed-mcp-' } })
     ]);
     // The feed caches login lookups; our logins only.
     await redis.del(X_LOGIN_KEYS).catch(() => null);
@@ -275,7 +295,7 @@ export function expectedFeed(seed, query = {}) {
             if (entry.actorID !== query.actor) return false;
         } else if (query.actorLogin) {
             if (entry.actorLogin !== query.actorLogin) return false;
-            if (['event', 'usage', 'assistant'].includes(source) && !query.channel) return false;
+            if (['event', 'usage', 'assistant', 'mcp'].includes(source) && !query.channel) return false;
         }
         if (query.outcome === 'problems' && !isProblem(entry)) return false;
         if (query.outcome === 'failed' && entry.outcome !== 'failed') return false;
@@ -295,7 +315,7 @@ export function expectedCounts(seed, query = {}) {
     return counts;
 }
 
-const KIND_ORDER = ['command', 'bot_message', 'twitch_event', 'alert', 'protection', 'voice', 'ai', 'assistant', 'docs', 'credits', 'system'];
+const KIND_ORDER = ['command', 'bot_message', 'twitch_event', 'alert', 'protection', 'voice', 'ai', 'assistant', 'mcp', 'docs', 'credits', 'system'];
 
 /**
  * Kinds the response must list in `partial` for a login that did not resolve: stores that cannot search
@@ -307,6 +327,7 @@ export function expectedPartial(query = {}) {
     const gaps = new Set(['protection']);
     if (!query.channel) {
         gaps.add('assistant');
+        gaps.add('mcp');
         if (!query.outcome) for (const kind of ['twitch_event', 'voice', 'ai', 'credits']) gaps.add(kind);
     }
     return KIND_ORDER.filter(kind => gaps.has(kind) && (!query.kinds || query.kinds.includes(kind)));

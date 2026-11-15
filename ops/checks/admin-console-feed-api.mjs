@@ -107,7 +107,7 @@ try {
     const cases = [
         { channel: A }, { channel: B }, { actor: X.id }, { actorLogin: X.login }, { channel: A, actor: X.id }, { channel: B, actorLogin: X.login },
         { kinds: ['protection'] }, { kinds: ['voice', 'ai', 'credits'] }, { kinds: ['twitch_event'] }, { kinds: ['twitch_event', 'alert'], channel: A },
-        { kinds: ['docs'] }, { kinds: ['assistant'] }, { outcome: 'problems' }, { outcome: 'failed' }, { outcome: 'problems', channel: A },
+        { kinds: ['docs'] }, { kinds: ['assistant'] }, { kinds: ['mcp'] }, { kinds: ['mcp'], outcome: 'problems' }, { kinds: ['mcp'], channel: B }, { outcome: 'problems' }, { outcome: 'failed' }, { outcome: 'problems', channel: A },
         { outcome: 'failed', actor: X.id }, { kinds: ['command'], outcome: 'problems' }, { kinds: ['voice'], channel: B }, { kinds: ['credits'] }, { kinds: ['system', 'bot_message'] },
         { actor: X.id, kinds: ['twitch_event'] }, { actorLogin: X.login, outcome: 'problems' }, { actorLogin: X.login, kinds: ['voice', 'command'] }, { actorLogin: FEED_UNKNOWN_LOGIN }
     ];
@@ -120,7 +120,17 @@ try {
     assert.deepEqual(viewer.filter(item => item.id.startsWith('event:')).map(item => item.ref.id).sort(),
         [FEED_EVENT_KEYS.bits, FEED_EVENT_KEYS.follow, FEED_EVENT_KEYS.resub, FEED_EVENT_KEYS.viewerRaid].sort(), 'by user_id, chatter_user_id and from_broadcaster_user_id; never a billing event');
     const unknown = await read(`feed?${qs({ ...window, actorLogin: FEED_UNKNOWN_LOGIN })}`);
-    assert.deepEqual(unknown.partial, ['twitch_event', 'protection', 'voice', 'ai', 'assistant', 'credits'], 'an unresolvable login names every store it could not search');
+    assert.deepEqual(unknown.partial, ['twitch_event', 'protection', 'voice', 'ai', 'assistant', 'mcp', 'credits'], 'an unresolvable login names every store it could not search');
+    // AI app calls: tool, app, outcome code and the message the app got; never the session id.
+    const mcpRows = await all({ kinds: ['mcp'] }, 40);
+    for (const expected of expectedFeed(seed, { kinds: ['mcp'] })) {
+        const row = mcpRows.find(item => item.id === expected.id);
+        assert.ok(row, `${expected.id} listed`);
+        assert.equal(row.text, expected.text, 'the refusal message the app got');
+        assert.equal(row.reason, expected.reason ?? null);
+        assert.equal(row.data.app, 'Claude');
+    }
+    assert.equal(JSON.stringify(mcpRows).includes('SECRET-session'), false, 'no session ids');
 
     // ---- Row facts ----
     const items = await all({ channel: A }, 100);
