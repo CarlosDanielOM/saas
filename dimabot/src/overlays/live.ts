@@ -6,7 +6,7 @@ import { widgetStateRegistry, legacyInteractions } from './widget-state-provider
 import { getWidgetDefinition, validWidgetModuleConfig } from './widget-contract.js';
 import type { WidgetStateReadScope } from './widget-state.js';
 import type { InteractionKind, InteractionSnapshot } from './interaction-model.js';
-import { selectAlertLayout } from './model.js';
+import { isGiftEvent, selectAlertLayout } from './model.js';
 import { matchBitsRule, type BitsRule } from '../bits_rules/model.js';
 import { loadBitsRules } from '../bits_rules/store.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from './alert-events.js';
@@ -253,8 +253,10 @@ async function feedAlert(channel: string, subscriptionType: string, raw: Record<
 /** OBS tests from Studio: alert kinds map to their usual EventSub source. */
 const TEST_SOURCES: Record<AlertEvent, string> = { follow: 'channel.follow', sub: 'channel.subscribe', bits: 'channel.bits.use', raid: 'channel.raid' };
 export async function feedTestAlert(channel: string, publicId: string, kind: AlertEvent, raw: Record<string, unknown>): Promise<void> {
+  // A gift sample (it carries the gift count) reaches custom widgets as a gift, like a real channel.subscription.gift.
+  const source = kind === 'sub' && isGiftEvent(raw) ? 'channel.subscription.gift' : TEST_SOURCES[kind];
   const shaped = kind === 'raid' ? { from_broadcaster_user_name: raw.user_name, from_broadcaster_user_login: raw.user_login, from_broadcaster_user_id: raw.user_id, viewers: raw.viewers, ...raw } : raw;
-  await feedAlert(channel, TEST_SOURCES[kind], shaped, `test-${randomUUID()}`, Date.now(), true, peer => peer.publicId === publicId);
+  await feedAlert(channel, source, shaped, `test-${randomUUID()}`, Date.now(), true, peer => peer.publicId === publicId);
 }
 /** Studio "send to OBS" for custom widget tests (chat, alerts, deletes): one published overlay only. */
 export function feedTestEvent(channel: string, publicId: string, type: string, data: unknown): number {

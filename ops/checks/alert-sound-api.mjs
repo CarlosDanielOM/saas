@@ -10,6 +10,9 @@ const { default: Users }=await import('/app/dist/schemas/users.schema.js');
 const { renderLayout }=await import('/app/dist/overlays/ast.js');
 const owner='990221', foreign='990222';
 for(const id of [owner,foreign]){await Users.collection.insertOne({accounts:[{type:'twitch',id}],plan_tier:'pro'});await redis.hSet('token:sound-'+id,{id,login:'fixture',display_name:'Fixture'});}
+// Studios created before 2026-11-15 start with this plain design (new ones get the Dima default alerts); this check edits it.
+{ const { Studio, token: publicToken } = await import('/app/dist/overlays/store.js'), { makeScene } = await import('/app/dist/overlays/model.js'), { legacyStarterDesign } = await import('/app/dist/overlays/default-alerts-migration.js');
+  const scene = makeScene('main', 'My overlay', 'starter'); scene.publicId = publicToken(); await Studio.create({ _id: owner, schemaVersion: 1, revision: 0, scenes: [scene], designs: [legacyStarterDesign()] }); }
 async function req(method,path,body,status=200,id=owner,headers={}){const r=await fetch('http://127.0.0.1:3000'+path,{method,headers:{...(id?{Authorization:'Bearer sound-'+id}:{}),...(body && !(body instanceof FormData)?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:body instanceof FormData?body:JSON.stringify(body)}:{})});assert.equal(r.status,status,`${method} ${path}: ${r.status===status?'':await r.text()}`);return r;}
 const data=async(...args)=>(await(await req(...args)).json()).data;
 const form=(bytes,name)=>{const f=new FormData();f.append('file',new Blob([bytes]),name);return f;};

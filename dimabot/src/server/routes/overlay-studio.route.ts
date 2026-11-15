@@ -60,10 +60,10 @@ overlayStudioRoute.get('/test-media/:ticket', wrap(async (req, res) => {
   const file = testFile(param(req, 'ticket')); if (!file) throw new OverlayError('Test expired. Run the preview again.', 404);
   res.type(file.mime); return res.sendFile(file.path);
 }));
-/** Tests use the editor's sample viewer, amount and tier so each Bits rule can be tried in OBS. */
+/** Tests use the editor's sample viewer, amount and tier (or `gift`: a gift of `amount` subs) so each Bits rule and sub look can be tried in OBS. */
 function testEvent(kind: AlertEvent, body: Record<string, unknown>) {
   const user = typeof body.user === 'string' && body.user.trim() ? body.user.trim().slice(0, 80) : 'Luna';
-  const amount = Number(body.amount), tier = ['1000', '2000', '3000'].includes(body.tier as string) ? body.tier as string : '1000';
+  const amount = Number(body.amount), tier = ['1000', '2000', '3000', 'gift'].includes(body.tier as string) ? body.tier as string : '1000';
   return sampleEvent(kind, user, Number.isSafeInteger(amount) && amount > 0 ? Math.min(1000000000, amount) : 100, tier);
 }
 async function requireAlertPlays(channel: string, kind: EventKind, raw?: Record<string, unknown>) {
@@ -204,7 +204,7 @@ overlayStudioRoute.get('/:channelID/custom-widgets/:widgetId/files/:file', wrap(
 overlayStudioRoute.post('/:channelID/preview', wrap(async (req, res) => {
   const body = object(req.body); const kind = body.kind as AlertEvent; if (!ALERT_EVENTS.includes(kind)) throw new OverlayError('Invalid alert event');
   if (!Array.isArray(body.texts) || body.texts.length > 100) throw new OverlayError('Invalid templates');
-  const event = sampleEvent(kind, string(body.user || 'Luna', 80), Math.min(1000000000, Math.max(0, Number(body.amount) || 0)), ['1000', '2000', '3000'].includes(body.tier as string) ? body.tier as string : '1000');
+  const event = sampleEvent(kind, string(body.user || 'Luna', 80), Math.min(1000000000, Math.max(0, Number(body.amount) || 0)), ['1000', '2000', '3000', 'gift'].includes(body.tier as string) ? body.tier as string : '1000');
   try { return ok(res, await Promise.all(body.texts.map(text => renderTemplate(typeof text === 'string' ? text : '', param(req, 'channelID'), event)))); }
   catch (e) { throw new OverlayError((e as Error).message); }
 }));

@@ -11,6 +11,9 @@ const { default: Users } = await import('/app/dist/schemas/users.schema.js');
 const { DomainEventSchema } = await import('/app/dist/schemas/domain_event.schema.js');
 const channel = '990301', token = 'alert-dedupe-owner';
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'pro' });
+// Studios created before 2026-11-15 start with this plain design (new ones get the Dima default alerts); this check edits it.
+{ const { Studio, token: publicToken } = await import('/app/dist/overlays/store.js'), { makeScene } = await import('/app/dist/overlays/model.js'), { legacyStarterDesign } = await import('/app/dist/overlays/default-alerts-migration.js');
+  const scene = makeScene('main', 'My overlay', 'starter'); scene.publicId = publicToken(); await Studio.create({ _id: channel, schemaVersion: 1, revision: 0, scenes: [scene], designs: [legacyStarterDesign()] }); }
 await redis.hSet(`token:${token}`, { id: channel, login: 'fixture', display_name: 'Fixture' });
 const base = 'http://127.0.0.1:3000';
 const data = async (method, path, body) => { const r = await fetch(base + path, { method, headers: { Authorization: `Bearer ${token}`, ...(!(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: body instanceof FormData ? body : JSON.stringify(body) } : {}) }); assert.equal(r.status, 200, await r.clone().text()); return (await r.json()).data; };

@@ -3,11 +3,13 @@ import { randomBytes } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
-import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertSound, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
+import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertSound, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeScene } from './model.js';
 import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
 import { parseWidgetModuleConfig } from './widget-contract.js';
 import { MAX_BITS_RULES, validRuleId } from '../bits_rules/model.js';
+import { designsWithLibraryUrls, isLibraryId, libraryUrl } from './library.js';
+import { makeDefaultDesign } from './default-alerts.js';
 
 export class OverlayError extends Error { constructor(message: string, readonly status = 400) { super(message); } }
 export interface StudioState { schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[] }
@@ -38,7 +40,7 @@ function widgets(value: unknown, nested: boolean, mode: LayoutMode = 'design'): 
     const w = object(raw); const kind = string(w.kind) as OverlayWidget['kind'];
     const moduleConfig = parseWidgetModuleConfig(w, nested ? 'design' : 'scene');
     if (!moduleConfig) throw new OverlayError('Invalid widget module configuration');
-    const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 20, 16000), height: number(w.height, 20, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
+    const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 5, 16000), height: number(w.height, 5, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
     if (moduleConfig.configVersion !== undefined) item.configVersion = moduleConfig.configVersion;
     if (moduleConfig.config !== undefined) item.config = moduleConfig.config;
     Object.assign(item, moduleConfig.legacy);
@@ -90,6 +92,11 @@ function widgets(value: unknown, nested: boolean, mode: LayoutMode = 'design'): 
     } else if (w.assetId) {
       if (!['image', 'video'].includes(kind) || !/^[a-f0-9]{24}$/.test(String(w.assetId))) throw new OverlayError('Invalid design asset');
       item.assetId = id(w.assetId);
+    } else if (w.library !== undefined && (!w.mediaUrl || w.mediaUrl === libraryUrl(String(w.library)))) {
+      // A picture from Dima's public overlay library: the id is the source; its own URL (filled in for OBS) is dropped.
+      // A Studio asset or a different typed link wins over it: editors that predate the library keep the unknown field.
+      if (!nested || kind !== 'image' || !isLibraryId(w.library, 'image')) throw new OverlayError('Invalid library picture');
+      item.library = w.library;
     } else if (w.mediaUrl) { const url = string(w.mediaUrl, 2048); if (!/^https:\/\//i.test(url) || new URL(url).username || new URL(url).password) throw new OverlayError('Media requires an HTTPS URL'); item.mediaUrl = url; }
     if (w.color) { if (!/^#[0-9a-f]{6}$/i.test(String(w.color))) throw new OverlayError('Invalid color'); item.color = String(w.color); }
     if (w.fontSize !== undefined) item.fontSize = number(w.fontSize, 8, 300);
@@ -112,11 +119,15 @@ function widgets(value: unknown, nested: boolean, mode: LayoutMode = 'design'): 
 function color(value: unknown): string { if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) throw new OverlayError('Invalid color'); return value; }
 function alertSound(raw: unknown, mode: LayoutMode, withId: boolean): AlertSound {
   const sound = object(raw);
-  let source: Pick<AlertSound, 'assetId' | 'mediaId'>;
+  let source: Pick<AlertSound, 'assetId' | 'mediaId' | 'library'>;
   if (mode === 'trigger') {
     if (sound.assetId !== undefined) throw new OverlayError('Trigger looks use media from your trigger library, not Overlay Studio assets');
     if (!hex24(sound.mediaId)) throw new OverlayError('Invalid trigger sound');
     source = { mediaId: sound.mediaId as string };
+  } else if (sound.assetId === undefined && sound.library !== undefined) {
+    // A Dima library sound; a Studio asset wins over it (see widgets()).
+    if (!isLibraryId(sound.library, 'audio')) throw new OverlayError('Invalid library sound');
+    source = { library: sound.library as string };
   } else {
     if (!hex24(sound.assetId)) throw new OverlayError('Invalid alert sound');
     source = { assetId: sound.assetId as string };
@@ -170,8 +181,11 @@ export function validateState(raw: unknown, previous: StudioState): Pick<StudioS
             if (v.tier !== undefined || v.min !== undefined || v.max !== undefined || !validRuleId(v.ruleId)) throw new OverlayError('Bits looks follow your Bits rules now. Reload the editor.');
             result.ruleId = v.ruleId;
           } else if (kind === 'sub') {
-            if (!['1000', '2000', '3000'].includes(v.tier as string) || v.min !== undefined || v.max !== undefined || v.ruleId !== undefined) throw new OverlayError('Choose a subscription tier');
-            result.tier = v.tier as AlertVariant['tier'];
+            if (v.min !== undefined || v.max !== undefined || v.ruleId !== undefined) throw new OverlayError('Choose a subscription tier');
+            // A tier wins over `gift`: the current editor never sends both, so both means an older editor picked a tier.
+            if (['1000', '2000', '3000'].includes(v.tier as string)) result.tier = v.tier as AlertVariant['tier'];
+            else if (v.gift === true && v.tier === undefined) result.gift = true;
+            else throw new OverlayError('Choose a subscription tier');
           } else {
             if (v.tier !== undefined || v.ruleId !== undefined) throw new OverlayError('Invalid amount rule');
             for (const key of ['min', 'max'] as const) if (v[key] !== undefined) {
@@ -202,8 +216,10 @@ export function validateState(raw: unknown, previous: StudioState): Pick<StudioS
 export async function load(channel: string): Promise<StudioState> {
   await requireOverlayAccount(channel); let stored = await Studio.findById(channel).lean();
   if (!stored) {
-    const design = makeDesign('starter', 'My alerts'); design.events.bits.widgets[1].text = '$(user) sent $(cheer.amount) bits';
-    design.events.raid.widgets[1].text = '$(raid.channel) arrived with $(raid.viewers) viewers';
+    // New studios start with the Dima default alerts, written in the streamer's language.
+    const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channel } } }).select('language').lean();
+    const language = owner?.language === 'es' ? 'es' : 'en';
+    const design = makeDefaultDesign('starter', language === 'es' ? 'Mis alertas' : 'My alerts', language);
     const scene = makeScene('main', 'My overlay', design.id); scene.publicId = token();
     try { await Studio.create({ _id: channel, schemaVersion: 1, revision: 0, scenes: [scene], designs: [design] }); } catch (e) { if ((e as { code?: number }).code !== 11000) throw e; }
     stored = await Studio.findById(channel).lean();
@@ -225,5 +241,7 @@ export async function publicState(publicId: string) {
   await requireOverlayAccount(state._id);
   const scene = state.scenes.find(s => s.publicId === publicId)!;
   if (!scene.published) throw new OverlayError('This overlay has not been published', 404);
-  return { channel: state._id, publicId, revision: scene.revision, snapshot: scene.published, controls: { ...initialQueueState(), ...state.controls } };
+  // Library pictures and sounds also carry their file URL here, for OBS pages still on an older renderer.
+  const snapshot = { ...scene.published, designs: designsWithLibraryUrls(scene.published.designs) };
+  return { channel: state._id, publicId, revision: scene.revision, snapshot, controls: { ...initialQueueState(), ...state.controls } };
 }

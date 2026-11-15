@@ -151,6 +151,12 @@ const banTimeHandler: FunctionHandler = async (_args, ctx) => {
     return Number.isSafeInteger(seconds) ? String(seconds) : '0';
 };
 
+/** Subs in one gift (Twitch's channel.subscription.gift `total`); 0 for events that are not gifts. */
+const giftCountHandler: FunctionHandler = async (_args, ctx) => {
+    const total = getNumberField(getEventData(ctx), ['total']);
+    return String(total !== null && Number.isSafeInteger(total) && total > 0 ? total : 0);
+};
+
 const giftedUserHandler: FunctionHandler = async (_args, ctx) => {
     const eventData = getEventData(ctx);
     const giftedUser = getStringField(eventData, [
@@ -284,6 +290,14 @@ export function registerEventsubFunctions(): void {
         category: 'event-data',
         examples: ['gifted.user'],
         keywords: ['gifted sub', 'sub regalada', 'quien recibio el gift'],
+        surfaces: ['authoring']
+    });
+    registerFunction('gift.count', giftCountHandler, {
+        description: 'Number of subscriptions in one gift (a gift bomb of 5 subs is 5). 0 when the event is not a gift.',
+        syntax: 'gift.count',
+        category: 'event-data',
+        examples: ['gift.count'],
+        keywords: ['gift bomb', 'gifted subs', 'subs regaladas', 'cuantas subs regalo'],
         surfaces: ['authoring']
     });
     registerFunction('hypetrain.progress', hypeTrainProgressHandler, {

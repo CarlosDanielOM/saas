@@ -9,6 +9,9 @@ const {getDragonflyClient}=await import('/app/dist/utils/databases/dragonfly.dat
 const {default:Users}=await import('/app/dist/schemas/users.schema.js');
 const channel='990231',other='990232';
 for(const id of [channel,other]){await Users.collection.insertOne({accounts:[{type:'twitch',id}],plan_tier:'pro'});await redis.hSet('token:design-'+id,{id,login:'fixture',display_name:'Fixture'});}
+// Studios created before 2026-11-15 start with this plain design (new ones get the Dima default alerts); this check edits it.
+{ const { Studio, token: publicToken } = await import('/app/dist/overlays/store.js'), { makeScene } = await import('/app/dist/overlays/model.js'), { legacyStarterDesign } = await import('/app/dist/overlays/default-alerts-migration.js');
+  const scene = makeScene('main', 'My overlay', 'starter'); scene.publicId = publicToken(); await Studio.create({ _id: channel, schemaVersion: 1, revision: 0, scenes: [scene], designs: [legacyStarterDesign()] }); }
 async function req(method,path,body,status=200,owner=channel){const response=await fetch('http://127.0.0.1:3000'+path,{method,headers:{Authorization:'Bearer design-'+owner,...(body && !(body instanceof FormData)?{'Content-Type':'application/json'}:{})},...(body?{body:body instanceof FormData?body:JSON.stringify(body)}:{})});assert.equal(response.status,status,`${method} ${path}: ${response.status===status?'':await response.text()}`);return response;}
 const data=async(...args)=>(await(await req(...args)).json()).data;
 execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','sine=frequency=440:duration=1','/tmp/variant.wav']);

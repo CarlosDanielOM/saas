@@ -9,6 +9,9 @@ const { ALERT_TRANSITIONS, ALERT_LOOPS }=await import('/app/dist/overlays/model.
 const { renderLayout }=await import('/app/dist/overlays/ast.js');
 const channel='990211', token='alert-motion-owner';
 await Users.collection.insertOne({accounts:[{type:'twitch',id:channel}],plan_tier:'free'});
+// Studios created before 2026-11-15 start with this plain design (new ones get the Dima default alerts); this check edits it.
+{ const { Studio, token: publicToken } = await import('/app/dist/overlays/store.js'), { makeScene } = await import('/app/dist/overlays/model.js'), { legacyStarterDesign } = await import('/app/dist/overlays/default-alerts-migration.js');
+  const scene = makeScene('main', 'My overlay', 'starter'); scene.publicId = publicToken(); await Studio.create({ _id: channel, schemaVersion: 1, revision: 0, scenes: [scene], designs: [legacyStarterDesign()] }); }
 await redis.hSet('token:'+token,{id:channel,login:'fixture',display_name:'Fixture'});
 async function request(method,path,body,status=200){const response=await fetch('http://127.0.0.1:3000/overlay-studio/'+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await response.json();assert.equal(response.status,status,JSON.stringify(data));return data.data;}
 

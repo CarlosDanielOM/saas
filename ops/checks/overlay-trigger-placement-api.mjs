@@ -8,6 +8,10 @@ const mongo = await getMongoDBConnection('placement-check'), redis = await getDr
 const channel = '990291', token = 'placement-owner-fixture', root = `/overlay-studio/${channel}`;
 await Studio.init();
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'free' });
+// Studios created before 2026-11-15 start with this plain design (new ones get the Dima default alerts, whose library
+// pictures carry their URLs in the OBS copy); this check compares the OBS copy with the stored one.
+{ const { token: publicToken } = await import('/app/dist/overlays/store.js'), { makeScene } = await import('/app/dist/overlays/model.js'), { legacyStarterDesign } = await import('/app/dist/overlays/default-alerts-migration.js');
+  const scene = makeScene('main', 'My overlay', 'starter'); scene.publicId = publicToken(); await Studio.create({ _id: channel, schemaVersion: 1, revision: 0, scenes: [scene], designs: [legacyStarterDesign()] }); }
 await redis.hSet(`token:${token}`, { id: channel, login: 'placementfixture', display_name: 'Fixture' });
 async function request(method, path, body, status = 200) {
   const response = await fetch('http://127.0.0.1:3000' + path, { method,

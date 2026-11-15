@@ -8,7 +8,7 @@ import type { AlertEvent, AlertLayout } from './model.js';
 
 // The production AST parser/evaluator with a presentation-only capability boundary.
 // Validate the complete tree before evaluating anything, including untaken branches.
-const functions = new Set(['user', 'touser', 'cheer.amount', 'cheer.message', 'sub.tier', 'sub.months', 'gifted.user', 'raid.channel', 'raid.login', 'raid.viewers', 'upper', 'lower', 'title', 'capitalize', 'trim', 'length', 'slice']);
+const functions = new Set(['user', 'touser', 'cheer.amount', 'cheer.message', 'sub.tier', 'sub.months', 'gifted.user', 'gift.count', 'raid.channel', 'raid.login', 'raid.viewers', 'upper', 'lower', 'title', 'capitalize', 'trim', 'length', 'slice']);
 export function parseTemplate(text: string) {
   registerUserFunctions(); registerEventsubFunctions(); registerStringFunctions();
   if (text.length > 2000) throw new Error('Alert text exceeds 2000 characters');
@@ -42,7 +42,9 @@ export async function renderTemplate(text: string, channel: string, event: Recor
 export async function renderLayout(layout: AlertLayout, channel: string, event: Record<string, unknown>): Promise<AlertLayout> {
   return { ...layout, widgets: await Promise.all(layout.widgets.map(async w => w.kind === 'text' ? { ...w, text: await renderTemplate(w.text || '', channel, event) } : w)) };
 }
+/** A sample event for previews and tests. Sub tier `gift` is a gift of `amount` Tier 1 subs (shaped like channel.subscription.gift). */
 export function sampleEvent(kind: AlertEvent, user = 'Luna', amount = 100, tier = '1000'): Record<string, unknown> {
+  if (kind === 'sub' && tier === 'gift') return { user_name: user, user_login: user.toLowerCase(), user_id: '0', tier: '1000', total: amount, cumulative_total: amount, is_anonymous: false };
   return { user_name: user, user_login: user.toLowerCase(), user_id: '0', bits: kind === 'bits' ? amount : 0,
     tier, cumulative_months: amount, from_broadcaster_user_name: user, from_broadcaster_user_login: user.toLowerCase(), viewers: amount, message: 'Thank you!' };
 }

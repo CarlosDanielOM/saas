@@ -31,6 +31,8 @@ export interface OverlayWidget {
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
   /** Trigger looks only: a channel media library item (`UserMediaLibraryItem._id`) instead of a Studio asset. */
   mediaId?: string;
+  /** Alert design pictures only: an item of Dima's public overlay library (see library.ts) instead of a Studio asset. */
+  library?: string;
   /** Videos inside layouts: `volume` present = plays its own sound (0 = silent but timed); `loop` absent = true. */
   volume?: number; loop?: boolean;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
@@ -40,15 +42,19 @@ export interface OverlayWidget {
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
 /**
  * `end`: seconds from the alert's start at which the sound has stopped (0.1–120). Absent: it plays out or stops with the alert.
- * Alert designs reference `assetId`, trigger looks `mediaId`; `url` is only ever produced by the server for trigger looks.
+ * Alert designs reference `assetId` (a Studio asset) or `library` (Dima's public overlay library), trigger looks `mediaId`;
+ * `url` is only ever produced by the server (trigger looks, library sounds sent to OBS).
  */
-export interface AlertSound { id?: string; assetId?: string; mediaId?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
+export interface AlertSound { id?: string; assetId?: string; mediaId?: string; library?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
 /** `sounds` is canonical; `sound` is the legacy mirror of `sounds[0]` (without its id) that older OBS pages play. */
 export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sounds?: AlertSound[]; sound?: AlertSound }
 /** Every sound of a layout. When `sounds` is present it wins; a legacy single `sound` reads as one sound with id `sound`. */
 export const layoutSounds = (layout: AlertLayout): AlertSound[] => layout.sounds ?? (layout.sound ? [{ id: 'sound', ...layout.sound }] : []);
-/** Sub variants match a tier and raid variants an amount; Bits variants are looks for a shared Bits rule (`ruleId`). */
-export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
+/**
+ * Sub variants match a tier, or gifted subs (`gift`); raid variants an amount; Bits variants are looks for a shared Bits
+ * rule (`ruleId`).
+ */
+export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; gift?: true; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
 export interface AlertDesign {
   id: string; name: string; revision: number; width: number; height: number;
   events: Record<AlertEvent, AlertLayout>;
@@ -82,6 +88,8 @@ export function makeScene(id: string, name: string, designId: string): OverlaySc
     ] };
 }
 
+/** A sub alert that is a gift: Twitch's channel.subscription.gift always carries the number of subs gifted (`total`), a sub never does. */
+export const isGiftEvent = (raw: Record<string, unknown>): boolean => typeof raw['total'] === 'number';
 /**
  * Sub/raid: ordered rules, the first enabled match wins. Bits: the shared Bits rule that matched the cheer
  * picks its look; no rule, or a rule without its own look, uses the default. Malformed data uses the default.
@@ -89,9 +97,11 @@ export function makeScene(id: string, name: string, designId: string): OverlaySc
 export function matchingVariant(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>, bitsRule?: { id: string } | null): AlertVariant | undefined {
   if (kind === 'follow') return undefined;
   if (kind === 'bits') return bitsRule ? design.variants?.bits?.find(v => v.ruleId === bitsRule.id) : undefined;
+  // A gift plays the first gifted-subs look; without one it falls back to the tier looks, as gifts always did.
+  if (kind === 'sub' && isGiftEvent(raw)) { const gift = design.variants?.sub?.find(v => v.enabled && v.gift); if (gift) return gift; }
   return design.variants?.[kind]?.find(v => {
     if (!v.enabled) return false;
-    if (kind === 'sub') return !!v.tier && raw['tier'] === v.tier;
+    if (kind === 'sub') return !v.gift && !!v.tier && raw['tier'] === v.tier;
     const amount = raw['viewers'];
     return typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0
       && amount >= (v.min ?? 0) && (v.max === undefined || amount <= v.max);

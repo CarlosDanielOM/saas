@@ -12,6 +12,9 @@ const live = await import('/app/dist/overlays/live.js');
 let channel = '990091'; const ownerToken = 'overlay-owner-fixture';
 await store.Studio.init();
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'free' });
+// Studios created before 2026-11-15 start with this plain design (new ones get the Dima default alerts); this check edits it.
+{ const { Studio, token: publicToken } = await import('/app/dist/overlays/store.js'), { makeScene } = await import('/app/dist/overlays/model.js'), { legacyStarterDesign } = await import('/app/dist/overlays/default-alerts-migration.js');
+  const scene = makeScene('main', 'My overlay', 'starter'); scene.publicId = publicToken(); await Studio.create({ _id: channel, schemaVersion: 1, revision: 0, scenes: [scene], designs: [legacyStarterDesign()] }); }
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: '990092' }], plan_tier: 'free' });
 await redis.hSet(`token:${ownerToken}`, { id: channel, login: 'fixture', display_name: 'Fixture' });
 await redis.hSet('token:overlay-other-fixture', { id: '990092', login: 'other', display_name: 'Other' });
@@ -127,7 +130,7 @@ await request('GET',`public/${publicId}`,undefined,404,'');
 assert.deepEqual(sources(await request('GET',channel+'/connections')),[],'rotated URLs vanish from owner diagnostics immediately'); await a.wait(m=>m.includes('overlay-revoked')); a.ws.close();b.ws.close();
 const invalid=await connect(publicId);await invalid.wait(m=>m.startsWith('44'));invalid.ws.close();
 // Media leasing uses the same route/socket implementation in an isolated in-process host.
-const express = require('express'); const app=express();app.use(express.json());
+const express = require('express'); const app=express();app.use('/overlay-studio',express.json({limit:'5mb'}));app.use(express.json()); // the same body limits as server.ts
 app.use('/overlay-studio',(await import('/app/dist/server/routes/overlay-studio.route.js')).overlayStudioRoute);
 const { websocket, getIO } = await import('/app/dist/server/websocket.js');
 const { clipQueueHandler } = await import('/app/dist/handlers/clip_queue.handler.js');
