@@ -254,6 +254,13 @@ async function activeSession(id: string) {
 const REFRESH_TOKEN = /^dima_rt_[A-Za-z0-9_-]{43}$/;
 /** How long a replay waits for a rotation that has passed its compare-and-set but not yet stored its grace record. */
 const GRACE_WAIT_MS = 1500, GRACE_POLL_MS = 100;
+/**
+ * A rotation this recent (the session's last_used_at) may still be between its compare-and-set and its grace record:
+ * a replay that finds no record then gets a retryable error instead of revoking the session.
+ */
+const ROTATION_IN_FLIGHT_MS = 10_000;
+/** Validity could not be established (Dragonfly/Mongo trouble, a rotation still in flight): retry, never revoke. */
+const retryLater = () => new OAuthError('temporarily_unavailable', 503);
 const graceKey = (tokenHash: string) => `oauth:refresh:grace:${tokenHash}`;
 /** Derived from the replaced token's plaintext: only its holder can open the grace record. */
 const graceCipherKey = (refresh: string) => createHash('sha256').update('dima:oauth:refresh-grace:v1\n').update(refresh).digest();
@@ -293,7 +300,7 @@ async function storeGrace(previous: string, next: string, sessionID: string) {
     } catch { console.warn('[OAuth] Refresh grace record not stored'); }
 }
 
-/** With `wait`, polls briefly for a rotation still in flight. A read failure counts as no grace (fail closed). */
+/** With `wait`, polls briefly for a rotation still in flight. A read failure is retryable, never "no grace". */
 async function findGrace(tokenHash: string, wait: boolean): Promise<string | null> {
     const deadline = Date.now() + (wait ? GRACE_WAIT_MS : 0);
     try {
@@ -302,7 +309,16 @@ async function findGrace(tokenHash: string, wait: boolean): Promise<string | nul
             if (value || Date.now() >= deadline) return value || null;
             await sleep(GRACE_POLL_MS);
         }
-    } catch { return null; }
+    } catch { throw retryLater(); }
+}
+
+/** The session as stored now; null when it is no longer active (revoked, expired, client or grant gone). */
+async function sessionNow(sessionID: string) {
+    try { return await activeSession(sessionID); }
+    catch (error) {
+        if (error instanceof OAuthError && error.status === 401) return null;
+        throw retryLater();
+    }
 }
 
 /** Request parameters a refresh must match; refused without ending the session. */
@@ -329,9 +345,14 @@ async function checkRefreshChannel(session: SessionRecord, client: SessionClient
 async function replayOrRevoke(refresh: string, sessionID: string, client: SessionClient, input: Record<string, unknown>, wait: boolean) {
     const value = await findGrace(hash(refresh), wait);
     const grace = value ? openGrace(refresh, value) : null;
-    let session: Awaited<ReturnType<typeof activeSession>> | null = null;
-    if (grace?.session_id === sessionID) session = await activeSession(sessionID).catch(() => null);
-    if (!grace || !session || session.current_refresh_hash !== hash(grace.refresh)) {
+    const session = await sessionNow(sessionID);
+    if (!grace && wait && session && session.current_refresh_hash !== hash(refresh)
+        && Date.now() - new Date(session.last_used_at ?? 0).getTime() < ROTATION_IN_FLIGHT_MS) {
+        // A rotation of this token just happened and has not stored its grace record yet (or could not): the winner
+        // may still be answering. Retry instead of revoking the session it is handing out.
+        throw retryLater();
+    }
+    if (!grace || grace.session_id !== sessionID || !session || session.current_refresh_hash !== hash(grace.refresh)) {
         await revokeSession(sessionID, 'refresh_reuse');
         throw new OAuthError('invalid_grant');
     }

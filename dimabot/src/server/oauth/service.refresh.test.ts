@@ -44,6 +44,8 @@ const apply = (doc: Doc, change: Doc) => {
 const store = new Map<string, { value: string; ex?: number; expiresAt?: number }>();
 let clock = 0;
 const graceWrite: { delayMs: number; fail: boolean } = { delayMs: 0, fail: false };
+/** Grace-record reads that fail (Dragonfly trouble). */
+const graceRead = { fail: false };
 const live = (key: string) => {
     const entry = store.get(key);
     if (entry?.expiresAt !== undefined && entry.expiresAt <= Date.now() + clock) { store.delete(key); return undefined; }
@@ -58,7 +60,10 @@ mock.module('../../utils/databases/dragonfly.database.js', { namedExports: { get
         store.set(key, { value, ex: options?.EX, expiresAt: options?.EX ? Date.now() + clock + options.EX * 1000 : undefined });
         return 'OK';
     },
-    get: async (key: string) => live(key)?.value ?? null,
+    get: async (key: string) => {
+        if (graceRead.fail && key.startsWith('oauth:refresh:grace:')) throw new Error('redis down');
+        return live(key)?.value ?? null;
+    },
     getDel: async (key: string) => { const value = live(key)?.value ?? null; store.delete(key); return value; },
     del: async (key: string) => Number(store.delete(key))
 }) } });
@@ -137,6 +142,7 @@ beforeEach(() => {
     store.clear(); cimdDocs.clear(); adminAccess.clear();
     clock = 0; deletedTokens = 0; barrier = null;
     Object.assign(graceWrite, { delayMs: 0, fail: false });
+    graceRead.fail = false;
     users.push({ _id: ownerID, name: 'Owner', accounts: [{ type: 'twitch', id: '100', name: 'owner_one' }] },
         { _id: new Types.ObjectId(), name: 'Admin', accounts: [{ type: 'twitch', id: '200', name: 'admin_two' }] });
     for (const client_id of ['dima-desktop', 'other-desktop']) {
@@ -264,7 +270,8 @@ test('a failed grace write keeps the refresh working and only removes the grace'
         assert.equal(store.has(graceKey(first.refresh_token)), false);
         await refused(refresh(first.refresh_token), 'invalid_grant');
         assert.equal(session(first.session_id).revoke_reason, 'refresh_reuse', 'without a grace, a replay is reuse');
-        // Concurrent: the loser waits for a grace that never comes, then revokes.
+        // Concurrent: the loser waits for a grace that never comes; the rotation is seconds old, so it gets a
+        // retryable error and the winner's session lives.
         const other = await mint();
         armBarrier(2);
         const started = Date.now();
@@ -272,8 +279,11 @@ test('a failed grace write keeps the refresh working and only removes the grace'
         assert.ok(Date.now() - started >= 1400, 'the loser waited about 1.5 s');
         assert.deepEqual(settled.map(item => item.status).sort(), ['fulfilled', 'rejected']);
         const failure = settled.find(item => item.status === 'rejected') as PromiseRejectedResult;
-        assert.equal((failure.reason as InstanceType<typeof OAuthError>).code, 'invalid_grant');
-        assert.equal(session(other.session_id).revoke_reason, 'refresh_reuse');
+        assert.equal((failure.reason as InstanceType<typeof OAuthError>).code, 'temporarily_unavailable');
+        assert.equal((failure.reason as InstanceType<typeof OAuthError>).status, 503);
+        assert.equal(session(other.session_id).revoked_at, null, 'a rotation still in flight never revokes');
+        const winner = settled.find(item => item.status === 'fulfilled') as PromiseFulfilledResult<{ access_token: string }>;
+        assert.equal(await alive(winner.value.access_token), other.session_id);
         assert.ok(warned.mock.callCount() >= 2);
         assert.ok(warned.mock.calls.every(call => !JSON.stringify(call.arguments).includes('dima_rt_')), 'no token in the log');
     } finally { warned.mock.restore(); }
@@ -331,4 +341,43 @@ test('Dragonfly holds no plaintext refresh token; a grace record opens only with
     store.set(graceKey(a.refresh_token), { value: JSON.stringify({ ...record, session_id: b.session_id }) });
     await refused(refresh(a.refresh_token), 'invalid_grant');
     assert.equal(session(a.session_id).revoke_reason, 'refresh_reuse');
+});
+
+test('Dragonfly trouble reading the grace is retryable: the session is never revoked for it', async () => {
+    const first = await mint();
+    const rotated = await refresh(first.refresh_token);
+    graceRead.fail = true;
+    await assert.rejects(refresh(first.refresh_token), (error: unknown) => error instanceof OAuthError && error.code === 'temporarily_unavailable' && error.status === 503);
+    assert.equal(session(first.session_id).revoked_at, null);
+    graceRead.fail = false;
+    assert.equal((await refresh(first.refresh_token)).refresh_token, rotated.refresh_token, 'the retry gets the successor');
+});
+
+test('a winner slower than the loser\'s wait: the loser gets a retryable error, the session lives, a retry gets the successor', async () => {
+    const first = await mint();
+    graceWrite.delayMs = 1800;
+    armBarrier(2);
+    const settled = await Promise.allSettled([refresh(first.refresh_token), refresh(first.refresh_token)]);
+    const failure = settled.find(item => item.status === 'rejected') as PromiseRejectedResult;
+    assert.equal((failure.reason as InstanceType<typeof OAuthError>).code, 'temporarily_unavailable');
+    const winner = settled.find(item => item.status === 'fulfilled') as PromiseFulfilledResult<{ refresh_token: string; access_token: string }>;
+    assert.equal(session(first.session_id).revoked_at, null);
+    assert.equal(await alive(winner.value.access_token), first.session_id);
+    graceWrite.delayMs = 0;
+    assert.equal((await refresh(first.refresh_token)).refresh_token, winner.value.refresh_token);
+});
+
+test('a rotation that stopped between its swap and its grace long ago is reuse again (fail closed)', async () => {
+    const first = await mint();
+    graceWrite.fail = true;
+    const warned = mock.method(console, 'warn', () => {});
+    try {
+        await refresh(first.refresh_token);
+        // As if the process died after the swap: R0 never marked used, no grace record, the rotation 11 s old.
+        const record = refreshTokens.find(item => item.token_hash === hash(first.refresh_token))!;
+        delete record.used_at;
+        session(first.session_id).last_used_at = new Date(Date.now() - 11_000);
+        await refused(refresh(first.refresh_token), 'invalid_grant');
+        assert.equal(session(first.session_id).revoke_reason, 'refresh_reuse');
+    } finally { warned.mock.restore(); }
 });
