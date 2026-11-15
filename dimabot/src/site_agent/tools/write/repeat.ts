@@ -27,6 +27,12 @@ export const REPEAT_RULES =
     + 'needs a name made of a-z, 0-9 or _, posts only while the stream is live, and has no viewer who typed it '
     + '(avoid $(user)/&p1 in it).';
 
+/** REPEAT_RULES for MCP descriptions (shorter; same facts). */
+export const REPEAT_RULES_MCP =
+    'Repeats by plan: Free up to 5 enabled at 10, 20, 30, 40, 50 or 60 minutes; Premium up to 15 at 5-180 minutes in '
+    + 'steps of 5; Pro up to 50 at 1-180 minutes. A repeating reply is at most 350 characters, needs a name of a-z, 0-9 '
+    + 'or _, posts only while live and has no caller (avoid $(user) and &p1 in it).';
+
 const l = (lang: Lang, en: string, es: string) => (lang === 'es' ? es : en);
 
 export interface TimerRow { _id?: unknown; name: string; message: string; frequency: number; frequencyUnit?: string; active: boolean }

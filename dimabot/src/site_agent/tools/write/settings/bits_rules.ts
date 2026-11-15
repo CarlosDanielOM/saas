@@ -6,6 +6,7 @@ import { CANONICAL_BITS_EVENT_TYPE, LEGACY_BITS_EVENT_TYPES } from '../../../../
 import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type ExecutableCheck, type Lang, type ToolContext } from '../../../types.js';
 import { asObject, bool, int, oneOf, str } from '../../util.js';
 import { assertPinned, bodyEffects, conflict, deepStrings, fingerprint, sameValue, tr } from './common.js';
+import { MCP_APPLIES, mcpCommandText, mcpStoredText } from '../../mcp_text.js';
 
 /**
  * Shared Bits rules (Chat Events → Cheers card, and Overlay Studio Bits looks). Routes:
@@ -116,6 +117,8 @@ const ruleParameters = {
     message: { type: 'string', maxLength: MAX_RULE_MESSAGE, description: 'Chat message for custom mode; can use $(user), $(cheer.amount), $(cheer.message)' },
     alert: { type: 'boolean', description: 'Whether the overlay alert plays for these cheers' }
 };
+/** MCP: the stored Bits text every rule write checks (bitsCheck). */
+const BITS_STORED = 'Every stored rule message and the Cheers default message are checked too.';
 const WHAT = 'Bits rules: one cheer uses one rule, the most specific enabled one (an exact amount beats a range, a narrower range beats a wider one); a cheer that matches none gets the default message and alert. Rules are shared with Overlay Studio (Bits looks) and save right away.';
 
 export const createBitsRule: AgentTool<BitsRuleCreateInput> = {
@@ -123,6 +126,9 @@ export const createBitsRule: AgentTool<BitsRuleCreateInput> = {
     kind: 'write',
     permissions: BITS_RULE_PERMISSIONS,
     description: `Add a Bits rule (Chat Events → Cheers → Bits rules): what the bot says and whether the overlay alert plays for cheers in an amount range. ${WHAT} Up to ${MAX_BITS_RULES} rules on every plan. The user approves first; undo deletes the rule.`,
+    mcpDescription: `Add a Bits rule (Chat Events → Cheers → Bits rules): what the bot says and whether the overlay alert plays for cheers in an amount range. ${WHAT} Up to ${MAX_BITS_RULES} rules on every plan; calling again adds another rule. `
+        + `${mcpCommandText(BITS_STORED)} ${MCP_APPLIES}`,
+    mcpAnnotations: { destructive: false, idempotent: false, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['min'], properties: ruleParameters },
     label: (_input, lang) => tr(lang, 'Preparing the Bits rule…', 'Preparando la regla de Bits…'),
     validate: (raw) => fields(asObject(raw), true) as BitsRuleCreateInput,
@@ -177,6 +183,9 @@ export const updateBitsRule: AgentTool<BitsRuleUpdateInput> = {
     kind: 'write',
     permissions: BITS_RULE_PERMISSIONS,
     description: `Edit a Bits rule (Chat Events → Cheers → Bits rules): its amounts, chat message mode, overlay alert, name or on/off. Only the fields you send change. Rule ids come from get_settings area "bits_rules". ${WHAT} The user approves first; it can be undone.`,
+    mcpDescription: `Edit a Bits rule (Chat Events → Cheers → Bits rules): its amounts, chat message mode, overlay alert, name or on/off. Only the fields you send change. Rule ids come from get_settings area "bits_rules". ${WHAT} `
+        + `${mcpCommandText(BITS_STORED)} ${MCP_APPLIES}`,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string' }, ...ruleParameters } },
     label: (_input, lang) => tr(lang, 'Preparing the Bits rule change…', 'Preparando el cambio de la regla de Bits…'),
     validate(raw) {
@@ -240,6 +249,9 @@ export const deleteBitsRule: AgentTool<BitsRuleDeleteInput> = {
     kind: 'write',
     permissions: BITS_RULE_PERMISSIONS,
     description: `Delete a Bits rule (Chat Events → Cheers → Bits rules). Cheers in its range then use another matching rule, or the default message and alert. Its Overlay Studio Bits look stops being used. Rule ids come from get_settings area "bits_rules". The user approves first; undo adds it back with the same id.`,
+    mcpDescription: `Delete a Bits rule (Chat Events → Cheers → Bits rules). Cheers in its range then use another matching rule, or the default message and alert. Its Overlay Studio Bits look stops being used. Rule ids come from get_settings area "bits_rules". `
+        + `${mcpStoredText('The remaining rule messages and the Cheers default message')} Applies immediately and is logged; undo_change adds it back with the same id.`,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string' } } },
     label: (_input, lang) => tr(lang, 'Preparing to delete the Bits rule…', 'Preparando la eliminación de la regla de Bits…'),
     validate: (raw) => ({ id: str(asObject(raw), 'id', { required: true, max: 64 })! }),

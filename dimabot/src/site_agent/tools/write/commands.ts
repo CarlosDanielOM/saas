@@ -37,7 +37,7 @@ import { MAX_COMMAND_TEXT } from '../../../utils/ast_blocks/index.js';
 import { normalizeKeyword, validateKeyword } from '../../../utils/keywords.js';
 import { inspectExpression, LEGACY_USER_LEVEL_NAMES } from '../../../utils/permissions/index.js';
 import {
-    assertRepeatAsLeft, assertRepeatLink, canRepeat, checkRepeat, commandRepeat, moveRepeat, readTimer, REPEAT_RULES, RepeatRefused, repeatDiffers, repeatKey,
+    assertRepeatAsLeft, assertRepeatLink, canRepeat, checkRepeat, commandRepeat, moveRepeat, readTimer, REPEAT_RULES, REPEAT_RULES_MCP, RepeatRefused, repeatDiffers, repeatKey,
     repeatLabel, repeatMessage, repeatTarget, timerSnapshot, type RepeatTarget, type TimerSnapshot,
 } from './repeat.js';
 import {
@@ -52,6 +52,7 @@ import {
     type AccessLevel,
     type LeanCommand,
 } from '../read.js';
+import { MCP_APPLIES } from '../mcp_text.js';
 
 const PERMISSIONS = ['commands:manage'] as const;
 const AREA = 'commands';
@@ -81,6 +82,21 @@ export const COMMAND_LANGUAGE_BASICS =
     + 'ALWAYS run the body through test_command (as a viewer, with and without an argument) and fix every problem '
     + 'before proposing it. Never write moderation (ban/timeout), raids, VIP/Mod changes or other risky actions '
     + 'into a body unless the user explicitly asked for exactly that.';
+
+/**
+ * COMMAND_LANGUAGE_BASICS for MCP descriptions: only functions the safe-body guard allows (SAFE_FUNCTIONS), since a
+ * write applies there without a card.
+ */
+export const COMMAND_LANGUAGE_BASICS_MCP =
+    'Reply language: plain text is posted as typed. Through MCP only reply functions work: $(user) (who typed it), $(touser) '
+    + '(the first word after the command, or the user), $(randomuser), $(random N) (0 to N-1), $(count), $(scount), '
+    + '$(followage), text helpers such as $(upper text) or $(replace a b text), Twitch reads such as $(twitch.game) or '
+    + '$(twitch.viewers). &p1 &p2 … = words after the command, &t = all of them. %(name) reads and %(name value) writes a '
+    + 'variable (no prefix: this run; # cache 24 h; ## per viewer; * and ** database, Premium/Pro); ^(name) checks one '
+    + 'exists. *(…) is logic and math, e.g. %(#wins *(%(#wins) + 1)); a 1-6 dice roll is *($(random 6) + 1). Double '
+    + 'quotes and ${ } only work inside a prefix. TTS, moderation, rewards, running other commands and blocks are refused: '
+    + 'set them up on the website. Check functions with search_ast_functions, and ALWAYS run the reply through '
+    + 'test_command (as a viewer, with and without an argument) and fix every problem before writing it.';
 
 // ---------------------------------------------------------------------------
 // Snapshots, display fields, errors
@@ -274,6 +290,9 @@ interface RepeatMove { from: TimerSnapshot | null; to: RepeatTarget | null }
 const REPEAT_HELP =
     'repeatMinutes makes the bot also post the reply by itself every N minutes while the stream is live: this is '
     + 'what the Commands page shows under "Repeating", and the way to make any repeating message or timer. ' + REPEAT_RULES;
+const REPEAT_HELP_MCP =
+    'repeatMinutes also posts the reply by itself every N minutes while live (the "Repeating" list on the Commands page; '
+    + 'the way to make any timer). ' + REPEAT_RULES_MCP;
 
 /** The card's fields plus its "Repeats" row. */
 function withRepeat(fields: Fields, repeat: { minutes: number; active: boolean } | null, lang: Lang): Fields {
@@ -375,6 +394,15 @@ export const createCommandTool: AgentTool<CreateInput> = {
         + 'access = the lowest role that can use it (default everyone). cooldown = seconds between uses (default 10; '
         + '0 or the plan minimum (Free 5, Premium 3, Pro 1) up to 60; only one command per channel may use 0). '
         + 'Fails if the name exists (use update_command) or is a built-in name. ' + REPEAT_HELP + ' ' + COMMAND_LANGUAGE_BASICS,
+    mcpDescription:
+        'Create a custom chat command (!name). name = what viewers type after "!" (letters/numbers only). access = the '
+        + 'lowest role that can use it (default everyone). cooldown = seconds between uses (default 10; 0 or the plan minimum '
+        + '(Free 5, Premium 3, Pro 1) up to 60; only one command per channel may use 0). Fails if the name exists (use '
+        + 'update_command) or is a built-in name. ' + REPEAT_HELP_MCP + ' A timer made in chat with the same name becomes its '
+        + 'repeat: with repeatMinutes it takes this reply and interval, without it keeps its own text. '
+        + COMMAND_LANGUAGE_BASICS_MCP + ' ' + MCP_APPLIES,
+    // Repeating fails ("already exists"); a same-name chat timer is replaced when repeatMinutes is set.
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: {
         type: 'object',
         properties: {
@@ -564,6 +592,19 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
         + 'newName. Commands made with blocks: get_command shows the text they run; a body replaces the blocks with a text reply (warned on the card, undo restores the blocks). Changing '
         + 'access replaces a custom access rule with a simple level. A command\'s repeat follows a new reply or name by '
         + 'itself. ' + REPEAT_HELP + ' ' + COMMAND_LANGUAGE_BASICS,
+    mcpDescription:
+        'Change a command or keyword: body (new reply), access, cooldown, enabled, description, newName (rename the '
+        + 'trigger), repeatMinutes (repeat every N minutes, change how often, or 0 to stop). Send only what changes. Built-in '
+        + 'commands: only enabled, access, cooldown and newName, and through MCP only to turn them off, slow them down or '
+        + 'restrict them, unless their code only replies (like !commands or !followage). Commands made with blocks: '
+        + 'get_command shows the text they run; a body replaces the blocks with a text reply (undo restores them). Changing '
+        + 'access replaces a custom access rule with a simple level. A command\'s repeat follows a new reply or name by '
+        + 'itself. Through MCP a reply may only use the reply functions listed in create_command (with the reply language and '
+        + 'repeat rules); test a new body with test_command first. Unless the change only turns it off, slows it, restricts '
+        + 'it, edits the description or stops the repeat, the stored reply and repeat text are checked too: edit them on the '
+        + 'website if they use other functions. ' + MCP_APPLIES,
+    // The same call again finds nothing to change (or the old name gone).
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: {
         type: 'object',
         properties: {
@@ -826,6 +867,11 @@ export const deleteCommandTool: AgentTool<{ name: string; kind?: 'command' | 'ke
         'Propose deleting a custom command or keyword. The user approves a card first; it can be undone from the '
         + 'Changes list. Built-in commands can\'t be deleted (turn them off with update_command enabled=false). '
         + 'A command\'s repeat is removed with it (to stop only the repeating, use update_command repeatMinutes 0).',
+    mcpDescription:
+        'Delete a custom command or keyword. Built-in commands can\'t be deleted (turn them off with update_command '
+        + 'enabled=false). Its repeat is removed with it (to stop only the repeating, use update_command repeatMinutes 0). '
+        + MCP_APPLIES,
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: {
         type: 'object',
         properties: {

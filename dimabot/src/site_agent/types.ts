@@ -271,6 +271,18 @@ export interface AgentTool<Input = Record<string, unknown>> {
     executableFields?(input: Input, proposal: ChangeProposal, ctx: ToolContext): string[] | ExecutableCheck | null | Promise<string[] | ExecutableCheck | null>;
     /** Where the tool is offered (default both). MCP-only tools (`tools/mcp_changes.ts`) are never in the site registry. */
     surfaces?: readonly ('site' | 'mcp')[];
+    /**
+     * The complete description MCP clients get instead of `description` (`tools/execute.ts` only adds the credit
+     * price). Needed whenever `description` speaks of the website's approval card or prompt: on MCP a write applies at
+     * once, is undone with undo_change, and its command text may only use the safe reply functions (`tools/mcp_text.ts`).
+     */
+    mcpDescription?: string;
+    /**
+     * MCP tool hints (spec meanings): destructive = may overwrite or remove existing data (false = only adds);
+     * idempotent = the same call again has no further effect; openWorld = talks to Twitch or another outside system.
+     * Required for every allowlisted MCP tool that is not a read; reads default to non-destructive, idempotent, closed.
+     */
+    mcpAnnotations?: { destructive: boolean; idempotent: boolean; openWorld: boolean };
 }
 
 // ---------------------------------------------------------------------------

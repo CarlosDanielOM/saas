@@ -16,6 +16,7 @@ import { TWITCH_BOT_ACCOUNT_ID } from '../../../../utils/header.js';
 import { ToolInputError, type AgentTool, type ChangeProposal, type ExecutableCheck, type Lang, type ToolContext } from '../../../types.js';
 import { asObject, bool, str } from '../../util.js';
 import { PLAN_RANK, assertPinned, assertUnchanged, bodyEffects, conflict, deepStrings, display, fingerprint, hasFullAccess, mergeEffects, needsFullAccessResult, pickPaths, routeMessage, sameValue, tr, type FieldLabel } from './common.js';
+import { MCP_APPLIES, mcpCommandText, mcpStoredText } from '../../mcp_text.js';
 
 /**
  * Chat events (Modules → Chat Events): the messages the bot posts for Twitch events. Each event is
@@ -167,6 +168,9 @@ function proposalBase(ctx: ToolContext, tool: string, title: string, event: Cata
 /** Fields stored on the subscription document for `keys`. */
 const stored = (doc: Record<string, unknown> | null, keys: string[]) => pickPaths(doc ?? {}, keys);
 
+/** MCP: the stored text every chat event write checks (eventCheck). */
+const EVENT_STORED = 'Every stored text of the event (for Cheers also the Bits rule messages) is checked too.';
+
 export const createChatEvent: AgentTool<TypeInput> = {
     name: 'create_chat_event',
     kind: 'write',
@@ -177,6 +181,15 @@ export const createChatEvent: AgentTool<TypeInput> = {
         'fields: optional values for the event\'s settings (keys from get_settings area "chat_events"); unset fields use the catalog defaults. An empty message makes the event silent.',
         'If the event already exists, use update_chat_event. The user approves first; it can be undone (removes the subscription).'
     ].join(' '),
+    mcpDescription: [
+        'Turn on a chat event the channel does not have yet (Modules → Chat Events): the bot posts a message in chat when that Twitch event happens (follow, raid, sub, gifted subs, resub, Bits, ad break, Hype Train, shoutout received, stream online/offline...).',
+        'This subscribes the channel to the Twitch EventSub event. Needs full access (the bot activated on Twitch). Some events need Premium or Pro.',
+        'fields: optional values for the event\'s settings (keys from get_settings area "chat_events"); unset fields use the catalog defaults. An empty message makes the event silent.',
+        'If the event already exists, use update_chat_event.', mcpCommandText(EVENT_STORED),
+        'Applies immediately and is logged; undo_change removes the subscription.'
+    ].join(' '),
+    // The same event again is refused ("already set up").
+    mcpAnnotations: { destructive: false, idempotent: true, openWorld: true },
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter, enabled: { type: 'boolean', description: 'Default true' }, fields: fieldsParameter } },
     label: (_input, lang) => tr(lang, 'Preparing the chat event…', 'Preparando el evento de chat…'),
     validate: (raw) => typeInput(raw, 'create'),
@@ -249,6 +262,13 @@ export const updateChatEvent: AgentTool<TypeInput> = {
         'Field keys come from get_settings area "chat_events". Stream online/offline cannot be turned off: clear their message to silence them. Bits rules for different amounts use the bits rule tools.',
         'The user approves first; it can be undone.'
     ].join(' '),
+    mcpDescription: [
+        'Change a chat event the channel already has (Modules → Chat Events): turn it on/off (off keeps the Twitch subscription) or edit its fields, e.g. the message the bot posts, the end message of ad breaks, minimum raid viewers, the raid clip.',
+        'Field keys come from get_settings area "chat_events". Stream online/offline cannot be turned off: clear their message to silence them. Bits rules for different amounts use the bits rule tools.',
+        mcpCommandText(EVENT_STORED), MCP_APPLIES
+    ].join(' '),
+    // Saved settings only; the Twitch subscription stays as it is.
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: false },
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter, enabled: { type: 'boolean' }, fields: fieldsParameter } },
     label: (_input, lang) => tr(lang, 'Preparing the chat event change…', 'Preparando el cambio del evento de chat…'),
     validate: (raw) => typeInput(raw, 'update'),
@@ -317,6 +337,13 @@ export const deleteChatEvent: AgentTool<TypeInput> = {
         'Delete a chat event (Modules → Chat Events → Delete Event): removes the channel\'s Twitch EventSub subscription and its saved message and settings. To pause it instead, use update_chat_event with enabled false.',
         'Stream online/offline cannot be deleted. Deleting the outgoing raid event stops outgoing raid tracking (history stays). The user approves first; undo subscribes again with the same settings (needs full access).'
     ].join(' '),
+    mcpDescription: [
+        'Delete a chat event (Modules → Chat Events → Delete Event): removes the channel\'s Twitch EventSub subscription and its saved message and settings. To pause it instead, use update_chat_event with enabled false.',
+        'Stream online/offline cannot be deleted. Deleting the outgoing raid event stops outgoing raid tracking (history stays).',
+        mcpStoredText('For Cheers, an older Bits row that stays and the Bits rule messages'),
+        'Applies immediately and is logged; undo_change subscribes again with the same settings (needs full access).'
+    ].join(' '),
+    mcpAnnotations: { destructive: true, idempotent: true, openWorld: true },
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter } },
     label: (_input, lang) => tr(lang, 'Preparing to delete the chat event…', 'Preparando la eliminación del evento de chat…'),
     validate: (raw) => typeInput(raw, 'delete'),
