@@ -182,6 +182,14 @@ for (const name of ['list_commands', 'get_command', 'create_command', 'update_co
 for (const name of ['create_poll', 'set_stream_info', 'send_test_alert', 'update_ai_personality', 'update_moderation_settings', 'show_ui', 'navigate', 'update_tts_settings'])
   assert.ok(!names.includes(name), `not offered: ${name}`);
 assert.match(result.body.result.tools.find(item => item.name === 'list_commands').description, /1 AI credit/);
+// v1.1: MCP-only descriptions (no website approval-card wording, only safe functions) and explicit hints.
+for (const item of result.body.result.tools) {
+  assert.doesNotMatch(item.description, /\bpropos|approv(e|es|al)\b|press Apply|sees a card|in your instructions/i, `${item.name}: website-only wording`);
+  assert.doesNotMatch(item.description, /\$\((tts|ban|timeout)\b|#\(/, `${item.name}: teaches a refused function`);
+}
+const createListed = result.body.result.tools.find(item => item.name === 'create_command');
+assert.match(createListed.description, /undo_change/);
+assert.deepEqual(createListed.annotations, { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false });
 assert.doesNotMatch(result.body.result.tools.find(item => item.name === 'read_docs').description, /AI credit/);
 
 // Reads cost 1 credit, charged once through Polar.
