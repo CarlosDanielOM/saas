@@ -73,7 +73,7 @@ export const SAFE_BUILT_IN_FUNCS: ReadonlySet<string> = new Set(['commands', 'fo
 /** Shared with the model in every write tool description. */
 export const COMMAND_LANGUAGE_BASICS =
     'Command language basics (the reply body): plain text is posted in chat as typed. $(fn args) calls a function, '
-    + 'e.g. $(user) = who typed it, $(touser) = the first word typed after the command (or the user), $(random 1-6), '
+    + 'e.g. $(user) = who typed it, $(touser) = the first word typed after the command (or the user), $(random 6) = 0 to 5 (a 1-6 dice: *($(random 6) + 1)), '
     + '$(tts $(user) says: &t), $(ban $(user) 60). &p1 &p2 … = words typed after the command, &t = the rest of the '
     + 'message. %(name) reads and %(name value) writes a variable (no prefix: this run only; # cache 24 h; ## cache '
     + 'per viewer; * and ** database, Premium/Pro). *(condition ? yes : no) does logic and math, e.g. '

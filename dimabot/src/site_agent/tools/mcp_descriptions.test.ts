@@ -108,9 +108,10 @@ test('a write without MCP text falls back to the website text plus the MCP notes
 
 test('the website descriptions and shared texts are unchanged (MCP text lives in mcpDescription)', () => {
     // Update these hashes only when a website description is changed on purpose (the site prompt and tests use them).
+    // 2026-11-15: the COMMAND_LANGUAGE_BASICS example $(random 1-6) (always 0) became $(random 6) = 0 to 5.
     const rows = [...allTools().values(), ...mcpOnlyTools].map((tool) => [tool.name, tool.description]).sort((a, b) => a[0].localeCompare(b[0]));
     assert.equal(rows.length, 47);
-    assert.equal(sha(rows), '3818fd376681f77bac1a1fc4337046840c08ea21cd57042850a65a4608f9e9b8');
-    assert.equal(sha(COMMAND_LANGUAGE_BASICS), '4a8228696306d227637da99397bafa9d1402a6be24a4d59d31ff0e1b55ed3491');
+    assert.equal(sha(rows), '7d98a2b12f76c9d10540865c8a1545778303e848ee6d90f7199150767dfb9083');
+    assert.equal(sha(COMMAND_LANGUAGE_BASICS), '5a9f745be20c679739ce59fbabe2ace27b1412041661ee829a6bf66a25ac043a');
     assert.equal(sha(REPEAT_RULES), 'e6f32b248f64c2dcaa1706b2621890dffa32b5c59f5f85ac056f712623565151');
 });
