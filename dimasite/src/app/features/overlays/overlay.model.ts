@@ -37,6 +37,8 @@ export interface OverlayWidget {
   loop?: boolean;
   /** Trigger looks only: the trigger library item shown (the API adds `mediaUrl`, `mediaType` and `unavailable` in editor form). */
   mediaId?: string;
+  /** Alert design pictures: an item of Dima's public overlay library (overlay-library.ts) instead of a Studio asset. */
+  library?: string;
   mediaType?: 'image' | 'gif' | 'video' | 'audio';
   /** Editor form of a trigger look: the library item or its file is gone. */
   unavailable?: boolean;
@@ -47,7 +49,7 @@ export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boole
  * `id` is unique inside its layout (the legacy single sound has none). `assetId` = Overlay Studio asset (alert designs),
  * `mediaId` = trigger library item (trigger looks); `url` is a playback URL only the server produces (never stored).
  */
-export interface AlertSound { id?: string; assetId?: string; mediaId?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number;
+export interface AlertSound { id?: string; assetId?: string; mediaId?: string; library?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number;
   /** Editor form of a trigger look (from the API): the file's kind, and whether its library item is gone. */
   mediaType?: 'image' | 'gif' | 'video' | 'audio'; unavailable?: boolean }
 export const MAX_ALERT_SOUNDS = 10;
@@ -100,7 +102,7 @@ export function mergeOldEditorSounds(layout: AlertLayout): AlertLayout {
 /** A video in an alert layout that plays on the alert's clock: it has its own sound (`volume`) or plays once (`loop: false`). */
 export const isTimedVideo = (widget: Pick<OverlayWidget, 'kind' | 'volume' | 'loop'>): boolean => widget.kind === 'video' && (typeof widget.volume === 'number' || widget.loop === false);
 /** Sub variants match a tier and raid variants an amount; Bits variants are looks for a shared Bits rule (`ruleId`). */
-export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
+export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; gift?: true; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
 export interface AlertDesign {
   id: string; name: string; revision: number; width: number; height: number;
   events: Record<AlertEvent, AlertLayout>;
@@ -134,6 +136,8 @@ export function makeScene(id: string, name: string, designId: string): OverlaySc
     ] };
 }
 
+/** A sub alert that is a gift: Twitch's channel.subscription.gift always carries the number of subs gifted (`total`), a sub never does. */
+export const isGiftEvent = (raw: Record<string, unknown>): boolean => typeof raw['total'] === 'number';
 /**
  * Sub/raid: ordered rules, the first enabled match wins. Bits: the shared Bits rule that matched the cheer
  * picks its look (see features/bits-rules); no rule, or a rule without its own look, uses the default.
@@ -141,9 +145,11 @@ export function makeScene(id: string, name: string, designId: string): OverlaySc
 export function matchingVariant(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>, bitsRule?: { id: string } | null): AlertVariant | undefined {
   if (kind === 'follow') return undefined;
   if (kind === 'bits') return bitsRule ? design.variants?.bits?.find(v => v.ruleId === bitsRule.id) : undefined;
+  // A gift plays the first gifted-subs look; without one it falls back to the tier looks, as gifts always did.
+  if (kind === 'sub' && isGiftEvent(raw)) { const gift = design.variants?.sub?.find(v => v.enabled && v.gift); if (gift) return gift; }
   return design.variants?.[kind]?.find(v => {
     if (!v.enabled) return false;
-    if (kind === 'sub') return !!v.tier && raw['tier'] === v.tier;
+    if (kind === 'sub') return !v.gift && !!v.tier && raw['tier'] === v.tier;
     const amount = raw['viewers'];
     return typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0
       && amount >= (v.min ?? 0) && (v.max === undefined || amount <= v.max);

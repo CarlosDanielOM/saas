@@ -1,0 +1,66 @@
+<main class="da">
+  <header class="da__head">
+    <p class="da__kicker">Overlay Studio · approved</p>
+    <h1>Default alerts</h1>
+    <p class="da__lead">What every streamer gets out of the box: follows, Bits, subs, gifted subs and raids. They play through the real overlay renderer (the same one OBS runs), with sound.</p>
+  </header>
+
+  <section class="da__stage" [class.da__stage--bright]="scene() === 'bright'" aria-label="Sample stream">
+    <app-overlay-scene-renderer [scene]="stage" [jobs]="jobs()" (ready)="ready($event.id)" />
+    @if (!playing()) { <p class="da__hint">Tap an alert below to play it with sound</p> }
+  </section>
+
+  <nav class="da__play" aria-label="Play an alert">
+    @for (item of info; track item.kind) {
+      <button type="button" class="chip" [attr.data-kind]="item.kind" [attr.aria-pressed]="playing() === item.kind" (click)="play(item.kind)">
+        <lucide-icon [img]="item.icon" [size]="18" aria-hidden="true" /> {{ item.label }}
+      </button>
+    }
+    <button type="button" class="chip chip--all" [attr.aria-pressed]="sequence()" (click)="playAll()">
+      <lucide-icon [img]="sequence() ? stopIcon : playIcon" [size]="18" aria-hidden="true" /> {{ sequence() ? 'Stop' : 'Play all' }}
+    </button>
+  </nav>
+
+  <section class="da__options" aria-label="Sample settings">
+    <div class="seg" role="group" aria-label="Alert language">
+      <button type="button" [attr.aria-pressed]="language() === 'en'" (click)="language.set('en')">English</button>
+      <button type="button" [attr.aria-pressed]="language() === 'es'" (click)="language.set('es')">Español</button>
+    </div>
+    <div class="seg" role="group" aria-label="Stream behind the alert">
+      <button type="button" [attr.aria-pressed]="scene() === 'dark'" (click)="scene.set('dark')">Dark game</button>
+      <button type="button" [attr.aria-pressed]="scene() === 'bright'" (click)="scene.set('bright')">Bright game</button>
+    </div>
+    <label class="field field--name">Viewer name<input type="text" maxlength="25" [value]="name()" (input)="setName($event)" autocomplete="off" spellcheck="false" /></label>
+    <label class="field">Bits<input type="number" min="1" inputmode="numeric" [value]="bits()" (change)="number($event, 'bits')" /></label>
+    <label class="field">Subs gifted<input type="number" min="1" inputmode="numeric" [value]="gifts()" (change)="number($event, 'gifts')" /></label>
+    <label class="field">Raid viewers<input type="number" min="1" inputmode="numeric" [value]="viewers()" (change)="number($event, 'viewers')" /></label>
+    <button type="button" class="link" (click)="name.set('xX_TheLongestNameEver_Xx')">Try a long name</button>
+  </section>
+
+  <section class="da__list" aria-label="The five alerts">
+    @for (item of info; track item.kind) {
+      @let text = copy()[item.kind];
+      <article class="row" [attr.data-kind]="item.kind">
+        <span class="row__icon"><lucide-icon [img]="item.icon" [size]="20" aria-hidden="true" /></span>
+        <div class="row__body">
+          <h2>{{ item.label }} <small>{{ duration[item.kind] }} s</small></h2>
+          <p class="row__text"><span>{{ text.kicker }}</span> · <code>{{ text.name }}</code>@if (text.stat) { · <code>{{ text.stat }}</code> {{ text.unit }} }</p>
+          <p>{{ item.note }}</p>
+          <p class="row__sound">Sound: {{ item.sound }}</p>
+        </div>
+        <button type="button" class="row__play" [attr.aria-label]="'Play ' + item.label" (click)="play(item.kind)"><lucide-icon [img]="playIcon" [size]="18" aria-hidden="true" /></button>
+      </article>
+    }
+  </section>
+
+  <section class="da__notes">
+    <h2>How it works</h2>
+    <ul>
+      <li>New streamers get these alerts automatically, in English or Spanish depending on their language.</li>
+      <li>Streamers who never changed their alerts get them swapped in. Anyone who edited theirs keeps them exactly as they are.</li>
+      <li>The pictures and sounds live in a shared Dima library: nothing to upload, and they don’t use any of the streamer’s storage.</li>
+      <li>Gifted subs get their own look inside the sub alert, with <code>$(gift.count)</code> for the number of subs. Designs without one keep playing their sub alert for gifts.</li>
+      <li>Everything stays editable in Overlay Studio, like any other alert.</li>
+    </ul>
+  </section>
+</main>

@@ -7,13 +7,14 @@ import type { AlertTransport } from './overlay-sound.component';
 import { LanguageService } from '../../services/language.service';
 import { AssetPreviewComponent } from '../../shared/asset-library/asset-preview.component';
 import { LinksService } from '../../services/links.service';
+import { libraryUrl } from './overlay-library';
 @Component({
   selector: 'app-overlay-layer', imports: [AssetPreviewComponent, OverlayKeyframePhaseComponent], changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-overlay-image]': "layer().kind === 'image' && (layer().assetId || layer().mediaUrl) ? '' : null", '[attr.data-overlay-video]': "layer().kind === 'video' && (layer().assetId || layer().mediaUrl) ? '' : null", '[attr.data-overlay-failed]': "broken() ? '' : null", '[attr.data-timed-video]': "videoTiming() ? '' : null" },
+  host: { '[attr.data-overlay-image]': "layer().kind === 'image' && (layer().assetId || pictureUrl()) ? '' : null", '[attr.data-overlay-video]': "layer().kind === 'video' && (layer().assetId || layer().mediaUrl) ? '' : null", '[attr.data-overlay-failed]': "broken() ? '' : null", '[attr.data-timed-video]': "videoTiming() ? '' : null" },
   template: `<div #entrance class="motion-shell"><app-overlay-keyframe-phase phase="enter" [keyframes]="animationKeyframes()" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #exit class="motion-shell"><app-overlay-keyframe-phase phase="exit" [keyframes]="animationKeyframes()" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #loop class="motion-shell"><app-overlay-keyframe-phase phase="loop" [keyframes]="animationKeyframes()" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()" [style.opacity]="layer().opacity ?? 1" [style.filter]="shadow()">@switch (layer().kind) {
     @case ('text') { <span #textElement [style.color]="layer().color || '#ffffff'" [style.font-family]="font()" [style.font-weight]="layer().fontWeight ?? 400" [style.font-style]="layer().italic ? 'italic' : 'normal'" [style.text-align]="layer().textAlign ?? 'center'">{{ text() ?? layer().text }}</span> }
     @case ('shape') { <div class="shape" [style.background]="layer().color ?? '#7c3aed'" [style.border-color]="layer().borderColor ?? '#ffffff'" [style.border-width.px]="layer().borderWidth ?? 0" [style.border-radius]="layer().shape === 'ellipse' ? '50%' : (layer().radius ?? 0) + 'px'"></div> }
-    @case ('image') { @if (preparedSource(); as source) { <img [src]="source" alt="" loading="eager" (error)="fail()" /> } @else if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" [eager]="!!publicId() || !!owner()" (failed)="fail()" /> } @else if (layer().mediaUrl) { <img [src]="layer().mediaUrl" alt="" (error)="fail()" /> } }
+    @case ('image') { @if (preparedSource(); as source) { <img [src]="source" alt="" loading="eager" (error)="fail()" /> } @else if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" [eager]="!!publicId() || !!owner()" (failed)="fail()" /> } @else if (pictureUrl(); as url) { <img [src]="url" alt="" (error)="fail()" /> } }
     @case ('video') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="preparedSource() || publicAssetUrl()" kind="video" [managed]="!!videoTiming()" [silent]="designObject()" [seekTime]="videoTiming() ? null : seekTime()" (failed)="fail()" /> } @else if (layer().mediaUrl) { @if (videoTiming()) { <video [src]="layer().mediaUrl" muted playsinline preload="auto" (error)="fail()"></video> } @else { <video [src]="layer().mediaUrl" [autoplay]="seekTime() === null" muted [muted]="designObject()" loop playsinline (loadedmetadata)="seekVideo()" (error)="fail()"></video> } } }
     @case ('animation') { <span class="spark" [class.spark--custom]="!!layer().motion || !!layer().keyframes" [style.color]="layer().color || '#a78bfa'">✦</span> }
   }</div></app-overlay-keyframe-phase></div></app-overlay-keyframe-phase></div></app-overlay-keyframe-phase></div>@if (blocked()) { <button type="button" class="enable-sound" (click)="enableSound()">{{ language.translate('overlayStudio.enableSound') }}</button> }`,
@@ -64,7 +65,9 @@ export class OverlayLayerComponent {
   readonly failed = output<void>();
   // Marks this source as failed, so alert readiness stops waiting for it.
   private readonly failedSource = signal<string | null>(null);
-  private readonly sourceKey = computed(() => [this.layer().assetId, this.layer().mediaUrl, this.preparedSource()].join('|'));
+  /** A picture's own URL: a typed link, or a Dima library item (OBS also receives its URL from the server). */
+  readonly pictureUrl = computed(() => this.layer().mediaUrl || libraryUrl(this.layer().library));
+  private readonly sourceKey = computed(() => [this.layer().assetId, this.pictureUrl(), this.preparedSource()].join('|'));
   readonly broken = computed(() => this.failedSource() === this.sourceKey());
   fail(): void { this.failedSource.set(this.sourceKey()); this.failed.emit(); }
   private readonly textElement = viewChild<ElementRef<HTMLSpanElement>>('textElement');

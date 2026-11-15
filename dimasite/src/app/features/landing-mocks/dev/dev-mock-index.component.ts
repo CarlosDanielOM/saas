@@ -149,6 +149,12 @@ export class DevMockIndexComponent {
 
   readonly mocks: DevMockCard[] = [
     {
+      id: 'default-alerts',
+      title: 'Default alerts',
+      badge: 'Approved · live',
+      description: 'Follow, Bits, sub, gifted subs and raid alerts every streamer gets, with sound, played by the real overlay renderer.'
+    },
+    {
       id: 'duel',
       title: 'duelMock.indexTitle',
       badge: 'duelMock.prototype',

@@ -414,7 +414,7 @@
           <div class="event-tester">
             <label class="lf-field"><span>{{ t('sampleUser') }}</span><input [value]="sampleUser()" (input)="sampleUser.set(value($event))" /></label>
             <label class="lf-field"><span>{{ t('sampleAmount') }}</span><input [value]="sampleAmount()" (input)="sampleAmount.set(value($event))" /></label>
-            @if (designEvent() === 'sub') { <label class="lf-field"><span>{{ t('sampleTier') }}</span><select [value]="sampleTier()" (change)="sampleTier.set(value($event))">@for (tier of ['1000','2000','3000']; track tier) { <option [value]="tier" [selected]="tier === sampleTier()">{{ t('tier_' + tier) }}</option> }</select></label> }
+            @if (designEvent() === 'sub') { <label class="lf-field"><span>{{ t('sampleTier') }}</span><select [value]="sampleTier()" (change)="sampleTier.set(value($event))">@for (tier of ['1000','2000','3000','gift']; track tier) { <option [value]="tier" [selected]="tier === sampleTier()">{{ t('tier_' + tier) }}</option> }</select></label> }
           </div>
           <div><button type="button" class="lf-btn lf-btn--primary" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="15" aria-hidden="true" />{{ t('previewEvent', { event: t(designEvent() + 'Name') }) }}</button></div>
           @if (showVariantMatch()) {
@@ -607,8 +607,11 @@
             @if (item.assetId) {
               <p class="lf-note">{{ language.translate('assetLibrary.privateSelected') }}</p>
               <button type="button" class="lf-btn lf-btn--compact" (click)="patchSelected({ assetId: undefined })">{{ language.translate('assetLibrary.detach') }}</button>
+            } @else if (item.library) {
+              <p class="lf-note library-pick">{{ t('libraryPicture') }}</p>
+              <button type="button" class="lf-btn lf-btn--compact" (click)="patchSelected({ library: undefined })">{{ language.translate('assetLibrary.detach') }}</button>
             } @else {
-              <label class="lf-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (input)="patchSelected({ mediaUrl: value($event), assetId: undefined })" placeholder="https://" /></label>
+              <label class="lf-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (input)="patchSelected({ mediaUrl: value($event), assetId: undefined, library: undefined })" placeholder="https://" /></label>
             }
             <p class="lf-note">{{ designDraft() ? t('eventAssetHint') : t('permanentAssetHint') }}</p>
           </div>
@@ -643,8 +646,8 @@
           <div class="number-grid">
             <label><span>X</span><input type="number" [value]="item.x" min="-16000" max="16000" (input)="updateDimension('x', $event)" /></label>
             <label><span>Y</span><input type="number" [value]="item.y" min="-16000" max="16000" (input)="updateDimension('y', $event)" /></label>
-            <label><span>W</span><input type="number" [value]="item.width" min="20" max="16000" (input)="updateDimension('width', $event)" /></label>
-            <label><span>H</span><input type="number" [value]="item.height" min="20" max="16000" (input)="updateDimension('height', $event)" /></label>
+            <label><span>W</span><input type="number" [value]="item.width" min="5" max="16000" (input)="updateDimension('width', $event)" /></label>
+            <label><span>H</span><input type="number" [value]="item.height" min="5" max="16000" (input)="updateDimension('height', $event)" /></label>
           </div>
           <p class="lf-note">{{ t('pixelsHint', { width: canvasWidth(), height: canvasHeight() }) }}</p>
           <div class="pair-actions">

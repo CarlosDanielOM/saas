@@ -3,6 +3,7 @@ import { AssetLibraryService } from '../../shared/asset-library/asset-library.se
 import { LinksService } from '../../services/links.service';
 import { LanguageService } from '../../services/language.service';
 import { soundStop, type AlertSound } from './overlay.model';
+import { libraryUrl } from './overlay-library';
 
 export interface AlertTransport { time: number; playing: boolean; seek: number }
 
@@ -105,10 +106,11 @@ export class OverlaySoundComponent {
     cleanup(() => { document.removeEventListener('visibilitychange', visibility); disposed = true; attempt++; this.syncTimeline = undefined; this.playAgain = null; audio.onloadedmetadata = null; audio.onerror = null; audio.pause(); audio.removeAttribute('src'); audio.load(); });
     void this.source(sound, owner, publicId, prepared).then(url => { if (!disposed) { audio.src = url; audio.load(); } }).catch(fail);
   }
-  /** Prepared local bytes, else the Studio asset (scoped public URL on OBS, signed preview in the Studio), else a server-resolved `url`. */
+  /** Prepared local bytes, else the Studio asset (scoped public URL on OBS, signed preview in the Studio), else a server-resolved `url` or a Dima library sound. */
   private source(sound: AlertSound, owner: string, publicId: string, prepared: string): Promise<string> {
     if (prepared) return Promise.resolve(prepared);
     if (sound.assetId) return publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${encodeURIComponent(sound.assetId)}`) : this.library.preview(owner, sound.assetId);
-    return sound.url ? Promise.resolve(sound.url) : Promise.reject(new Error('Sound has no source'));
+    const url = sound.url || libraryUrl(sound.library);
+    return url ? Promise.resolve(url) : Promise.reject(new Error('Sound has no source'));
   }
 }

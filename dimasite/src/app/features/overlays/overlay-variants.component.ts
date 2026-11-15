@@ -22,7 +22,7 @@ import type { AlertEvent, AlertVariant } from './overlay.model';
       <div class="v-form">
         <label>{{ t('variantName') }}<input maxlength="80" [value]="variant.name" (change)="name($event)" /></label>
         @if (kind() === 'sub') {
-          <label>{{ t('subTier') }}<select [value]="variant.tier" (change)="tier($event)">@for (tier of ['1000','2000','3000']; track tier) { <option [value]="tier" [selected]="variant.tier === tier">{{ t('tier_' + tier) }}</option> }</select></label>
+          <label>{{ t('subTier') }}<select [value]="variant.gift ? 'gift' : variant.tier" (change)="tier($event)">@for (tier of ['1000','2000','3000','gift']; track tier) { <option [value]="tier" [selected]="(variant.gift ? 'gift' : variant.tier) === tier">{{ t('tier_' + tier) }}</option> }</select></label>
         } @else {
           <div class="v-range">
             <label>{{ t(kind() === 'bits' ? 'minBits' : 'minViewers') }}<input type="number" min="0" max="1000000000" step="1" [value]="variant.min ?? 0" (change)="amount('min', $event)" /></label>
@@ -54,7 +54,8 @@ export class OverlayVariantsComponent {
   private readonly language = inject(LanguageService);
   t(key: string) { return this.language.translate('overlayStudio.' + key); }
   name(event: Event) { const input = event.target as HTMLInputElement, value = input.value.trim(); if (value) this.changed.emit({name: value}); else input.value = this.current()?.name ?? ''; }
-  tier(event: Event) { this.changed.emit({tier: (event.target as HTMLSelectElement).value as AlertVariant['tier']}); }
+  /** A tier, or `gift`: a look for every gifted sub (whatever its tier), which plays before the tier looks. */
+  tier(event: Event) { const value = (event.target as HTMLSelectElement).value; this.changed.emit(value === 'gift' ? {gift: true, tier: undefined} : {tier: value as AlertVariant['tier'], gift: undefined}); }
   amount(key: 'min' | 'max', event: Event) {
     const input = event.target as HTMLInputElement, v = this.current(); if (!v) return;
     if (key === 'max' && input.value === '') { this.changed.emit({max: undefined}); return; }

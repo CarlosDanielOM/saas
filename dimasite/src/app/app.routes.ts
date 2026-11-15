@@ -389,6 +389,15 @@ export const routes: Routes = [
         title: 'Demo Video Player | DomDimaBot'
       },
       {
+        // Proposal: the default alerts every streamer gets (plays through the real overlay renderer).
+        path: 'default-alerts',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/default-alerts/default-alerts-mock.component').then(
+            (m) => m.DefaultAlertsMockComponent
+          ),
+        title: 'Default alerts · proposal | DomDimaBot'
+      },
+      {
         path: 'landing-redesign',
         loadComponent: () =>
           import('./features/landing-mocks/dev/landing-proposals/landing-redesign.component').then(

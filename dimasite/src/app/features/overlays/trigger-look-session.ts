@@ -191,6 +191,6 @@ export function pictureSize(url: string): Promise<{ width: number; height: numbe
 export function fit(size: { width: number; height: number } | null, width: number, height: number): { x: number; y: number; width: number; height: number } {
   if (!size) return { x: 0, y: 0, width, height };
   const scale = Math.min(width / size.width, height / size.height);
-  const w = Math.max(20, Math.round(size.width * scale)), h = Math.max(20, Math.round(size.height * scale));
+  const w = Math.max(5, Math.round(size.width * scale)), h = Math.max(5, Math.round(size.height * scale));
   return { x: Math.round((width - w) / 2), y: Math.round((height - h) / 2), width: w, height: h };
 }

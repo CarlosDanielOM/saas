@@ -16,13 +16,15 @@ import { OverlayApi, Snapshot } from './overlay-api.service';
 import type { TestMedia, OverlaySpeechPlayback } from './overlay-media.component';
 import { layoutSounds, matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { placeTrigger } from './overlay-trigger-placement';
+import { libraryUrl } from './overlay-library';
 import { LiveWidgetEnv } from './widget-runtime/live-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; look?: TriggerLook; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
-const layoutAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layout.widgets).filter(part => part.visible && (part.kind === 'image' || part.kind === 'video') && part.assetId).map(part => part.assetId!);
-/** Every sound of every layout; sounds without a Studio asset (server-resolved `url`) are not prepared. */
-const soundAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layoutSounds(layout).flatMap(sound => sound.assetId ?? []));
+/** Studio assets and Dima library pictures shown by the layouts (keyed by asset id or library id). */
+const layoutAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layout.widgets).filter(part => part.visible && (part.kind === 'image' || part.kind === 'video') && (part.assetId || part.kind === 'image' && part.library)).map(part => part.assetId || part.library!);
+/** Every sound of every layout; sounds with only a server-resolved `url` (trigger looks) are not prepared. */
+const soundAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layoutSounds(layout).flatMap(sound => sound.assetId ?? sound.library ?? []));
 const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5), 30000);
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
 interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
@@ -325,8 +327,9 @@ export class OverlayRuntimeComponent {
       }, retryDelay(retry.attempts++));
     }
   }
+  /** A Dima library file (served by this site) or a Studio asset through this overlay's public link. */
   private assetUrl(id: string): string {
-    return `${this.api.base}/overlay-studio/public/${encodeURIComponent(this.publicId)}/assets/${encodeURIComponent(id)}`;
+    return libraryUrl(id) || `${this.api.base}/overlay-studio/public/${encodeURIComponent(this.publicId)}/assets/${encodeURIComponent(id)}`;
   }
   private warmAssets(snapshot: Snapshot): void {
     const layouts = snapshot.widgets.filter(w => w.visible && w.kind === 'alert').flatMap(w => {

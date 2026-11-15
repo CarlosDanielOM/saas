@@ -18,6 +18,7 @@ import { OverlayAppearanceComponent } from './overlay-appearance.component';
 import { OverlayVariantsComponent } from './overlay-variants.component';
 import { OverlayBitsLooksComponent } from './overlay-bits-looks.component';
 import { matchingVariant, selectAlertLayout, withoutLegacyBitsLooks, type AlertLayout, type AlertVariant } from './overlay.model';
+import { libraryUrl } from './overlay-library';
 import { BitsRulesService } from '../bits-rules/bits-rules.service';
 import { amountText, matchBitsRule } from '../bits-rules/bits-rules.model';
 import { OverlayTimelineComponent, type TimelineEdit } from './overlay-timeline.component';
@@ -68,6 +69,8 @@ interface MockEvent { look?: TriggerLook; serialized?: boolean; originalTargets?
 type StudioPop = 'scenes' | 'obs' | 'menu';
 type MobileTab = 'layers' | 'add' | 'edit' | 'test' | 'more';
 type StudioPane = 'variants' | 'add' | 'layers' | 'designs' | 'timeline' | 'tester' | 'layer' | 'overlay';
+/** Smallest object on a canvas (thin lines, small sparkles); the API accepts the same minimum. */
+const MIN_OBJECT_SIZE = 5;
 /** JSON with sorted object keys, so equal documents compare equal whatever order their fields were written in. */
 const OFF_CANVAS_KEY = 'dimasite.overlayStudio.offCanvasIgnored.';
 const canonicalJson = (value: unknown): string => JSON.stringify(value, (_key, v: unknown) => v && typeof v === 'object' && !Array.isArray(v)
@@ -230,7 +233,9 @@ export class OverlayEditorComponent {
   readonly variants = computed(() => this.designDraft()?.variants?.[this.designEvent()] ?? []);
   readonly editingLayout = computed(() => this.variants().find(v => v.id === this.variantId())?.layout ?? this.designDraft()?.events[this.designEvent()]);
   readonly sampleTier = signal('1000');
-  readonly sampleRaw = computed(() => ({ tier: this.sampleTier(), bits: Number(this.sampleAmount()), viewers: Number(this.sampleAmount()) }));
+  /** `gift` samples a gift of {amount} subs (the gift count is what marks a gift, as in Twitch's channel.subscription.gift). */
+  readonly sampleRaw = computed((): Record<string, unknown> => { const gift = this.sampleTier() === 'gift', amount = Number(this.sampleAmount());
+    return { tier: gift ? '1000' : this.sampleTier(), bits: amount, viewers: amount, ...(gift ? { total: Math.max(1, Math.round(amount) || 1) } : {}) }; });
   readonly bitsRules = inject(BitsRulesService);
   /** The shared Bits rule the sample amount matches (Bits looks follow it). */
   readonly sampleBitsRule = computed(() => matchBitsRule(this.bitsRules.view()?.rules ?? [], Number(this.sampleAmount())));
@@ -831,7 +836,7 @@ export class OverlayEditorComponent {
       const sounds = this.alertSounds(); if (sounds.length >= MAX_ALERT_SOUNDS) return;
       const ids = new Set(sounds.map(s => s.id)); let n = sounds.length + 1; while (ids.has('sound-' + n)) n++;
       this.changeSounds(all => [...all, { id: 'sound-' + n, assetId: asset.id, name: asset.name, volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }], null);
-    } else this.changeSounds(all => all.map(s => s.id === target.id ? { ...s, assetId: asset.id, name: asset.name } : s), null);
+    } else this.changeSounds(all => all.map(s => { if (s.id !== target.id) return s; const { library: _library, ...rest } = s; return { ...rest, assetId: asset.id, name: asset.name }; }), null);
   }
   /** One sound's settings from the panel; typing in one field (or dragging the volume) stays one undo step. */
   setSound(change: SoundEdit): void { this.changeSounds(all => all.map(s => s.id === change.id ? withTime(s, change.field, change.value) : s)); }
@@ -841,7 +846,7 @@ export class OverlayEditorComponent {
     this.edit(() => this.updateLayout(layout => { const { sounds: _sounds, sound: _legacy, ...rest } = layout, sounds = update(layoutSounds(layout)); return sounds.length ? { ...rest, sounds } : rest; }), group === undefined ? this.historyGroup() : group);
   }
   useAsset(asset: DesignAsset): void {
-    if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });
+    if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined, library: undefined });
     this.assetPickerOpen.set(false);
   }
   widgetIcon(kind: WidgetKind) { return getWidgetModule(kind)?.icon ?? Layers3; }
@@ -883,10 +888,12 @@ export class OverlayEditorComponent {
   }
   private sampleAlertToWidgets(kind: AlertEvent): void {
     const name = this.sampleUser().trim().slice(0, 40) || 'Luna', amount = Math.max(1, Math.round(Number(this.sampleAmount()) || 100));
-    const base = testAlert(kind === 'bits' ? 'bits' : kind === 'raid' ? 'raid' : kind === 'sub' ? 'sub' : 'follow');
-    const tier = this.sampleTier() as '1000' | '2000' | '3000';
+    // A gifted-subs sample is a gift of {amount} subs, as custom widgets get it from Twitch.
+    const gift = kind === 'sub' && this.sampleTier() === 'gift';
+    const base = testAlert(gift ? 'giftBulk' : kind === 'bits' ? 'bits' : kind === 'raid' ? 'raid' : kind === 'sub' ? 'sub' : 'follow');
+    const tier = (gift ? '1000' : this.sampleTier()) as '1000' | '2000' | '3000';
     this.widgetEnv.emit({ type: 'alert', data: { ...base, user: { id: 'test-' + name.toLowerCase(), login: name.toLowerCase(), name },
-      amount: kind === 'bits' || kind === 'raid' ? amount : 1, message: kind === 'bits' ? `Cheer${amount}` : base.message, ...(kind === 'sub' ? { tier } : {}) } });
+      amount: kind === 'bits' || kind === 'raid' || gift ? amount : 1, message: kind === 'bits' ? `Cheer${amount}` : base.message, ...(kind === 'sub' ? { tier } : {}) } });
   }
   /** Custom widget tests go to the preview, or (after a confirmation) to this overlay in OBS. */
   readonly widgetTestTarget = signal<'preview' | 'obs'>('preview');
@@ -993,7 +1000,7 @@ export class OverlayEditorComponent {
     if (s.action === 'move') {
       const moved = this.alignMove(s.id, this.round(s.original.x+dx), this.round(s.original.y+dy), s.original.width, s.original.height, s.canvas.width/this.canvasWidth());
       this.patch(s.id, moved);
-    } else this.patch(s.id, { width: Math.max(20,this.round(s.original.width+dx)), height: Math.max(20,this.round(s.original.height+dy)) });
+    } else this.patch(s.id, { width: Math.max(MIN_OBJECT_SIZE,this.round(s.original.width+dx)), height: Math.max(MIN_OBJECT_SIZE,this.round(s.original.height+dy)) });
   }
   stopPointer(): void { if (this.pointer) this.endHistoryGroup(); this.pointer = null; if (this.guides().v.length || this.guides().h.length) this.guides.set({ v: [], h: [] }); }
   onWidgetKeydown(event: KeyboardEvent, widget: OverlayWidget): void {
@@ -1020,7 +1027,7 @@ export class OverlayEditorComponent {
   setExactOpen(event: Event): void { this.exactOpen.set((event.target as HTMLDetailsElement).open); }
   updateDimension(field: Dimension, event: Event): void {
     const number = Number(this.value(event)); if (!Number.isFinite(number) || !this.value(event)) return;
-    this.patchSelected({ [field]: Math.max(field === 'width' || field === 'height' ? 20 : -16000, Math.min(16000, Math.round(number))) });
+    this.patchSelected({ [field]: Math.max(field === 'width' || field === 'height' ? MIN_OBJECT_SIZE : -16000, Math.min(16000, Math.round(number))) });
   }
   updateCanvas(field: 'width' | 'height', event: Event): void {
     const number = Number(this.value(event)); if (!Number.isFinite(number) || number < 100 || number > 7680) return;
@@ -1228,13 +1235,16 @@ export class OverlayEditorComponent {
   private async prepareAssets(layouts: AlertLayout[],valid: () => boolean = () => true): Promise<Map<string,PreparedAsset>> {
     const generation = this.playbackGeneration;
     const ids = new Set(layouts.flatMap(layout => [...layout.widgets.filter(w => w.visible && (w.kind === 'image' || w.kind === 'video') && w.assetId).map(w => w.assetId!),...layoutSounds(layout).flatMap(sound => sound.assetId ?? [])]));
+    // Dima library pictures and sounds are public site files: prepared from their own URL, keyed by library id.
+    const library = [...new Set(layouts.flatMap(layout => [...layout.widgets.filter(w => w.visible && w.kind === 'image' && !w.assetId && w.library).map(w => w.library!),...layoutSounds(layout).flatMap(sound => !sound.assetId && sound.library ? [sound.library] : [])]))]
+      .flatMap(id => libraryUrl(id) ? [{id,url:libraryUrl(id)}] : []);
     const assets = new Map<string,PreparedAsset>();
-    const sources = await Promise.all([...ids].map(async id => {
+    const sources = [...library, ...await Promise.all([...ids].map(async id => {
       // Reusing a recent link keeps the bytes the cache already holds; links last 15 minutes.
       const recent = this.previewLinks.get(id);
       if (recent && Date.now() - recent.at < 10 * 60_000) return {id,url:recent.url};
       try { const url = await this.assetLibrary.preview(this.channel,id); this.previewLinks.set(id,{url,at:Date.now()}); return {id,url}; } catch { return null; }
-    }));
+    }))];
     if (this.disposed || generation !== this.playbackGeneration || !valid()) return assets;
     // Register ownership before preparing: the shared loader retains encoded
     // bytes only for the current source set, within its 64 MiB OBS cache cap.
