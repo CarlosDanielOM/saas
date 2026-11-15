@@ -7,7 +7,7 @@ import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { hasPremium } from '../widgets/service.js';
 import Users from '../schemas/users.schema.js';
 import { fail, integer, text } from '../roulette/model.js';
-import { defaultSettings, normalizeSettings, settings, createRun, nextDeadline, type DuelSettings, type DuelChallenge, type DuelRun, type DuelSide } from './model.js';
+import { BOT_DUEL, defaultSettings, normalizeSettings, settings, createRun, nextDeadline, type DuelSettings, type DuelChallenge, type DuelRun, type DuelSide } from './model.js';
 import { headToHead } from './stats.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
@@ -112,9 +112,12 @@ export async function challengeDuel(id: string, challenger: string, opponent: st
 }
 /** Challenging the streamer skips the accept step: the enraged streamer always fights. */
 export const fightStreamer = (id: string, challenger: string, streamer: string) => fightAtOnce(id, { challenger, opponent: streamer, enraged: 'right' });
-/** The bot account accepts at once and always wins with its ultimate. A challenging streamer stays enraged. */
-export const fightBot = (id: string, challenger: string, bot: string, streamer: boolean) => fightAtOnce(id, { challenger, opponent: bot, enraged: streamer ? 'left' : null, bot: 'right' });
-async function fightAtOnce(id: string, sides: Pick<DuelChallenge, 'challenger' | 'opponent' | 'enraged' | 'bot'>): Promise<DuelRun> {
+/**
+ * The bot account accepts at once and always wins with its ultimate, except against its creator,
+ * who always wins instead (BOT_DUEL). A challenging streamer stays enraged.
+ */
+export const fightBot = (id: string, challenger: string, bot: string, streamer: boolean) => fightAtOnce(id, { challenger, opponent: bot, enraged: streamer ? 'left' : null, bot: 'right', victor: challenger === BOT_DUEL.creator ? 'left' : 'right' });
+async function fightAtOnce(id: string, sides: Pick<DuelChallenge, 'challenger' | 'opponent' | 'enraged' | 'bot' | 'victor'>): Promise<DuelRun> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
