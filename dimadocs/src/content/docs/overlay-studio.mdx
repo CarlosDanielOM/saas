@@ -51,9 +51,16 @@ Alert text uses these values:
 | `$(user)` | Viewer name |
 | `$(cheer.amount)`, `$(cheer.message)` | Bits amount and message |
 | `$(sub.tier)`, `$(sub.months)`, `$(gifted.user)` | Subscription tier, months, and gift recipient |
+| `$(gift.count)` | Number of subs in a gift (for example, 5); 0 for events that aren't gifts |
 | `$(raid.channel)`, `$(raid.viewers)` | Raiding channel and viewer count |
 
 For Bits, use `$(cheer.amount)`. `$(amount)` does not work. Alert text can format values (for example `upper` or `title`). It cannot run commands or change state.
+
+### Default alerts
+
+When you first open Overlay Studio, your overlay starts with Dima's editable default alerts for follows, Bits, subs, gifted subs, and raids. Each has an animated card with a badge, the viewer's name, and a sound; Bits, gifts, and raids also show their amount. The text uses the English or Spanish language set in DomDimaBot.
+
+The default pictures and sounds come from the Dima library. They don't use your storage or appear in your Asset Library. When you select a default picture, its settings say: “From the Dima library: it doesn't use your storage. Pick your own picture to replace it.” To replace them, choose your own picture with **Browse Asset Library**, or your own sound file.
 
 ### Bits looks
 
@@ -68,6 +75,8 @@ On the **Bits** tab, your [Bits rules](/chat-events/#bits-rules) decide which lo
 Rule changes (amounts, on/off, alert) save and apply right away, even to published overlays. Looks are part of the design: save and publish the overlay to update them in OBS.
 
 Subscriptions and raids use variants instead: add one for a subscription tier or a minimum raid size. The first matching variant that's on plays.
+
+On the **Subscriptions** tab, choose **Gifted subs (any tier)** under **Subscription tier** for a gifted-subs look. A gift plays the first enabled gifted-subs variant; if there isn't one, it uses the tier variants or the sub alert as before. The default design includes **Gifted subs**. To try it, choose **Gifted subs (any tier)** under **Sample subscription tier**; the sample amount is the number of subs gifted.
 
 ### Alert sounds
 

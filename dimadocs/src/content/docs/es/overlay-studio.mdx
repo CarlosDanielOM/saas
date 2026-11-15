@@ -51,9 +51,16 @@ El texto de las alertas usa estos valores:
 | `$(user)` | Nombre del espectador |
 | `$(cheer.amount)`, `$(cheer.message)` | Cantidad de Bits y mensaje |
 | `$(sub.tier)`, `$(sub.months)`, `$(gifted.user)` | Nivel de la suscripción, meses y destinatario del regalo |
+| `$(gift.count)` | Cantidad de suscripciones en un regalo (por ejemplo, 5); 0 si el evento no es un regalo |
 | `$(raid.channel)`, `$(raid.viewers)` | Canal que hace el raid y número de espectadores |
 
 Para Bits, usa `$(cheer.amount)`. `$(amount)` no funciona. El texto de la alerta puede dar formato a los valores (por ejemplo `upper` o `title`). No puede ejecutar comandos ni cambiar el estado.
+
+### Alertas predeterminadas
+
+La primera vez que abres Overlay Studio, tu overlay comienza con las alertas predeterminadas editables de Dima para nuevos seguidores, Bits, suscripciones, suscripciones regaladas y raids. Cada una tiene una tarjeta animada con una insignia, el nombre del espectador y un sonido; las de Bits, regalos y raids también muestran la cantidad. El texto usa el idioma inglés o español configurado en DomDimaBot.
+
+Las imágenes y los sonidos predeterminados vienen de la biblioteca de Dima. No usan tu almacenamiento ni aparecen en tu Biblioteca de recursos. Al seleccionar una imagen predeterminada, sus ajustes dicen: “De la biblioteca de Dima: no usa tu almacenamiento. Elige tu propia imagen para cambiarla.” Para cambiarlos, elige tu propia imagen con **Explorar biblioteca de recursos** o tu propio archivo de sonido.
 
 ### Diseños por Bits
 
@@ -68,6 +75,8 @@ En la pestaña **Bits**, tus [reglas de Bits](/es/chat-events/#reglas-de-bits) d
 Los cambios en las reglas (cantidades, activada o apagada, alerta) se guardan y se aplican al instante, incluso en overlays publicados. Los diseños forman parte del diseño de alertas: guarda y publica el overlay para actualizarlos en OBS.
 
 Las suscripciones y los raids usan variantes: añade una para un nivel de suscripción o un tamaño mínimo de raid. Se reproduce la primera variante activa que coincida.
+
+En la pestaña **Suscripciones**, elige **Suscripciones regaladas (cualquier nivel)** en **Nivel de suscripción** para crear un diseño de regalos. Un regalo reproduce la primera variante activa de suscripciones regaladas; si no hay ninguna, usa las variantes de nivel o la alerta de suscripción como antes. El diseño predeterminado incluye **Suscripciones regaladas**. Para probarlo, elige **Suscripciones regaladas (cualquier nivel)** en **Nivel de prueba**; la cantidad de ejemplo es el número de suscripciones regaladas.
 
 ### Sonidos de alerta
 
