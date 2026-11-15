@@ -6,6 +6,11 @@
  * TLS connection to a vetted address (SNI and certificate checks stay on the hostname). No redirects, 5 s, 32 KB,
  * identity encoding, JSON only. Every failure is OAuthError('invalid_client'); the internal reason is in `cause`
  * (never serialized by the OAuth error handler).
+ *
+ * Fetch limits (per process; only real network fetches count, never cache hits): each source (client IP bucket) 10 per
+ * minute, unknown client_ids share 6 concurrent slots and 60 per minute, and RECOGNIZED_CIMD_CLIENTS have 2 more slots
+ * and their own 30 per minute, so made-up client_ids can never block the known apps. Concurrent resolutions of one
+ * client_id share one fetch.
  */
 import { createHash } from 'node:crypto';
 import type { LookupAddress, LookupOptions } from 'node:dns';
@@ -53,7 +58,12 @@ export const RECOGNIZED_CIMD_CLIENTS: readonly string[] = [
 /** Code-level kill switch, same member format as the `oauth:cimd:deny` set: an exact client_id or `host:<hostname>`. */
 const DENIED_CIMD_CLIENTS: readonly string[] = [];
 
-const MAX_ID_LENGTH = 512, MAX_BODY_BYTES = 32 * 1024, MAX_IN_FLIGHT = 8, FETCHES_PER_MINUTE = 60;
+const MAX_ID_LENGTH = 512, MAX_BODY_BYTES = 32 * 1024;
+/** Concurrent fetches; the last RESERVED_SLOTS are only for RECOGNIZED_CIMD_CLIENTS. */
+const MAX_IN_FLIGHT = 8, RESERVED_SLOTS = 2;
+/** Fixed one-minute windows: unknown client_ids together, recognized ones together, and each source on its own. */
+const FETCHES_PER_MINUTE = 60, RECOGNIZED_FETCHES_PER_MINUTE = 30, SOURCE_FETCHES_PER_MINUTE = 10;
+const WINDOW_MS = 60_000, PRUNE_SOURCES_AT = 1024;
 const DEFAULT_TTL = 300, MAX_TTL = 86_400, FAILURE_TTL = 60;
 const DENY_KEY = 'oauth:cimd:deny';
 const docKey = (id: string) => `oauth:cimd:doc:${hash(id)}`;
@@ -109,18 +119,28 @@ const DEFAULT_NETWORK: CimdNetwork = { resolve: resolveDns, port: 443, timeoutMs
     redisTimeoutMs: 1000, dial: address => address };
 let network = DEFAULT_NETWORK;
 let fetcherOverride: Fetcher | null = null;
-let inFlight = 0, windowStart = 0, windowFetches = 0;
+interface FetchWindow { start: number; count: number }
+let inFlight = 0;
+const sharedWindow: FetchWindow = { start: 0, count: 0 }, recognizedWindow: FetchWindow = { start: 0, count: 0 };
+const sourceWindows = new Map<string, FetchWindow>();
+/** The one fetch in progress per client_id; waiters share it, and it is aborted only once all of them have left. */
+interface SharedFetch { promise: Promise<{ client: StoredClient; ttl: number }>; controller: AbortController; waiters: number }
+const pending = new Map<string, SharedFetch>();
+const resetLimits = () => {
+    sharedWindow.start = sharedWindow.count = recognizedWindow.start = recognizedWindow.count = 0;
+    sourceWindows.clear();
+};
 
 /** Tests only: replaces the whole network fetch (DNS + TLS); limits, timeouts and validation still apply. */
 export function __setCimdFetcherForTests(fetcher: Fetcher | null): void {
     fetcherOverride = fetcher;
-    windowStart = windowFetches = 0;
+    resetLimits();
 }
 
 /** Tests only: injected DNS, port, CA, dial target and timeouts for the real TLS path against a local server. */
 export function __setCimdNetworkForTests(overrides: Partial<CimdNetwork> | null): void {
     network = overrides ? { ...DEFAULT_NETWORK, ...overrides } : DEFAULT_NETWORK;
-    windowStart = windowFetches = 0;
+    resetLimits();
 }
 
 /** True when the value has the shape of a CIMD client_id (https URL with a path). Does no I/O. */
@@ -136,8 +156,14 @@ export function isCimdClientId(value: unknown): value is string {
         !/^\d+$/.test(tld) && !LOCAL_TLDS.has(tld);
 }
 
+export interface ResolveOptions {
+    signal?: AbortSignal;
+    /** Rate-limit identities of the requester (`clientIps`); each must have fetch budget. Omitted: no per-source limit. */
+    source?: readonly string[];
+}
+
 /** Fetches (SSRF-guarded), validates and caches the document. Any failure or a denylisted client → OAuthError('invalid_client'). */
-export async function resolveCimdClient(clientId: string, options: { signal?: AbortSignal } = {}): Promise<CimdClient> {
+export async function resolveCimdClient(clientId: string, options: ResolveOptions = {}): Promise<CimdClient> {
     if (!isCimdClientId(clientId)) throw invalidClient('shape');
     if (isOwnHost(new URL(clientId).hostname)) throw invalidClient('own host');
     if (options.signal?.aborted) throw invalidClient('aborted');
@@ -155,10 +181,82 @@ export async function resolveCimdClient(clientId: string, options: { signal?: Ab
         } catch (error) {
             if (error instanceof OAuthError) throw error;
             // Redis outage: fetch without caching.
-            return recognized((await fetchClient(clientId, options.signal, null)).client);
+            return recognized(await sharedFetch(clientId, null, options));
         }
     }
-    return recognized((await fetchClient(clientId, options.signal, cache)).client);
+    return recognized(await sharedFetch(clientId, cache, options));
+}
+
+/** Joins the fetch already running for this client_id (free), or takes a slot and budget and starts one. */
+function sharedFetch(clientId: string, cache: Cache | null, options: ResolveOptions): Promise<StoredClient> {
+    let entry = pending.get(clientId);
+    if (!entry) {
+        if (options.signal?.aborted) throw invalidClient('aborted');
+        let release: () => void;
+        try { release = takeFetchSlot(RECOGNIZED_CIMD_CLIENTS.includes(clientId), options.source ?? []); }
+        catch (error) { throw invalidClient(error instanceof CimdFailure ? error.message : 'unexpected'); }
+        const controller = new AbortController();
+        const started: SharedFetch = { controller, waiters: 0, promise: fetchClient(clientId, controller.signal, cache, release) };
+        // Registered before any waiter, so a settled fetch is gone before its waiters resume.
+        const done = () => { if (pending.get(clientId) === started) pending.delete(clientId); };
+        started.promise.then(done, done);
+        pending.set(clientId, started);
+        entry = started;
+    }
+    return join(clientId, entry, options.signal);
+}
+
+/** Waits under the caller's own signal. The fetch itself is aborted (never negatively cached) when its last waiter leaves. */
+function join(clientId: string, entry: SharedFetch, signal: AbortSignal | undefined): Promise<StoredClient> {
+    entry.waiters++;
+    return new Promise((resolve, reject) => {
+        let left = false;
+        const leave = () => {
+            if (left) return false;
+            left = true;
+            entry.waiters--;
+            signal?.removeEventListener('abort', onAbort);
+            return true;
+        };
+        const onAbort = () => {
+            if (!leave()) return;
+            reject(invalidClient('aborted'));
+            if (entry.waiters > 0) return;
+            if (pending.get(clientId) === entry) pending.delete(clientId);
+            entry.controller.abort();
+        };
+        entry.promise.then(result => { if (leave()) resolve(result.client); }, (error: unknown) => { if (leave()) reject(error); });
+        if (signal?.aborted) onAbort(); else signal?.addEventListener('abort', onAbort, { once: true });
+    });
+}
+
+/** Checks every limit, then charges them together, so a refused fetch costs nothing. Returns the slot's release.
+ *  Refusals are our own limits and say nothing about the document: never negatively cached. */
+function takeFetchSlot(recognized: boolean, source: readonly string[]): () => void {
+    const now = Date.now();
+    const keys = [...new Set(source.filter(key => typeof key === 'string' && key))];
+    const open = (window: FetchWindow | undefined): window is FetchWindow => window !== undefined && now - window.start < WINDOW_MS;
+    if (keys.some(key => { const window = sourceWindows.get(key); return open(window) && window.count >= SOURCE_FETCHES_PER_MINUTE; })) {
+        throw new CimdFailure('source budget', false);
+    }
+    if (inFlight >= (recognized ? MAX_IN_FLIGHT : MAX_IN_FLIGHT - RESERVED_SLOTS)) throw new CimdFailure('busy', false);
+    const window = recognized ? recognizedWindow : sharedWindow;
+    if (now - window.start >= WINDOW_MS) { window.start = now; window.count = 0; }
+    if (window.count >= (recognized ? RECOGNIZED_FETCHES_PER_MINUTE : FETCHES_PER_MINUTE)) {
+        throw new CimdFailure(recognized ? 'recognized fetch budget' : 'fetch budget', false);
+    }
+    window.count++;
+    inFlight++;
+    // Bounded: only charged fetches add entries, and those are capped per minute above.
+    if (sourceWindows.size >= PRUNE_SOURCES_AT) {
+        for (const [key, entry] of sourceWindows) if (!open(entry)) sourceWindows.delete(key);
+    }
+    for (const key of keys) {
+        const entry = sourceWindows.get(key);
+        if (open(entry)) entry.count++; else sourceWindows.set(key, { start: now, count: 1 });
+    }
+    let released = false;
+    return () => { if (!released) { released = true; inFlight--; } };
 }
 
 /** Operator kill switch (client_id or host); checked on every authorize/token/refresh and for live CIMD sessions. */
@@ -190,9 +288,9 @@ function timed<T>(promise: Promise<T>, ms = network.redisTimeoutMs): Promise<T> 
     });
 }
 
-async function fetchClient(clientId: string, signal: AbortSignal | undefined, cache: Cache | null) {
+async function fetchClient(clientId: string, signal: AbortSignal, cache: Cache | null, release: () => void) {
     try {
-        const response = await fetchDocument(clientId, signal);
+        const response = await fetchDocument(clientId, signal, release);
         const result = parseResponse(clientId, response);
         // Cache writes never delay or fail the answer.
         if (cache && result.ttl > 0) void timed(cache.set(docKey(clientId), JSON.stringify(result.client), { EX: result.ttl }))
@@ -205,28 +303,22 @@ async function fetchClient(clientId: string, signal: AbortSignal | undefined, ca
     }
 }
 
-/** Takes a fetch slot (in-flight cap and per-minute budget), then fetches under one deadline and the caller's signal. */
-async function fetchDocument(clientId: string, callerSignal: AbortSignal | undefined): Promise<Fetched> {
-    if (inFlight >= MAX_IN_FLIGHT) throw new CimdFailure('busy', false);
-    const now = Date.now();
-    if (now - windowStart >= 60_000) { windowStart = now; windowFetches = 0; }
-    if (windowFetches >= FETCHES_PER_MINUTE) throw new CimdFailure('fetch budget', false);
-    windowFetches++; inFlight++;
+/** Fetches under one deadline and the shared fetch's signal; `release` frees the slot taken by takeFetchSlot. */
+async function fetchDocument(clientId: string, signal: AbortSignal, release: () => void): Promise<Fetched> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(new CimdFailure('timeout')), network.timeoutMs);
     const onAbort = () => controller.abort(new CimdFailure('aborted', false));
-    if (callerSignal?.aborted) onAbort(); else callerSignal?.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) onAbort(); else signal.addEventListener('abort', onAbort, { once: true });
     try {
         const override = fetcherOverride;
         const work = Promise.resolve().then(() => override ? override(clientId) :
             fetchOverNetwork(new URL(clientId), controller.signal));
         // The slot is held until the work itself settles, not just until we stop waiting for it.
-        const release = () => { inFlight--; };
         work.then(release, release);
         return await abortable(work, controller.signal);
     } finally {
         clearTimeout(timer);
-        callerSignal?.removeEventListener('abort', onAbort);
+        signal.removeEventListener('abort', onAbort);
     }
 }
 

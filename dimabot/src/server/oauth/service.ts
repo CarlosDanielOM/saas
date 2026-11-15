@@ -1,4 +1,5 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { Types } from 'mongoose';
 import UsersSchema from '../../schemas/users.schema.js';
 import { OAuthClient } from '../../schemas/oauth_client.schema.js';
@@ -9,9 +10,10 @@ import { AdminSchema } from '../../schemas/admin.schema.js';
 import { MCP_ADMIN_PERMISSION } from '../../middleware/channel_permissions.js';
 import { resolveAccess } from '../../site_agent/access.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
-import { ACCESS_TTL_SECONDS, CODE_TTL_SECONDS, OAuthError, OAUTH_RESOURCES, OAUTH_SCOPES, parseScopes,
+import { ACCESS_TTL_SECONDS, CODE_TTL_SECONDS, OAuthError, OAUTH_RESOURCES, OAUTH_SCOPES, parseScopes, REFRESH_GRACE_SECONDS,
     REFRESH_IDLE_MS, REQUEST_TTL_SECONDS, scopeResource, SESSION_ABSOLUTE_MS, validateRedirect } from './catalog.js';
-import { assertClientRegistry, FIRST_PARTY_CLIENTS, resolveClient, resolveSessionClient, type ClientRecord } from './clients.js';
+import { assertClientRegistry, FIRST_PARTY_CLIENTS, resolveClient, resolveSessionClient, type ClientRecord,
+    type SessionClient } from './clients.js';
 import { isCimdClientDenied, isCimdClientId } from './cimd.js';
 
 export const oauthIssuer = () => new URL(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').origin;
@@ -83,10 +85,11 @@ export async function rateLimit(bucket: string, limit: number): Promise<void> {
     if (Number(count) > limit) throw new OAuthError('slow_down', 429);
 }
 
-export async function startAuthorization(input: Record<string, unknown>): Promise<string> {
+/** `options.source`: the caller's rate-limit identities (`clientIps`), charged for a CIMD document fetch. */
+export async function startAuthorization(input: Record<string, unknown>, options: { source?: readonly string[] } = {}): Promise<string> {
     // Never redirect to an unverified client or callback: those failures stay JSON 400.
     // The only place a CIMD document is fetched.
-    const client = await resolveClient(input.client_id);
+    const client = await resolveClient(input.client_id, { source: options.source });
     const redirect = validateRedirect(input.redirect_uri, client.redirect_uris, redirectPolicy(client));
     const state = validState(input.state) ? input.state : undefined;
     const fail = (code: string, description: string) => {
@@ -247,30 +250,115 @@ async function activeSession(id: string) {
     return session;
 }
 
+const REFRESH_TOKEN = /^dima_rt_[A-Za-z0-9_-]{43}$/;
+/** How long a replay waits for a rotation that has passed its compare-and-set but not yet stored its grace record. */
+const GRACE_WAIT_MS = 1500, GRACE_POLL_MS = 100;
+const graceKey = (tokenHash: string) => `oauth:refresh:grace:${tokenHash}`;
+/** Derived from the replaced token's plaintext: only its holder can open the grace record. */
+const graceCipherKey = (refresh: string) => createHash('sha256').update('dima:oauth:refresh-grace:v1\n').update(refresh).digest();
+const graceAad = (previousHash: string, sessionID: string, nextHash: string) => Buffer.from(`${previousHash}\n${sessionID}\n${nextHash}`);
+
+/** The successor sealed with AES-256-GCM under the replaced token; Dragonfly never holds a usable plaintext token. */
+function sealGrace(previous: string, next: string, sessionID: string): string {
+    const iv = randomBytes(12), nextHash = hash(next);
+    const cipher = createCipheriv('aes-256-gcm', graceCipherKey(previous), iv);
+    cipher.setAAD(graceAad(hash(previous), sessionID, nextHash));
+    const data = Buffer.concat([cipher.update(next, 'utf8'), cipher.final()]);
+    return JSON.stringify({ v: 1, session_id: sessionID, next_hash: nextHash, iv: iv.toString('base64url'),
+        data: data.toString('base64url'), tag: cipher.getAuthTag().toString('base64url') });
+}
+
+/** Null for anything other than a grace record sealed for exactly this token. */
+function openGrace(previous: string, value: string): { session_id: string; refresh: string } | null {
+    try {
+        const record = JSON.parse(value) as Record<string, unknown>;
+        const { session_id, next_hash, iv, data, tag } = record;
+        if (record.v !== 1 || typeof session_id !== 'string' || typeof next_hash !== 'string' || typeof iv !== 'string' ||
+            typeof data !== 'string' || typeof tag !== 'string') return null;
+        const nonce = Buffer.from(iv, 'base64url'), mac = Buffer.from(tag, 'base64url');
+        if (nonce.length !== 12 || mac.length !== 16) return null;
+        const decipher = createDecipheriv('aes-256-gcm', graceCipherKey(previous), nonce, { authTagLength: 16 });
+        decipher.setAAD(graceAad(hash(previous), session_id, next_hash));
+        decipher.setAuthTag(mac);
+        const refresh = Buffer.concat([decipher.update(Buffer.from(data, 'base64url')), decipher.final()]).toString('utf8');
+        return REFRESH_TOKEN.test(refresh) && hash(refresh) === next_hash ? { session_id, refresh } : null;
+    } catch { return null; }
+}
+
+/** A failed write only removes the grace: the refresh itself still succeeds. */
+async function storeGrace(previous: string, next: string, sessionID: string) {
+    try {
+        await (await redis()).set(graceKey(hash(previous)), sealGrace(previous, next, sessionID), { EX: REFRESH_GRACE_SECONDS });
+    } catch { console.warn('[OAuth] Refresh grace record not stored'); }
+}
+
+/** With `wait`, polls briefly for a rotation still in flight. A read failure counts as no grace (fail closed). */
+async function findGrace(tokenHash: string, wait: boolean): Promise<string | null> {
+    const deadline = Date.now() + (wait ? GRACE_WAIT_MS : 0);
+    try {
+        for (;;) {
+            const value = await (await redis()).get(graceKey(tokenHash));
+            if (value || Date.now() >= deadline) return value || null;
+            await sleep(GRACE_POLL_MS);
+        }
+    } catch { return null; }
+}
+
+/** Request parameters a refresh must match; refused without ending the session. */
+function checkRefreshRequest(session: SessionRecord, client: SessionClient, input: Record<string, unknown>) {
+    if (session.client_id !== client.client_id) throw new OAuthError('invalid_grant');
+    if (input.scope !== undefined && (typeof input.scope !== 'string' || input.scope !== session.scopes.join(' '))) {
+        throw new OAuthError('invalid_scope');
+    }
+    if (input.resource !== undefined && input.resource !== binding(session).resource) throw new OAuthError('invalid_target');
+}
+
+/** A chosen channel keeps renewing only while the approver can still manage it. */
+async function checkRefreshChannel(session: SessionRecord, client: SessionClient) {
+    if (client.channel_selection && !await resolveAccess(binding(session).requester_id, session.channel_id, 'mcp')) {
+        throw new OAuthError('invalid_grant');
+    }
+}
+
+/**
+ * A replay of a refresh token that is no longer current. Within REFRESH_GRACE_SECONDS of its rotation, while the
+ * successor is still the session's current token, and after the same checks as a normal refresh, it gets a new access
+ * token and the SAME successor: overlapping refreshes and lost responses keep the session. Anything else is reuse.
+ */
+async function replayOrRevoke(refresh: string, sessionID: string, client: SessionClient, input: Record<string, unknown>, wait: boolean) {
+    const value = await findGrace(hash(refresh), wait);
+    const grace = value ? openGrace(refresh, value) : null;
+    let session: Awaited<ReturnType<typeof activeSession>> | null = null;
+    if (grace?.session_id === sessionID) session = await activeSession(sessionID).catch(() => null);
+    if (!grace || !session || session.current_refresh_hash !== hash(grace.refresh)) {
+        await revokeSession(sessionID, 'refresh_reuse');
+        throw new OAuthError('invalid_grant');
+    }
+    checkRefreshRequest(session, client, input);
+    await checkRefreshChannel(session, client);
+    return tokenResponse(session, grace.refresh);
+}
+
 export async function refreshAccess(input: Record<string, unknown>) {
     // A denylisted CIMD client's grants are void, like the sessions it holds.
     const client = await resolveSessionClient(input.client_id).catch((error: unknown) => {
         throw error instanceof OAuthError && isCimdClientId(input.client_id) ? new OAuthError('invalid_grant') : error;
     });
-    if (typeof input.refresh_token !== 'string' || !/^dima_rt_[A-Za-z0-9_-]{43}$/.test(input.refresh_token)) throw new OAuthError('invalid_grant');
-    const tokenHash = hash(input.refresh_token);
+    if (typeof input.refresh_token !== 'string' || !REFRESH_TOKEN.test(input.refresh_token)) throw new OAuthError('invalid_grant');
+    const presented = input.refresh_token;
+    const tokenHash = hash(presented);
     const record = await OAuthRefreshToken.findOne({ token_hash: tokenHash, expires_at: { $gt: new Date() } });
     if (!record) throw new OAuthError('invalid_grant');
+    const sessionID = record.session_id.toString();
     let session;
-    try { session = await activeSession(record.session_id.toString()); }
+    try { session = await activeSession(sessionID); }
     catch { throw new OAuthError('invalid_grant'); }
-    if (session.client_id !== client.client_id) throw new OAuthError('invalid_grant');
-    if (input.scope !== undefined && (typeof input.scope !== 'string' || input.scope !== session.scopes.join(' '))) {
-        throw new OAuthError('invalid_scope');
-    }
-    const { requester_id, resource } = binding(session);
-    if (input.resource !== undefined && input.resource !== resource) throw new OAuthError('invalid_target');
+    checkRefreshRequest(session, client, input);
     if (record.used_at || session.current_refresh_hash !== tokenHash) {
-        await revokeSession(session._id.toString(), 'refresh_reuse');
-        throw new OAuthError('invalid_grant');
+        // Not current but never marked used: its rotation may still be between the swap and the grace write.
+        return replayOrRevoke(presented, sessionID, client, input, !record.used_at);
     }
-    // A chosen channel keeps renewing only while the approver can still manage it.
-    if (client.channel_selection && !await resolveAccess(requester_id, session.channel_id, 'mcp')) throw new OAuthError('invalid_grant');
+    await checkRefreshChannel(session, client);
     const refresh = secret('dima_rt_');
     const nextHash = hash(refresh);
     await OAuthRefreshToken.create({ token_hash: nextHash, session_id: session._id, expires_at: session.expires_at });
@@ -280,13 +368,17 @@ export async function refreshAccess(input: Record<string, unknown>) {
         { $set: { current_refresh_hash: nextHash, last_used_at: now,
             idle_expires_at: new Date(Math.min(now.getTime() + REFRESH_IDLE_MS, session.expires_at.getTime())) } }, { new: true });
     if (!rotated) {
-        await revokeSession(session._id.toString(), 'refresh_reuse');
-        throw new OAuthError('invalid_grant');
+        // Lost a race with a concurrent refresh of the same token: this successor is never issued; the winner's is.
+        try { await OAuthRefreshToken.deleteOne({ token_hash: nextHash, session_id: session._id }); }
+        catch { /* unissued and unknown to anyone; it expires with the session */ }
+        return replayOrRevoke(presented, sessionID, client, input, true);
     }
+    // Swap → grace → used_at: a replay that sees used_at set never has to wait for the grace record.
+    await storeGrace(presented, refresh, sessionID);
     try {
         await OAuthRefreshToken.updateOne({ _id: record._id }, { $set: { used_at: now } });
         return await tokenResponse(rotated, refresh);
-    } catch (error) { await revokeSession(session._id.toString(), 'rotation_failed'); throw error; }
+    } catch (error) { await revokeSession(sessionID, 'rotation_failed'); throw error; }
 }
 
 /** With `options.resource`, only a token issued for that audience is accepted (RFC 8707). */

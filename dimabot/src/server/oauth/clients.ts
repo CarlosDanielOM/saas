@@ -49,11 +49,12 @@ async function firstParty(clientID: string): Promise<ClientRecord> {
         resources: [OAUTH_RESOURCES.desktop], default_resource: OAUTH_RESOURCES.desktop, channel_selection: false, recognized: true };
 }
 
-/** For a CIMD client_id this fetches its metadata document: call it only when an authorization starts. */
-export async function resolveClient(clientID: unknown): Promise<ClientRecord> {
+/** For a CIMD client_id this fetches its metadata document: call it only when an authorization starts.
+ *  `options.source`: the requester's rate-limit identities (`clientIps`), charged for a real document fetch. */
+export async function resolveClient(clientID: unknown, options: { source?: readonly string[] } = {}): Promise<ClientRecord> {
     if (typeof clientID !== 'string' || clientID.length > 512) throw new OAuthError('invalid_client');
     if (!isCimdClientId(clientID)) return firstParty(clientID);
-    const client = await resolveCimdClient(clientID);
+    const client = await resolveCimdClient(clientID, { source: options.source });
     return { client_id: client.client_id, name: client.client_name, kind: 'cimd',
         application_type: client.redirect_uris.every(loopback) ? 'native' : 'web',
         redirect_uris: client.redirect_uris, allowed_scopes: mcpScopes(), resources: [OAUTH_RESOURCES.mcp],

@@ -1,6 +1,7 @@
 /**
  * CIMD resolver: shape, SSRF guard (every blocked range, mapped IPv6, pinned TLS), response limits, document rules,
- * cache TTLs, negative cache, denylist, Redis failures, in-flight cap and fetch budget. No request leaves 127.0.0.1:
+ * cache TTLs, negative cache, denylist, Redis failures, in-flight cap, fetch budgets (shared, per source, recognized
+ * apps) and coalesced fetches. No request leaves 127.0.0.1:
  * DNS is injected and every vetted address is dialed as a local TLS server with a throwaway self-signed certificate.
  */
 import assert from 'node:assert/strict';
@@ -107,8 +108,8 @@ beforeEach(() => {
     useNetwork();
 });
 
-async function refused(id: string, cause?: string | RegExp, signal?: AbortSignal): Promise<void> {
-    const error = await resolveCimdClient(id, { signal }).then(() => null, (caught: unknown) => caught);
+async function refused(id: string, cause?: string | RegExp, signal?: AbortSignal, source?: string[]): Promise<void> {
+    const error = await resolveCimdClient(id, { signal, source }).then(() => null, (caught: unknown) => caught);
     assert.ok(error instanceof OAuthError, `${id}: expected OAuthError, got ${String(error)}`);
     assert.equal(error.code, 'invalid_client', id);
     if (cause !== undefined) {
@@ -467,19 +468,149 @@ test('cache outage (errors or a hang) falls back to an uncached fetch', async ()
     assert.equal(store.size, 0);
 });
 
-test('in-flight cap: the ninth concurrent fetch fails fast and is not negatively cached', async () => {
-    const pending: ((value: Fetched) => void)[] = [];
-    const calls: string[] = [];
-    __setCimdFetcherForTests(target => { calls.push(target); return new Promise<Fetched>(resolve => pending.push(resolve)); });
-    const running = Array.from({ length: 8 }, (_, i) => resolveCimdClient(url(`cap/${i}`)));
-    while (calls.length < 8) await new Promise(resolve => setImmediate(resolve));
-    await refused(url('cap/8'), 'busy');
+/** Lets queued microtasks and immediates run until `condition` holds; fails instead of spinning forever. */
+async function until(condition: () => boolean) {
+    for (let i = 0; i < 1000 && !condition(); i++) await new Promise(resolve => setImmediate(resolve));
+    assert.ok(condition(), 'condition never became true');
+}
+const settle = async () => { for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve)); };
+/** A fetcher hook whose answers the test releases by hand. */
+function held() {
+    const calls: string[] = [], answers: ((value: Fetched) => void)[] = [];
+    __setCimdFetcherForTests(target => { calls.push(target); return new Promise<Fetched>(resolve => answers.push(resolve)); });
+    return { calls, answer: (index: number, value?: Fetched) => answers[index](value ?? ok(document(calls[index]))) };
+}
+
+test('in-flight cap: unknown client_ids get 6 slots, the 2 reserved ones stay free for recognized apps', async () => {
+    const { calls, answer } = held();
+    const running = Array.from({ length: 6 }, (_, i) => resolveCimdClient(url(`cap/${i}`)));
+    await until(() => calls.length === 6);
+    await refused(url('cap/6'), 'busy');
+    assert.equal(store.has(failKey(url('cap/6'))), false, 'a local limit is never negatively cached');
+    const [first, second, third] = RECOGNIZED_CIMD_CLIENTS;
+    const known = [resolveCimdClient(first), resolveCimdClient(second)];
+    await until(() => calls.length === 8);
+    await refused(third, 'busy', undefined);
     assert.equal(calls.length, 8);
-    assert.equal(store.has(failKey(url('cap/8'))), false);
-    calls.forEach((target, i) => pending[i](ok(document(target))));
-    assert.equal((await Promise.all(running)).length, 8);
+    calls.forEach((_target, i) => answer(i));
+    assert.equal((await Promise.all(running)).length, 6);
+    assert.deepEqual((await Promise.all(known)).map(client => client.recognized), [true, true]);
     __setCimdFetcherForTests(async target => ok(document(target)));
-    assert.equal((await resolveCimdClient(url('cap/8'))).client_id, url('cap/8'));
+    assert.equal((await resolveCimdClient(url('cap/6'))).client_id, url('cap/6'));
+});
+
+test('per-source budget: 10 real fetches per source per minute; refusals cost nothing and are not negatively cached', async () => {
+    const calls = hooked(target => ok(document(target), { 'cache-control': 'no-store' }));
+    const attacker = ['203.0.113.7'];
+    for (let i = 0; i < 10; i++) await resolveCimdClient(url(`junk/${i}`), { source: attacker });
+    await refused(url('junk/10'), 'source budget', undefined, attacker);
+    assert.equal(store.has(failKey(url('junk/10'))), false);
+    for (let i = 11; i < 60; i++) await refused(url(`junk/${i}`), 'source budget', undefined, attacker);
+    assert.equal(calls.length, 10, 'refused before any fetch');
+    // Another source, and callers without a request, still fetch; refusals took none of the shared budget.
+    for (let n = 1; n <= 5; n++) {
+        for (let i = 0; i < 10; i++) await resolveCimdClient(url(`ok/${n}/${i}`), { source: [`198.51.100.${n}`] });
+    }
+    assert.equal(calls.length, 60);
+    await refused(url('ok/6'), 'fetch budget', undefined, ['198.51.100.6']);
+});
+
+test('per-source budget: cached resolutions are free, and every key of a request is charged', async () => {
+    const id = url('cached-app');
+    const calls = hooked(target => ok(document(target), target === id ? {} : { 'cache-control': 'no-store' }));
+    await resolveCimdClient(id, { source: ['198.51.100.1'] });
+    const exhausted = ['203.0.113.7'];
+    for (let i = 0; i < 10; i++) await resolveCimdClient(url(`x/${i}`), { source: exhausted });
+    await refused(url('x/10'), 'source budget', undefined, exhausted);
+    assert.equal((await resolveCimdClient(id, { source: exhausted })).client_id, id, 'a cache hit needs no budget');
+    assert.equal(calls.filter(target => target === id).length, 1);
+    // A pair is charged on both keys: each one alone then has 9 left.
+    const pair = ['conflict:real:192.0.2.1', 'conflict:cf:192.0.2.2'];
+    await resolveCimdClient(url('pair/0'), { source: pair });
+    for (let i = 1; i < 10; i++) await resolveCimdClient(url(`pair/${i}`), { source: [pair[1]] });
+    await refused(url('pair/10'), 'source budget', undefined, [pair[1]]);
+    // Every key must have budget: rotating the forged half of a conflict pair keeps hitting the true one.
+    await refused(url('pair/11'), 'source budget', undefined, ['conflict:real:192.0.2.9', pair[1]]);
+    await resolveCimdClient(url('pair/12'), { source: [pair[0]] });
+});
+
+test('recognized apps have their own per-minute budget, so made-up client_ids cannot starve them', async () => {
+    hooked(target => ok(document(target), { 'cache-control': 'no-store' }));
+    for (let i = 0; i < 60; i++) await resolveCimdClient(url(`junk/${i}`));
+    await refused(url('junk/60'), 'fetch budget');
+    const known = RECOGNIZED_CIMD_CLIENTS[0];
+    for (let i = 0; i < 30; i++) assert.equal((await resolveCimdClient(known)).recognized, true);
+    await refused(known, 'recognized fetch budget');
+    assert.equal(store.has(failKey(known)), false);
+    await refused(url('junk/61'), 'fetch budget');
+});
+
+test('concurrent resolutions of one client_id share one fetch, and its source is charged once', async () => {
+    const id = url('shared'), source = ['203.0.113.7'];
+    const calls: string[] = [];
+    let release: (value: Fetched) => void = () => assert.fail('not fetched yet');
+    // Only `id` is held until the test answers it; anything else answers at once, uncacheable.
+    __setCimdFetcherForTests(target => {
+        calls.push(target);
+        const answer = ok(document(target), { 'cache-control': 'no-store' });
+        return target === id ? new Promise<Fetched>(resolve => { release = () => resolve(answer); }) : Promise.resolve(answer);
+    });
+    const shared = () => calls.filter(target => target === id).length;
+    const waiters = Array.from({ length: 20 }, () => resolveCimdClient(id, { source }));
+    await until(() => shared() === 1);
+    await settle();
+    // A source with no budget left may still join a fetch that is already running.
+    const exhausted = ['198.51.100.9'];
+    for (let i = 0; i < 10; i++) await resolveCimdClient(url(`spend/${i}`), { source: exhausted });
+    await refused(url('spend/10'), 'source budget', undefined, exhausted);
+    const joiner = resolveCimdClient(id, { source: exhausted });
+    await settle();
+    release(ok(document(id)));
+    const results = await Promise.all([...waiters, joiner]);
+    assert.ok(results.every(client => client.client_id === id));
+    assert.equal(shared(), 1, 'one network fetch for 21 resolutions');
+    // The 20 waiters cost their source one fetch: 9 more are allowed.
+    for (let i = 0; i < 9; i++) await resolveCimdClient(url(`more/${i}`), { source });
+    await refused(url('more/9'), 'source budget', undefined, source);
+    // Once settled, a fetch is not reused: sequential resolutions of an uncacheable document each fetch.
+    await resolveCimdClient(url('seq'));
+    await resolveCimdClient(url('seq'));
+    assert.equal(calls.filter(target => target === url('seq')).length, 2);
+});
+
+test('a shared fetch failure reaches every waiter once and is negatively cached once', async () => {
+    const { calls, answer } = held();
+    const id = url('shared-fail');
+    const waiters = Array.from({ length: 5 }, () => refused(id, 'status 500'));
+    await until(() => calls.length === 1);
+    await settle();
+    answer(0, { status: 500, headers: {}, body: '' });
+    await Promise.all(waiters);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(store.get(failKey(id)), { value: '1', ex: 60 });
+});
+
+test('one waiter aborting leaves the shared fetch running; when every waiter leaves it is aborted, not cached', async () => {
+    routes.set('/late', (req, res) => { setTimeout(() => json(document(url('late')))(req, res), 150); });
+    const early = new AbortController();
+    setTimeout(() => early.abort(), 30);
+    const [, stayed] = await Promise.all([refused(url('late'), 'aborted', early.signal), resolveCimdClient(url('late'))]);
+    assert.equal(stayed.client_id, url('late'));
+    assert.equal(hits.length, 1, 'both waited on one request');
+    routes.set('/never', () => { /* never answers */ });
+    useNetwork({ timeoutMs: 300 });
+    const a = new AbortController(), b = new AbortController();
+    const both = [refused(url('never'), 'aborted', a.signal), refused(url('never'), 'aborted', b.signal)];
+    await until(() => hits.some(hit => hit.path === '/never'));
+    a.abort();
+    await settle();
+    b.abort();
+    await Promise.all(both);
+    await new Promise(resolve => setTimeout(resolve, 400)); // past the fetch timeout
+    assert.equal(store.has(failKey(url('never'))), false, 'aborted, so it never timed out into a negative entry');
+    // The next resolution starts a fresh fetch instead of joining the aborted one.
+    routes.set('/never', json(document(url('never'))));
+    assert.equal((await resolveCimdClient(url('never'))).client_id, url('never'));
 });
 
 test('fetch budget: at most 60 document fetches per minute', async () => {

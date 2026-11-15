@@ -22,6 +22,8 @@ export const ACCESS_TTL_SECONDS = 600;
 export const REQUEST_TTL_SECONDS = 600;
 export const CODE_TTL_SECONDS = 60;
 export const REFRESH_IDLE_MS = 30 * 24 * 60 * 60 * 1000;
+/** A rotated refresh token keeps answering with its successor this long (overlapping refreshes, lost responses). */
+export const REFRESH_GRACE_SECONDS = 60;
 export const SESSION_ABSOLUTE_MS = 90 * 24 * 60 * 60 * 1000;
 export const DESKTOP_CLIENT_ID = 'dima-desktop';
 export const MCP_TOOL_SCOPES = { read: 'channel:read', write: 'channel:write', stream: 'stream:act' } as const;
