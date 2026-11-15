@@ -1505,3 +1505,18 @@ button.lf-thumb:not(:disabled):hover {
     transition: none;
   }
 }
+
+/* Trigger looks: row chip and action (icon only on narrow rows, the action names the trigger in its label). */
+.lf-chip--look { color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.lf-trigger__look { gap: 0.35rem; }
+.lf-trigger__look-label { display: none; }
+/* Narrow rows: the look action keeps a short word; neighbouring text buttons drop their icons first. */
+@media (max-width: 479.98px) {
+  .lf-trigger__actions .lf-btn--compact .lf-icon { display: none; }
+}
+.lf-test-notes { display: grid; gap: 0.35rem; min-width: 0; }
+.lf-note--look { color: var(--fg); }
+@media (min-width: 480px) and (max-width: 639.98px), (min-width: 1200px) {
+  .lf-trigger__look-label { display: inline; }
+  .lf-trigger__look-short { display: none; }
+}

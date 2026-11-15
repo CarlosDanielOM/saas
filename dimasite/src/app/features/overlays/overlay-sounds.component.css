@@ -43,3 +43,4 @@
   .sound__times { grid-template-columns:repeat(4, minmax(0, 1fr)) }
 }
 @media (prefers-reduced-motion: reduce) { .sound__chev { transition:none } }
+.sound__missing, .sounds__note--warn { color:var(--warn, #92400e); font-weight:800 }

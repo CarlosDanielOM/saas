@@ -47,6 +47,10 @@ export class OverlayHistory {
   }
 
   endGroup(): void { this.group = null; }
+  /** Sets the steps aside (a trigger look opened inside the Studio gets its own history) and empties the history. */
+  stash(): { past: string[]; future: string[] } { const steps = { past: this.past, future: this.future }; this.past = []; this.future = []; this.endGroup(); this.sync(); return steps; }
+  /** Brings back steps set aside by `stash`. */
+  restore(steps: { past: string[]; future: string[] }): void { this.past = steps.past; this.future = steps.future; this.endGroup(); this.sync(); }
   clear(): void { this.past = []; this.future = []; this.endGroup(); this.sync(); }
 
   private sync(): void {

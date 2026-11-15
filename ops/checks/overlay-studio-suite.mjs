@@ -9,8 +9,8 @@ const batches = {
   editor: ['overlay-studio-redesign-browser.mjs', 'overlay-studio-browser.mjs', 'overlay-history-browser.mjs', 'overlay-trigger-filters-browser.mjs', 'overlay-connections-browser.mjs', 'overlay-controls-browser.mjs', 'overlay-free-browser.mjs'],
   reliability: ['overlay-alert-rendering-browser.mjs', 'overlay-draft-protection.mjs', 'overlay-reliability-browser.mjs', 'overlay-refresh-browser.mjs', 'overlay-recovery-browser.mjs', 'asset-library-browser.mjs', 'overlay-stacking-browser.mjs'],
   renderer: ['overlay-renderer-parity-browser.mjs', 'alert-timed-video-browser.mjs', 'overlay-cross-tab-browser.mjs', 'overlay-interactions-browser.mjs', 'overlay-widget-modules-browser.mjs', 'overlay-tts-text-browser.mjs', 'overlay-trigger-placement-browser.mjs'],
-  // Trigger looks on the OBS page and in the Studio Test path (about 100 s).
-  looks: ['trigger-look-runtime-browser.mjs'],
+  // Trigger looks: OBS page + Studio Test path (about 100 s) and the look editor from the Triggers page and a trigger box (about 95 s).
+  looks: ['trigger-look-runtime-browser.mjs', 'trigger-look-editor-browser.mjs'],
   samples: ['overlay-clip-designs.mjs', 'alert-studio-ast-readiness-browser.mjs', 'alert-studio-event-text-browser.mjs', 'alert-studio-image-readiness-browser.mjs', 'bits-rules-browser.mjs', 'overlay-studio-ux-touches-browser.mjs']
 };
 const batch = process.env.SAAS_OVERLAY_BATCH || 'all';

@@ -1,0 +1,26 @@
+/* Own tokens (light + dark): the prompt sits above the Studio and above the Triggers page dialog. */
+:host {
+  --lp-bg: #ffffff; --lp-fg: #14151a; --lp-muted: #596273; --lp-line: rgba(15,17,21,.1); --lp-btn: #eef0f5; --lp-danger: #b91c1c; --lp-focus: #7c3aed;
+  position: fixed; inset: 0; z-index: 1350; display: grid; place-items: end center;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; color: var(--lp-fg);
+}
+:host-context(html.dark) { --lp-bg: #171a21; --lp-fg: #f5f7fb; --lp-muted: #a7b0c2; --lp-line: rgba(255,255,255,.1); --lp-btn: #1d2230; --lp-danger: #fca5a5; --lp-focus: #c4b5fd }
+.lp-backdrop { position: absolute; inset: 0; background: rgba(10,10,14,.6) }
+.lp-panel {
+  position: relative; box-sizing: border-box; display: grid; gap: .7rem; width: 100%; max-height: 92dvh; overflow-y: auto;
+  padding: 1.1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 1px solid var(--lp-line); border-radius: 1.25rem 1.25rem 0 0;
+  background: var(--lp-bg); box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+.lp-title { margin: 0; font-size: 1.1rem; font-weight: 800 }
+.lp-message { margin: 0; color: var(--lp-muted); font-size: .9rem; line-height: 1.55 }
+.lp-actions { display: grid; gap: .5rem; margin-top: .25rem }
+.lp-btn { min-height: 44px; padding: .55rem 1rem; border: 1px solid var(--lp-line); border-radius: .85rem; color: var(--lp-fg); background: var(--lp-btn); font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer }
+.lp-btn--primary { border-color: #7c3aed; color: #fff; background: #7c3aed }
+.lp-btn--danger { border-color: color-mix(in srgb, var(--lp-danger) 50%, transparent); color: var(--lp-danger) }
+.lp-btn:disabled { cursor: progress }
+.lp-btn:focus-visible { outline: 2px solid var(--lp-focus); outline-offset: 2px }
+@media (min-width: 640px) {
+  :host { place-items: center }
+  .lp-panel { width: min(28rem, calc(100vw - 2rem)); padding-bottom: 1rem; border-radius: 1.25rem }
+  .lp-actions { display: flex; flex-wrap: wrap; justify-content: flex-end }
+}

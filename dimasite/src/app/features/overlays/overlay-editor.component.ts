@@ -30,7 +30,14 @@ import { defaultMotion } from './overlay-object-motion';
 import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay.model';
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
 import { OverlayQueueComponent } from './overlay-queue.component';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { TriggerLookSession, type TriggerLookClosed, type TriggerLookTarget } from './trigger-look-session';
+import { TriggerLooksService } from '../triggers/trigger-looks.service';
+import type { MediaLibraryItem } from '../triggers/triggers.model';
+import { OverlayTriggerMediaPickerComponent, type TriggerMediaKind } from './overlay-trigger-media-picker.component';
+import { OverlayTriggerLooksComponent } from './overlay-trigger-looks.component';
+import { OverlayLookPromptComponent } from './overlay-look-prompt.component';
+import { TriangleAlert } from 'lucide-angular';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { ThemeService } from '../../services/theme.service';
 import { LayoutFocusService } from '../../services/layout-focus.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -84,7 +91,7 @@ const tenthsUp = (n: number) => Math.ceil(n * 10 - 1e-6) / 10;
 const NO_SOUNDS: readonly AlertSound[] = [];
 const tenthsDown = (n: number) => Math.floor(n * 10 + 1e-6) / 10;
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlaySoundsComponent, OverlayVideoPlaybackComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
+  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlaySoundsComponent, OverlayVideoPlaybackComponent, OverlayTriggerMediaPickerComponent, OverlayTriggerLooksComponent, OverlayLookPromptComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -134,7 +141,7 @@ export class OverlayEditorComponent {
    * failed attempts per channel.
    */
   private readonly loadTestTriggers = effect(() => {
-    if (!this.loaded() || !this.auth.hasValidSession() || !this.widgets().some(w => w.kind === 'trigger')) return;
+    if (this.embedded() || !this.loaded() || !this.auth.hasValidSession() || !this.widgets().some(w => w.kind === 'trigger')) return;
     const channel = this.channel, retry = this.testTriggerRetry(), load = this.testTriggerLoad(); if (!channel || !retry) return;
     const same = load?.channel === channel, failures = same ? load.failures : 0;
     if (same && (load.state !== 'failed' || retry <= load.retry || failures >= 5)) return;
@@ -290,7 +297,7 @@ export class OverlayEditorComponent {
     const owner = this.offCanvasOwner();
     const next = new Set([...this.offCanvasIgnored(), ...this.offCanvasLayers().map(w => owner + w.id)]);
     this.offCanvasIgnored.set(next);
-    try { localStorage.setItem(OFF_CANVAS_KEY + this.channel, JSON.stringify([...next].slice(-200))); } catch { /* hidden for this visit only */ }
+    if (!this.embedded()) try { localStorage.setItem(OFF_CANVAS_KEY + this.channel, JSON.stringify([...next].slice(-200))); } catch { /* hidden for this visit only */ }
   }
   /** Selects the next layer that sticks out, so it can be moved or resized. */
   showOffCanvas(): void {
@@ -337,10 +344,12 @@ export class OverlayEditorComponent {
   readonly designPreparedAssets = this.designAssets.asReadonly();
   rendererStarted(report: OverlayPlacementReport): void { this.mediaStarted(Number(report.id),report.widgetId,report.duration); }
   rendererEnded(report: OverlayPlacementReport,failed = false): void { this.mediaFinished(Number(report.id),report.widgetId,failed); }
-  readonly dirty = computed(() => {
-    if (!this.loaded()) return false;
+  readonly dirty = computed(() => this.lookSession() ? this.lookDirty() : this.studioDirty());
+  /** Unsaved Overlay Studio edits (overlays and an open alert design), whether or not a trigger look is open on top. */
+  readonly studioDirty = computed(() => {
+    if (!this.loaded() || this.embedded()) return false;
     if (this.recovered() || this.documentFingerprint() !== this.savedDocument()) return true;
-    const draft = this.designDraft();
+    const draft = this.lookSession() ? null : this.designDraft();
     return !!draft && this.designFingerprint(draft) !== this.designFingerprint(this.designs().find(d => d.id === draft.id));
   });
   /**
@@ -413,7 +422,7 @@ export class OverlayEditorComponent {
   constructor() {
     this.seed();
     // The studio is full screen once it is open; loading, error and permission screens keep the site navbar.
-    effect(() => this.layoutFocus.active.set(this.owner() && this.loaded()));
+    effect(() => this.layoutFocus.active.set(this.owner() && this.loaded() && !this.embedded()));
     inject(DestroyRef).onDestroy(() => this.layoutFocus.active.set(false));
     // Desktop hides the timeline while Test is open in a design. Playback that is running when that happens
     // (the Test button, or resizing back from the phone layout) stops instead of running out of sight.
@@ -450,15 +459,20 @@ export class OverlayEditorComponent {
       element.addEventListener('wheel', wheel, { passive: false });
       onCleanup(() => { observer.disconnect(); element.removeEventListener('wheel', wheel); });
     });
-    afterNextRender(() => void this.loadSaved());
+    // On the Triggers page (a `look` input) the editor opens that trigger's look and never loads Overlay Studio state.
+    afterNextRender(() => void (this.lookInput() ? this.openEmbeddedLook() : this.loadSaved()));
     effect(onCleanup => {
-      if (!this.loaded() || !this.channel || this.loading()) return;
+      if (!this.loaded() || !this.channel || this.loading() || this.embedded()) return;
       // Clearing only removes this editor's own copy; an offered recovery copy stays until the user chooses.
-      const draft = this.dirty() ? this.localDraft() : null;
+      // A trigger look open on top never enters the copy; the overlays' own unsaved edits keep theirs.
+      const draft = this.studioDirty() ? this.localDraft() : null;
       const timer = setTimeout(() => { if (draft) this.writeRecovery(draft); else this.clearRecovery(); }, 250);
       onCleanup(() => clearTimeout(timer));
     });
     effect(onCleanup => {
+      // Trigger looks render their texts through the look route (see the look effect below). On the Triggers page
+      // (embedded) this never runs, also while the look is loading or failed: Studio routes are owner-only.
+      if (this.embedded() || this.lookSession()) return;
       const ownTexts = this.widgets().filter(w => w.kind === 'text').map(w => w.text || '');
       const current = this.designEvent(), user = this.sampleUser(), amount = this.sampleAmount(), tier = this.sampleTier();
       const batches = ALERT_EVENTS.map(kind => {
@@ -480,7 +494,7 @@ export class OverlayEditorComponent {
     // A custom widget's new revision (code editor, file replace) reaches OBS only when its overlays are published again.
     let widgetRevisions: ReadonlyMap<string, number> | null = null;
     effect(() => {
-      if (!this.customWidgets.list()) return;
+      if (this.embedded() || !this.customWidgets.list()) return;
       const next = new Map(this.customWidgets.widgets().map(widget => [widget.id, widget.revision])), previous = widgetRevisions;
       widgetRevisions = next;
       if (!previous) return;
@@ -517,6 +531,8 @@ export class OverlayEditorComponent {
   // ── Studio layout ──────────────────────────────────────────────────────────
   /** Which panes show: desktop uses the side panels/drawer state, phones show one pane per bottom tab. */
   paneOn(pane: StudioPane, device: 'desktop' | 'phone'): boolean {
+    // Trigger looks have no variants and no Test drawer (the toolbar's button replays the look).
+    if (this.lookSession() && (pane === 'tester' || pane === 'variants')) return false;
     const design = !!this.designDraft();
     if (device === 'phone') {
       const tab = this.mobileTab();
@@ -555,9 +571,14 @@ export class OverlayEditorComponent {
   }
   setRightTab(tab: 'layer' | 'overlay'): void { this.rightTab.set(tab); }
   /** Adding from the palette selects the new layer; on phones it also opens its settings. */
-  addFromPalette(kind: WidgetKind): void { this.addWidget(kind); this.rightTab.set('layer'); if (this.compact()) this.mobileTab.set('edit'); }
+  addFromPalette(kind: WidgetKind): void {
+    this.addWidget(kind); this.rightTab.set('layer'); if (this.compact()) this.mobileTab.set('edit');
+    // A new picture or video in a look needs a file from the trigger library: pick it right away.
+    if (this.lookSession() && (kind === 'image' || kind === 'video') && this.selected()?.kind === kind) this.openLookPicker(kind === 'video' ? 'video' : 'picture', 'object');
+  }
   setMobileTab(tab: MobileTab): void { this.closePop(); this.mobileTab.set(tab); }
   toggleTest(): void {
+    if (this.lookSession()) { void this.testDesign(); return; }
     if (this.compact()) { this.setMobileTab('test'); return; }
     // The timeline hides while Test is open, so its playback stops instead of running out of sight.
     if (!this.testOpen() && this.designDraft()) this.closeTimeline();
@@ -674,7 +695,7 @@ export class OverlayEditorComponent {
     if (event.key === 'Escape' && this.pop()) { event.preventDefault(); this.closePop(); return; }
     const target = event.target instanceof Element ? event.target : null;
     // Modal dialogs (code editor, import…) own their keys: Delete or zoom there never acts on the canvas underneath.
-    if (!this.loaded() || !target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), dialog, [role="dialog"]:not(.pop)')) return;
+    if (!this.loaded() || !target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])') || this.inDialog(target, 'dialog, [role="dialog"]:not(.pop), [role="alertdialog"]')) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if ((event.key === 'Delete' || event.key === 'Backspace') && this.selected() && !this.busy()) { event.preventDefault(); this.deleteSelected(); }
     else if (event.key === '+' || event.key === '=') { event.preventDefault(); this.zoomIn(); }
@@ -825,6 +846,8 @@ export class OverlayEditorComponent {
   addWidget(kind: WidgetKind, position?: { x: number; y: number }): void {
     const widget = createWidget(kind, { id: this.id(kind), placement: this.widgetPlacement(), position, defaultDesignId: this.designs()[0]?.id });
     if (!widget) return;
+    // A trigger has no viewer yet: a look's new text starts as plain words, not $(user).
+    if (this.lookSession() && widget.kind === 'text') widget.text = this.lookSession()!.target.name.replace(/_/g, ' ');
     this.updateWidgets(all => [...all, widget]); this.select(widget.id);
   }
   /** Places an imported widget in the current overlay; its settings start from the widget's saved values. */
@@ -1352,6 +1375,7 @@ export class OverlayEditorComponent {
       .filter(w => w.visible && w.kind === 'alert' && w.events?.includes(kind))
       .flatMap(w => this.playingLayout(w, kind)?.widgets ?? []);
     const texts = [...new Set(widgets.filter(w => w.visible && w.kind === 'text').map(w => w.text ?? ''))];
+    if (this.lookSession()) return this.lookTexts(texts);
     const user = this.sampleUser(), amount = this.sampleAmount(), tier = this.sampleTier();
     // The API accepts at most 100 templates per request; never leave later layers unresolved.
     const batches = Array.from({ length: Math.ceil(texts.length / 100) }, (_, i) => texts.slice(i * 100, (i + 1) * 100));
@@ -1378,7 +1402,7 @@ export class OverlayEditorComponent {
   private liveRequest = 0;
   /** Asks the API again (new custom widget code changes what publishing would send). */
   private async refreshLive(): Promise<void> {
-    if (!this.channel || !this.loaded()) return;
+    if (!this.channel || !this.loaded() || this.embedded()) return;
     const request = ++this.liveRequest;
     try {
       const status = await this.api.live(this.channel);
@@ -1418,12 +1442,16 @@ export class OverlayEditorComponent {
     this.error.set(error.status === 409 ? this.t('conflict') : error.error?.message || this.t('saveFailed')); this.saved.set(false);
   }
   exportLocalDraft(): void {
+    // Overlay Studio recovery/conflict actions never run while a trigger look is open (or on the Triggers page).
+    if (this.lookSession() || this.embedded()) return;
     this.flushRecovery();
     const url = URL.createObjectURL(new Blob([JSON.stringify(this.localDraft(), null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'overlay-draft-recovery.json'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async recoverAsCopies(): Promise<void> {
+    // Overlay Studio recovery/conflict actions never run while a trigger look is open (or on the Triggers page).
+    if (this.lookSession() || this.embedded()) return;
     if (this.busy() || this.loading() || !this.loaded()) return;
     this.flushRecovery(); this.busy.set(true); this.error.set('');
     const draft = this.designDraft();
@@ -1442,6 +1470,8 @@ export class OverlayEditorComponent {
     } finally { this.busy.set(false); }
   }
   async resetDraft(): Promise<void> {
+    // Overlay Studio recovery/conflict actions never run while a trigger look is open (or on the Triggers page).
+    if (this.lookSession() || this.embedded()) return;
     if (this.busy() || this.loading()) return;
     if (this.dirty() && !window.confirm(this.t('discardReload'))) return;
     await this.loadSaved();
@@ -1474,11 +1504,11 @@ export class OverlayEditorComponent {
   canLeave(): boolean {
     if (this.busy() || this.loading() && this.loaded()) return false;
     this.flushRecovery();
-    return !this.dirty() || window.confirm(this.t('leaveUnsaved'));
+    return !(this.studioDirty() || this.lookDirty()) || window.confirm(this.t('leaveUnsaved'));
   }
   protectDraft(event: BeforeUnloadEvent): void {
     this.flushRecovery();
-    if (this.dirty()) { event.preventDefault(); event.returnValue = ''; }
+    if (this.studioDirty() || this.lookDirty()) { event.preventDefault(); event.returnValue = ''; }
   }
   private edit(change: () => void, group: object | string | null = this.historyGroup()): void {
     if (this.busy() || this.loading() || !this.loaded()) return;
@@ -1524,7 +1554,7 @@ export class OverlayEditorComponent {
     if (snapshot) this.restoreEdit(snapshot, 'redone');
   }
   private restoreEdit(snapshot: OverlayEditSnapshot, notice: string): void {
-    this.resetSimulation(); this.previewDesign.set(false); this.assetPickerOpen.set(false); this.soundPicker.set(null);
+    this.resetSimulation(); this.previewDesign.set(false); this.assetPickerOpen.set(false); this.soundPicker.set(null); this.lookPicker.set(null);
     this.confirmRotate.set(false); this.confirmDelete.set(false);
     this.scenes.set(snapshot.document.scenes.map(scene => {
       const remote = this.serverScenes.get(scene.id);
@@ -1543,8 +1573,8 @@ export class OverlayEditorComponent {
     const key = event.key.toLowerCase();
     if (key !== 'z' && key !== 'y') return;
     const target = event.target instanceof Element ? event.target : null;
-    if (!target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), dialog, [role="dialog"]')) return;
-    if (!this.loaded() || this.busy() || this.loading() || this.assetPickerOpen() || this.soundPicker() !== null) return;
+    if (!target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])') || this.inDialog(target, 'dialog, [role="dialog"], [role="alertdialog"]')) return;
+    if (!this.loaded() || this.busy() || this.loading() || this.assetPickerOpen() || this.soundPicker() !== null || this.lookPicker() !== null) return;
     event.preventDefault();
     if (key === 'y' || event.shiftKey) this.redo(); else this.undo();
   }
@@ -1561,7 +1591,9 @@ export class OverlayEditorComponent {
   private localDraft(): LocalOverlayDraft {
     return { schemaVersion: 1, writer: 2, channelID: this.channel, updatedAt: Date.now(), revision: this.revision,
       scenes: this.scenes().map(({ publicId: _publicId, published: _published, revision: _revision, ...draft }) => draft),
-      designs: this.designs(), designDraft: this.designDraft(), sceneId: this.sceneId(), designEvent: this.designEvent(), variantId: this.variantId(), selectedId: this.selectedId() };
+      // A trigger look open on top is not part of the overlays' copy.
+      designs: this.designs(), designDraft: this.lookSession() ? null : this.designDraft(), sceneId: this.sceneId(), designEvent: this.designEvent(), variantId: this.variantId(),
+      selectedId: this.lookSession() ? this.lookStash?.selectedId ?? null : this.selectedId() };
   }
   private writeRecovery(draft: LocalOverlayDraft): void {
     try { this.draftStorage.write(this.channel, draft); this.storageError.set(false); }
@@ -1569,8 +1601,9 @@ export class OverlayEditorComponent {
   }
   saveLocalRecovery(): void { this.flushRecovery(); }
   private flushRecovery(): void {
-    if (!this.channel || !this.loaded()) return;
-    if (this.dirty()) this.writeRecovery(this.localDraft());
+    // A trigger look is never part of the Studio's recovery copy (and the Triggers page never touches it).
+    if (!this.channel || !this.loaded() || this.embedded()) return;
+    if (this.studioDirty()) this.writeRecovery(this.localDraft());
     else this.clearRecovery();
   }
   /** Removes this editor's own copy and the copy it restored; a copy still on offer is left alone. */
@@ -1595,6 +1628,8 @@ export class OverlayEditorComponent {
     return !open || (!!match && canonicalJson(design(open)) === canonicalJson(design(match)));
   }
   restoreRecovery(): void {
+    // Overlay Studio recovery/conflict actions never run while a trigger look is open (or on the Triggers page).
+    if (this.lookSession() || this.embedded()) return;
     const recovery = this.recovery();
     if (!recovery || this.busy() || this.loading()) return;
     if (this.dirty() && !window.confirm(this.t('discardRestore'))) return;
@@ -1614,6 +1649,8 @@ export class OverlayEditorComponent {
     this.flushRecovery();
   }
   discardRecovery(): void {
+    // Overlay Studio recovery/conflict actions never run while a trigger look is open (or on the Triggers page).
+    if (this.lookSession() || this.embedded()) return;
     const recovery = this.recovery(); if (!recovery) return;
     try { this.draftStorage.discard(recovery); this.recovery.set(null); this.storageError.set(false); }
     catch { this.storageError.set(true); }
@@ -1645,4 +1682,168 @@ export class OverlayEditorComponent {
     finally { this.liveTesting.set(false); }
   }
   private round(value:number):number{return this.snap()?Math.round(value/10)*10:Math.round(value);}
+
+  // ── Trigger look mode ──────────────────────────────────────────────────────
+  // The design-mode UI editing one trigger's look (held as a one-layout design in `designDraft`). Its data logic lives
+  // in TriggerLookSession; with the `look` input (Triggers page) no Overlay Studio state is read or written at all.
+  /** Triggers page: the trigger whose look this editor opens (embedded mode). */
+  readonly lookInput = input<TriggerLookTarget | null>(null, { alias: 'look' });
+  /** The look editor closed (embedded: the host removes the editor; in the Studio: back to the overlay). */
+  readonly lookClosed = output<TriggerLookClosed>();
+  private readonly lookApi = inject(TriggerLooksService);
+  readonly lookSession = signal<TriggerLookSession | null>(null);
+  readonly lookIcons = { TriangleAlert };
+  /** Alert wording that reads wrong for a trigger: look mode uses its `look_` variant. */
+  private static readonly LOOK_WORDING = new Set(['textDescription', 'animationDescription', 'motionTimingHint', 'motionReplay', 'timeWithAlert', 'designEditorLabel', 'stageEmpty']);
+  lt(key: string, params?: Record<string, string | number>): string { return this.t(this.lookSession() && OverlayEditorComponent.LOOK_WORDING.has(key) ? 'look_' + key : key, params); }
+  readonly lookMode = computed(() => !!this.lookSession());
+  readonly embedded = computed(() => !!this.lookInput());
+  readonly lookOpening = signal(false);
+  readonly lookLoadFailed = signal(false);
+  readonly lookConflict = signal(false);
+  /** What the trigger media picker is choosing: the selected object's file, a new sound ('add') or a sound's file (its id). */
+  readonly lookPicker = signal<{ kind: TriggerMediaKind; target: string } | null>(null);
+  readonly lookPrompt = signal<'close' | 'remove' | null>(null);
+  private lookStash: { history: ReturnType<OverlayHistory['stash']>; selectedId: string | null; mobileTab: MobileTab; rightTab: 'layer' | 'overlay'; testOpen: boolean } | null = null;
+  readonly lookDirty = computed(() => { const look = this.lookSession(); return !!look && look.fingerprint(this.designDraft()) !== look.baseline(); });
+  readonly lookStatus = computed(() => this.busy() ? 'saving' : this.lookDirty() ? 'unsavedChanges' : this.lookSession()?.stored() ? 'lookStatusSaved' : 'lookStatusNew');
+  readonly lookName = computed(() => this.lookSession()?.target.name ?? '');
+  /** The editor's playback of the look: sounds and videos at the trigger's master volume (the stored layout keeps raw values). */
+  readonly previewScene = computed<Snapshot>(() => { const look = this.lookSession(), scene = this.renderScene(); return look ? { ...scene, widgets: look.playbackWidgets(scene.widgets) } : scene; });
+  readonly previewSounds = computed(() => { const look = this.lookSession(), sounds = this.alertSounds(); return look ? look.playbackSounds(sounds) : sounds; });
+  readonly lookPromptActions = computed(() => this.lookPrompt() === 'remove'
+    ? [{ id: 'cancel', label: this.t('lookKeep') }, { id: 'remove', label: this.t('lookRemoveConfirm'), kind: 'danger' as const }]
+    : [{ id: 'save', label: this.t('lookSave'), kind: 'primary' as const }, { id: 'discard', label: this.t('lookDiscard'), kind: 'danger' as const }, { id: 'cancel', label: this.t('lookKeepEditing') }]);
+  private readonly lookTextEffect = effect(onCleanup => {
+    const look = this.lookSession(); if (!look) return;
+    const texts = [...new Set(this.widgets().filter(w => w.kind === 'text').map(w => w.text || ''))].slice(0, 100);
+    if (!texts.length) return;
+    let valid = true;
+    const timer = setTimeout(() => void look.render(texts).then(values => {
+      if (valid) { this.rendered.update(all => ({ ...all, follow: { ...all.follow, ...values } })); this.astError.set(''); }
+    }).catch(() => { if (valid) this.astError.set(this.t('lookRenderFailed')); }), 200);
+    onCleanup(() => { valid = false; clearTimeout(timer); });
+  });
+  /** A save error stays until the look is edited again (it sits over the side tabs on desktop). */
+  private readonly lookErrorReset = effect(() => { this.designDraft(); untracked(() => { if (this.lookSession() && this.error() && !this.busy()) this.error.set(''); }); });
+  private async lookTexts(texts: string[]): Promise<Record<string, string>> {
+    // A failed preview shows the text as written instead of stopping the replay.
+    try { return await this.lookSession()!.render(texts); } catch { return Object.fromEntries(texts.map(text => [text, text])); }
+  }
+  private enterLook(session: TriggerLookSession, design: AlertDesign): void {
+    this.lookSession.set(session); this.designDraft.set(design); this.variantId.set(null); this.designEvent.set('follow');
+    this.selectedId.set(design.events.follow.widgets[0]?.id ?? null); this.saved.set(false); this.lookConflict.set(false);
+    this.rightTab.set('layer'); if (this.compact()) this.mobileTab.set('edit');
+  }
+  async openEmbeddedLook(): Promise<void> {
+    const target = this.lookInput(); if (!target) return;
+    this.channel = target.channelID; this.loading.set(true); this.lookLoadFailed.set(false); this.error.set('');
+    try {
+      const session = new TriggerLookSession(target, this.lookApi), design = await session.open(target.name);
+      if (this.disposed) return;
+      this.history.clear(); this.enterLook(session, design); this.loaded.set(true);
+    } catch { if (!this.disposed) { this.lookLoadFailed.set(true); this.error.set(this.t('lookLoadFailed')); } }
+    finally { this.loading.set(false); }
+  }
+  /** Overlay Studio: a trigger box's "Give it its own look" / "Edit look" switches to look mode in place. */
+  async openLook(target: TriggerLookTarget): Promise<void> {
+    if (this.lookSession() || this.designDraft() || this.lookOpening() || this.busy()) return;
+    this.lookOpening.set(true); this.error.set('');
+    try {
+      const session = new TriggerLookSession(target, this.lookApi), design = await session.open(target.name);
+      if (this.disposed || this.designDraft()) return;
+      this.stopPointer(); this.endHistoryGroup(); this.resetSimulation();
+      // The overlays' latest edits get their recovery copy now (the pending one would be cancelled by the switch).
+      this.flushRecovery();
+      this.lookStash = { history: this.history.stash(), selectedId: this.selectedId(), mobileTab: this.mobileTab(), rightTab: this.rightTab(), testOpen: this.testOpen() };
+      // The Test drawer replaces the timeline on desktop; looks need the timeline (the drawer comes back on return).
+      this.testOpen.set(false);
+      this.enterLook(session, design);
+    } catch { if (!this.disposed) this.error.set(this.t('lookLoadFailed')); }
+    finally { this.lookOpening.set(false); }
+  }
+  async saveLook(): Promise<boolean> {
+    const look = this.lookSession(), draft = this.designDraft();
+    if (!look || !draft || this.busy()) return false;
+    this.stopPointer(); this.endHistoryGroup(); this.busy.set(true); this.error.set(''); this.lookConflict.set(false);
+    try { await look.save(draft); this.saved.set(true); this.notice.set('lookSavedNotice'); return true; }
+    catch (e) {
+      // A conflict gets the banner with "Reload it" (no toast on top of it); other errors say what to fix.
+      const key = TriggerLookSession.errorKey(e);
+      this.lookConflict.set(key === 'lookConflict'); this.error.set(key === 'lookConflict' ? '' : this.t(key)); return false;
+    } finally { this.busy.set(false); }
+  }
+  /** After a conflict: load the look as saved elsewhere, dropping the changes made here. */
+  async reloadLook(): Promise<void> {
+    const look = this.lookSession(); if (!look || this.busy()) return;
+    this.busy.set(true); this.error.set('');
+    try {
+      const design = await look.open(look.target.name);
+      this.resetSimulation(); this.history.clear(); this.busy.set(false); this.enterLook(look, design); this.notice.set('lookReloaded');
+    } catch { this.error.set(this.t('lookLoadFailed')); }
+    finally { this.busy.set(false); }
+  }
+  /** Back/close: unsaved changes ask first (saving is live, so it is never automatic). */
+  closeLook(): void {
+    if (!this.lookSession() || this.busy()) return;
+    if (this.lookDirty()) { this.lookPrompt.set('close'); return; }
+    this.finishLook();
+  }
+  async lookPromptChoice(choice: string): Promise<void> {
+    const prompt = this.lookPrompt();
+    if (choice === 'cancel') { this.lookPrompt.set(null); return; }
+    if (prompt === 'close' && choice === 'discard') { this.lookPrompt.set(null); this.finishLook(); return; }
+    if (prompt === 'close' && choice === 'save') { this.lookPrompt.set(null); if (await this.saveLook()) this.finishLook(); return; }
+    if (prompt === 'remove' && choice === 'remove') {
+      const look = this.lookSession(); if (!look) return;
+      this.busy.set(true); this.error.set('');
+      try { await look.remove(); this.lookPrompt.set(null); this.busy.set(false); this.notice.set('lookRemovedNotice'); this.finishLook(); }
+      catch (e) { const key = TriggerLookSession.errorKey(e); this.lookPrompt.set(null); this.lookConflict.set(key === 'lookConflict'); this.error.set(key === 'lookConflict' ? '' : this.t(key === 'lookErrorSave' ? 'lookErrorRemove' : key)); }
+      finally { this.busy.set(false); }
+    }
+  }
+  private finishLook(): void {
+    const look = this.lookSession(); if (!look) return;
+    this.lookClosed.emit({ triggerId: look.target.triggerId, changed: look.changed, look: look.changed ? look.summary : null });
+    if (this.embedded()) return;
+    this.stopPointer(); this.resetSimulation(); this.lookPicker.set(null); this.lookPrompt.set(null); this.lookConflict.set(false); this.error.set('');
+    this.designDraft.set(null); this.lookSession.set(null); this.previewDesign.set(false); this.saved.set(false);
+    const stash = this.lookStash; this.lookStash = null;
+    if (stash) { this.history.restore(stash.history); this.selectedId.set(stash.selectedId); this.rightTab.set(stash.rightTab); this.mobileTab.set(stash.mobileTab); this.testOpen.set(stash.testOpen); }
+  }
+  /** Triggers page route guard: a save in progress keeps the page; unsaved look changes ask before leaving. */
+  lookCanLeave(): boolean {
+    if (!this.lookSession()) return true;
+    if (this.busy()) return false;
+    return !this.lookDirty() || window.confirm(this.t('lookLeaveUnsaved'));
+  }
+  openLookPicker(kind: TriggerMediaKind, target: string): void { if (this.lookSession() && !this.busy()) this.lookPicker.set({ kind, target }); }
+  /** The selected object's file in a look (picture/GIF or video). */
+  lookObjectKind(): TriggerMediaKind { return this.selected()?.kind === 'video' ? 'video' : 'picture'; }
+  /** A file picked from the trigger library: objects get `mediaId` + its playback URL, sounds `mediaId`, `url` and name. Never `assetId`. */
+  useLookMedia(item: MediaLibraryItem): void {
+    const picker = this.lookPicker(); this.lookPicker.set(null);
+    const asset = item.asset; if (!picker || !asset?.playbackUrl) return;
+    const mediaType = asset.mediaType ?? item.mediaType, name = (item.localAlias || asset.displayName || '').slice(0, 120);
+    if (picker.target === 'object') {
+      const widget = this.selected();
+      if (!widget || (widget.kind === 'video') !== (mediaType === 'video') || mediaType === 'audio') return;
+      const { assetId: _asset, unavailable: _gone, ...rest } = widget;
+      this.updateWidgets(all => all.map(w => w.id === widget.id ? { ...rest, mediaId: item._id, mediaUrl: asset.playbackUrl, mediaType } : w));
+      return;
+    }
+    if (mediaType !== 'audio') return;
+    const file = { mediaId: item._id, url: asset.playbackUrl, mediaType, name };
+    if (picker.target === 'add') {
+      const sounds = this.alertSounds(); if (sounds.length >= MAX_ALERT_SOUNDS) return;
+      const ids = new Set(sounds.map(s => s.id)); let n = sounds.length + 1; while (ids.has('sound-' + n)) n++;
+      this.changeSounds(all => [...all, { id: 'sound-' + n, ...file, volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }], null);
+    } else this.changeSounds(all => all.map(s => { if (s.id !== picker.target) return s; const { assetId: _a, unavailable: _u, ...rest } = s; return { ...rest, ...file }; }), null);
+  }
+  /** A look's sound or object without a usable file (removed from the trigger library). */
+  readonly lookMissing = computed(() => !!this.lookSession() && (this.widgets().some(w => w.unavailable) || this.alertSounds().some(s => s.unavailable)));
+  /** Keyboard checks skip the editor's own dialogs, never a dialog that hosts the whole editor (Triggers page). */
+  private inDialog(target: Element, selector: string): boolean {
+    const dialog = target.closest(selector); return !!dialog && this.host.contains(dialog);
+  }
 }

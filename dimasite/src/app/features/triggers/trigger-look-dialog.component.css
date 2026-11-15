@@ -1,0 +1,14 @@
+/* Full screen, above the site navbar. The editor inside defines its own tokens; these cover the loading state. */
+:host { --tld-bg: #f4f5f8; --tld-fg: #14151a; --tld-muted: #596273; --tld-btn: #eef0f5; --tld-line: rgba(15,17,21,.1); --tld-focus: #7c3aed; display: contents }
+:host-context(html.dark) { --tld-bg: #0f1115; --tld-fg: #f5f7fb; --tld-muted: #a7b0c2; --tld-btn: #1d2230; --tld-line: rgba(255,255,255,.1); --tld-focus: #c4b5fd }
+.tld {
+  position: fixed; inset: 0; z-index: 1200; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--tld-bg); color: var(--tld-fg); font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+.tld:focus { outline: none }
+.tld__state { display: grid; gap: .75rem; justify-items: center; margin: 0; padding: 30dvh 1rem 0; color: var(--tld-muted); font-size: 1rem; text-align: center }
+.tld__state p { margin: 0 }
+.tld__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem }
+.tld__btn { min-height: 44px; padding: .5rem 1rem; border: 1px solid var(--tld-line); border-radius: .85rem; color: var(--tld-fg); background: var(--tld-btn); font: inherit; font-weight: 800; cursor: pointer }
+.tld__btn--primary { border-color: #7c3aed; color: #fff; background: #7c3aed }
+.tld__btn:focus-visible { outline: 2px solid var(--tld-focus); outline-offset: 2px }

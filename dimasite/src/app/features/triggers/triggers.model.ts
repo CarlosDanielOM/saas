@@ -51,6 +51,64 @@ export interface TriggerRecord {
   prompt: string;
   volume: number;
   reward?: LinkedRewardRecord | null;
+  /** Present when the trigger has its own look (list/create/update responses never carry the layout). */
+  look?: TriggerLookSummary | null;
+}
+
+/** What trigger list responses say about a trigger's look. */
+export interface TriggerLookSummary {
+  revision: number;
+  width: number;
+  height: number;
+  updatedAt: string;
+  objectCount: number;
+  soundCount: number;
+}
+
+/**
+ * A trigger's look in editor form (GET/PUT `/triggers/:channelID/:triggerID/look`). Its layout is an alert layout
+ * (see `features/overlays/overlay.model.ts` `AlertLayout`) whose files reference trigger library items (`mediaId`);
+ * the API adds `mediaUrl`/`url`, `mediaType` and `unavailable: true` to each of them. No master volume applied.
+ */
+export interface TriggerLook {
+  width: number;
+  height: number;
+  layout: unknown;
+  mediaIds?: string[];
+  revision: number;
+  updatedAt?: string;
+}
+
+/** `revision` is the trigger's look revision counter (0 when no look was ever saved); `volume` its 0–100 master volume. */
+export interface TriggerLookState {
+  look: TriggerLook | null;
+  volume: number;
+  revision: number;
+}
+
+export interface TriggerLookSaveRequest {
+  width: number;
+  height: number;
+  layout: unknown;
+  revision: number;
+}
+
+/** Error codes of the look routes (400 unless noted); bodies over 320 kB get an HTML 413 instead. */
+export type TriggerLookErrorCode = 'invalid_look' | 'look_media_unavailable' | 'look_media_kind' | 'look_too_large' | 'look_conflict' | 'too_large';
+
+/** Upload size per plan, as the API enforces it (dimabot trigger.route.ts). */
+export function triggerUploadLimitBytes(planTier: PlanTier): number {
+  return planTier === 'pro' ? 100 * 1024 * 1024 : planTier === 'premium' ? 25 * 1024 * 1024 : 5 * 1024 * 1024;
+}
+
+/** A valid trigger/media name from any text (same rule as the Triggers page upload): letters, digits and `_`, no leading digit. */
+export function safeMediaName(name: string): string {
+  return name
+    .replace(/[^A-Za-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/^\d+/, '')
+    .slice(0, 60);
 }
 
 export interface LinkedRewardRecord {
@@ -165,4 +223,29 @@ export interface TriggerTestPayload {
   url: string;
   mediaType: string;
   volume: number;
+}
+
+/** The trigger a look belongs to, as the Triggers page or Overlay Studio knows it. */
+export interface TriggerLookTarget {
+  channelID: string;
+  triggerId: string;
+  name: string;
+  /** The trigger's own file (first content of a new look). */
+  libraryItemID: string | null;
+  mediaType: MediaType | null;
+  mediaUrl: string;
+  mediaName?: string;
+}
+
+/** What the host learns when the look editor closes (the Triggers page refreshes that row). */
+export interface TriggerLookClosed { triggerId: string; changed: boolean; look: TriggerLookSummary | null }
+
+/** The look target for a trigger, with its own file found in the channel's library. */
+export function lookTargetFor(channelID: string, trigger: TriggerRecord, library: readonly MediaLibraryItem[]): TriggerLookTarget {
+  const item = library.find(entry => entry._id === trigger.libraryItemID) ?? library.find(entry => entry.assetID === trigger.assetID);
+  return {
+    channelID, triggerId: trigger._id, name: trigger.name, libraryItemID: item?._id ?? trigger.libraryItemID ?? null,
+    mediaType: item?.asset?.mediaType ?? item?.mediaType ?? null, mediaUrl: item?.asset?.playbackUrl ?? '',
+    mediaName: item ? (item.localAlias || item.asset?.displayName || trigger.name) : trigger.name
+  };
 }

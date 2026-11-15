@@ -124,6 +124,9 @@
                       @if (!trigger.isEnabled) {
                         <span class="lf-chip lf-chip--xs">{{ t('triggers.page.off') }}</span>
                       }
+                      @if (trigger.look) {
+                        <span class="lf-chip lf-chip--xs lf-chip--look" [title]="t('triggers.look.chipHint')">{{ t('triggers.look.chip') }}</span>
+                      }
                     </div>
                     <p class="lf-trigger__meta">
                       @if (trigger.reward) {
@@ -149,6 +152,17 @@
                       </button>
                     }
                     @if (canEdit()) {
+                      <button type="button" class="lf-btn lf-btn--compact lf-trigger__look" (click)="openLookEditor(trigger)"
+                        [disabled]="lookPending() === trigger._id" [attr.aria-busy]="lookPending() === trigger._id ? 'true' : null"
+                        [attr.aria-label]="lookPending() === trigger._id ? t('triggers.look.waiting') : t(trigger.look ? 'triggers.look.editNamed' : 'triggers.look.designNamed', { name: trigger.name })">
+                        <lucide-icon class="lf-icon" [name]="lookIcon" aria-hidden="true"></lucide-icon>
+                        @if (lookPending() === trigger._id) {
+                          <span>{{ t('triggers.look.waiting') }}</span>
+                        } @else {
+                          <span class="lf-trigger__look-short">{{ t('triggers.look.short') }}</span>
+                          <span class="lf-trigger__look-label">{{ t(trigger.look ? 'triggers.look.edit' : 'triggers.look.design') }}</span>
+                        }
+                      </button>
                       <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(trigger)"
                         [attr.aria-label]="t('triggers.page.editNamed', { name: trigger.name })">{{ t('common.edit') }}</button>
                       <label class="lf-switch" [title]="trigger.isEnabled ? t('common.disable') : t('common.enable')">
@@ -581,7 +595,12 @@
         }
       </div>
       <footer class="lf-modal__footer lf-modal__footer--split">
-        <p class="lf-note">{{ t('triggers.test.description') }}</p>
+        <div class="lf-test-notes">
+          <p class="lf-note">{{ t('triggers.test.description') }}</p>
+          @if (testingTrigger()?.look) {
+            <p class="lf-note lf-note--look">{{ t('triggers.look.testNote') }}</p>
+          }
+        </div>
         <button type="button" class="lf-btn lf-btn--primary" [disabled]="isSendingTest()" (click)="fireTriggerTest()">
           <lucide-icon class="lf-icon" [name]="playIcon" aria-hidden="true"></lucide-icon>
           {{ isSendingTest() ? t('triggers.test.sending') : t('triggers.test.sendAgain') }}
@@ -657,3 +676,7 @@
     </span>
   }
 </ng-template>
+
+@if (lookTarget(); as target) {
+  <app-trigger-look-dialog [target]="target" (closed)="closeLookEditor($event)" />
+}

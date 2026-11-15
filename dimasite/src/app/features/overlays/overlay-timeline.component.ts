@@ -22,6 +22,8 @@ const tenths = (n: number) => Math.round(n * 10) / 10;
 export class OverlayTimelineComponent {
   readonly layout = input.required<AlertLayout>();
   readonly eventKey = input.required<string>();
+  /** A trigger look (not an alert): its wording says so. */
+  readonly look = input(false);
   readonly selectedId = input<string | null>(null);
   readonly transport = input<AlertTransport | null>(null);
   readonly selected = output<string>();
@@ -70,7 +72,7 @@ export class OverlayTimelineComponent {
   delay(id: string): number { return this.timing(id).start; }
   percent(n: number): number { return Math.max(0, Math.min(100, n / this.layout().duration * 100)); }
   seconds(n: number): string { return tenths(n) + ' s'; }
-  endText(id: string): string { const end = this.timing(id).end; return end === undefined ? this.t('timelineEndsWithAlert') : this.seconds(end); }
+  endText(id: string): string { const end = this.timing(id).end; return end === undefined ? this.t(this.look() ? 'look_timelineEndsWithAlert' : 'timelineEndsWithAlert') : this.seconds(end); }
   draggingEdge(id: string, edge: Edge): boolean { const d = this.dragging(); return d?.id === id && d.edge === edge; }
 
   inputValue(event: Event): number { return Number((event.target as HTMLInputElement).value); }

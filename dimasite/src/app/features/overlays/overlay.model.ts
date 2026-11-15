@@ -35,6 +35,11 @@ export interface OverlayWidget {
   volume?: number;
   /** Videos in alert layouts only. Absent = loops (as before); `false` = plays once from its start time and holds its last frame. */
   loop?: boolean;
+  /** Trigger looks only: the trigger library item shown (the API adds `mediaUrl`, `mediaType` and `unavailable` in editor form). */
+  mediaId?: string;
+  mediaType?: 'image' | 'gif' | 'video' | 'audio';
+  /** Editor form of a trigger look: the library item or its file is gone. */
+  unavailable?: boolean;
 }
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
 /**
@@ -42,7 +47,9 @@ export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boole
  * `id` is unique inside its layout (the legacy single sound has none). `assetId` = Overlay Studio asset (alert designs),
  * `mediaId` = trigger library item (trigger looks); `url` is a playback URL only the server produces (never stored).
  */
-export interface AlertSound { id?: string; assetId?: string; mediaId?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
+export interface AlertSound { id?: string; assetId?: string; mediaId?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number;
+  /** Editor form of a trigger look (from the API): the file's kind, and whether its library item is gone. */
+  mediaType?: 'image' | 'gif' | 'video' | 'audio'; unavailable?: boolean }
 export const MAX_ALERT_SOUNDS = 10;
 /** When the sound has stopped: `end` capped at the alert length. At or before `delay` the sound stays silent. */
 export function soundStop(sound: AlertSound, duration: number): number {

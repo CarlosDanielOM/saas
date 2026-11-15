@@ -7,6 +7,7 @@ import { ErrorPageComponent } from './features/errors/error-page.component';
 import { channelOwnerGuard, permissionGuard } from './guards/permission.guard';
 import { streamerRouteShapeGuard, validStreamerGuard } from './guards/streamer-route.guard';
 import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
+import { triggerLookLeaveGuard } from './features/triggers/trigger-look-leave.guard';
 import { petPlanGuard } from './features/pet/pet-plan.guard';
 
 export const routes: Routes = [
@@ -971,6 +972,7 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/triggers/triggers-page.component').then((m) => m.TriggersPageComponent),
             canActivate: [permissionGuard],
+            canDeactivate: [triggerLookLeaveGuard],
             data: {
               permission: 'triggers:view'
             },

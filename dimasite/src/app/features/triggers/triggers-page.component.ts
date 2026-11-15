@@ -2,8 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
   viewChild,
   type ElementRef,
   type OnDestroy,
@@ -26,6 +28,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  Sparkles,
   Trash2,
   Upload,
   Volume2,
@@ -49,6 +52,7 @@ import { ToastService } from '../../services/toast.service';
 import { RedemptionsService } from '../redemptions/redemptions.service';
 import { PublicLibraryModalComponent } from './components/public-library-modal.component';
 import { LazyVideoFrameDirective } from './lazy-video-frame.directive';
+import { TriggerLookDialogComponent } from './trigger-look-dialog.component';
 import {
   CreateTriggerRequest,
   TriggerRewardDraft,
@@ -64,7 +68,10 @@ import {
   TriggerTestPayload,
   TriggerUploadIssue,
   UpdateTriggerRequest,
-  getTriggerUploadIssue
+  getTriggerUploadIssue,
+  lookTargetFor,
+  type TriggerLookClosed,
+  type TriggerLookTarget
 } from './triggers.model';
 import { TriggersService } from './triggers.service';
 
@@ -126,7 +133,8 @@ const SAFE_NAME_MAX_LENGTH = 60;
     LucideAngularModule,
     LazyVideoFrameDirective,
     NgTemplateOutlet,
-    RewardLimitNoteComponent
+    RewardLimitNoteComponent,
+    TriggerLookDialogComponent
   ],
   styleUrl: './triggers-page.component.css',
   templateUrl: './triggers-page.component.html',
@@ -214,6 +222,20 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly isTestModalOpen = signal(false);
   readonly testingTrigger = signal<TriggerRecord | null>(null);
   readonly pendingDelete = signal<DeleteState | null>(null);
+  /** The trigger whose look editor is open (full-screen dialog). */
+  readonly lookTarget = signal<TriggerLookTarget | null>(null);
+  /** A look asked for before the media library arrived: it opens once the library is known (the trigger's own file is its first content). */
+  readonly lookPending = signal<string | null>(null);
+  private readonly lookDialog = viewChild(TriggerLookDialogComponent);
+  private readonly openPendingLook = effect(() => {
+    const id = this.lookPending();
+    if (!id || this.isLoadingLibrary()) return;
+    untracked(() => {
+      this.lookPending.set(null);
+      const trigger = this.triggers().find((item) => item._id === id);
+      if (trigger) this.openLookEditor(trigger);
+    });
+  });
 
   readonly planTier = computed<PlanTier>(() =>
     this.libraryMeta().planTier || this.sessionAuth.getPlanTierForStreamer(this.streamer())
@@ -427,6 +449,11 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   handleEscape(): void {
+    // The look editor handles its own keys (and asks before closing with unsaved changes).
+    if (this.lookTarget()) {
+      return;
+    }
+
     if (this.isTriggerModalOpen()) {
       this.closeTriggerModal();
       return;
@@ -1006,6 +1033,26 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     this.openCreateModal(item);
   }
 
+  openLookEditor(trigger: TriggerRecord): void {
+    const channelId = this.channelID();
+    if (!this.canEdit() || !channelId || this.lookTarget()) return;
+    if (this.isLoadingLibrary()) { this.lookPending.set(trigger._id); return; }
+    this.lookTarget.set(lookTargetFor(channelId, trigger, this.libraryItems()));
+  }
+
+  /** Route guard: only the open look dialog is consulted. */
+  canLeave(): boolean {
+    return !this.lookTarget() || (this.lookDialog()?.canLeave() ?? true);
+  }
+
+  closeLookEditor(result: TriggerLookClosed): void {
+    this.lookTarget.set(null);
+    if (!result.changed) return;
+    this.triggers.update((all) => all.map((trigger) => trigger._id === result.triggerId ? { ...trigger, look: result.look } : trigger));
+    const channelId = this.channelID();
+    if (channelId) this.loadTriggers(channelId, true);
+  }
+
   openTestModal(trigger: TriggerRecord): void {
     if (!this.canTest()) return;
     this.testPreviewReady = false;
@@ -1101,6 +1148,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly trashIcon = Trash2;
   readonly uploadIcon = Upload;
   readonly volumeIcon = Volume2;
+  readonly lookIcon = Sparkles;
 
   private readonly mediaIcons: Record<string, LucideIconData> = {
     audio: Music,

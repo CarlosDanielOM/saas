@@ -1,5 +1,5 @@
-<section class="timeline" [attr.aria-label]="t('timelineTitle')">
-  <header><div><h3>{{ t('timelineTitle') }}</h3><p [title]="t('timelineHint')">{{ t('timelineHint') }}</p></div><output>{{ (transport()?.time ?? 0).toFixed(2) }} / {{ layout().duration }} s</output></header>
+<section class="timeline" [attr.aria-label]="t(look() ? 'lookTimelineTitle' : 'timelineTitle')">
+  <header><div><h3>{{ t(look() ? 'lookTimelineTitle' : 'timelineTitle') }}</h3><p [title]="t('timelineHint')">{{ t('timelineHint') }}</p></div><output>{{ (transport()?.time ?? 0).toFixed(2) }} / {{ layout().duration }} s</output></header>
   <div class="transport">
     <button type="button" class="primary" (click)="toggle.emit()">{{ t(transport()?.playing ? 'timelinePause' : 'timelinePlay') }}</button>
     <button type="button" (click)="seek.emit(0)">{{ t('timelineStart') }}</button>
@@ -25,7 +25,7 @@
     @for (entry of soundRows(); track entry.row) {
       @let row = timing(entry.row);
       <div class="row" [class.selected]="soundSelected() === entry.row" [attr.data-track]="entry.row">
-        <span class="name" [title]="entry.name"><span class="name__clamp">{{ entry.name }}</span><small>{{ t('alertSound') }}</small></span>
+        <span class="name" [title]="entry.name"><span class="name__clamp">{{ entry.name }}</span><small>{{ t(look() ? 'lookTimelineSound' : 'alertSound') }}</small></span>
         <div class="track sound-track" [style.--s]="percent(row.start)" [style.--e]="percent(row.stop)" [class.dragging]="!!dragging() && dragging()!.id === entry.row">
           <div class="bar" [style.left.%]="percent(row.start)" [style.width.%]="percent(row.stop) - percent(row.start)"></div>
           <span class="playhead" [style.left.%]="percent(transport()?.time ?? 0)"></span>

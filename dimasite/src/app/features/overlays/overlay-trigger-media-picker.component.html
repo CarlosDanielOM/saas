@@ -1,0 +1,104 @@
+<div class="tmp-backdrop" (click)="close()" aria-hidden="true"></div>
+<section class="tmp-panel" role="dialog" aria-modal="true" aria-labelledby="tmp-title" [attr.data-kind]="kind()">
+  <header class="tmp-head">
+    <div class="tmp-head__text">
+      <h2 class="tmp-title" id="tmp-title">{{ view() === 'upload' ? tr('triggers.uploadMedia') : t('lookPickerTitle_' + kind()) }}</h2>
+      <p class="tmp-note">{{ view() === 'upload' ? t('lookPickerUploadHint') : t('lookPickerHint') }}</p>
+    </div>
+    <button type="button" class="tmp-icon-btn" [attr.data-autofocus]="view() === 'list' && matching().length <= 6 ? '' : null" (click)="close()" [attr.aria-label]="tr('common.close')"><lucide-icon [img]="icons.X" [size]="18" aria-hidden="true" /></button>
+  </header>
+
+  @if (view() === 'list') {
+    <div class="tmp-body">
+      @if (loading()) {
+        <p class="tmp-state" role="status">{{ t('lookPickerLoading') }}</p>
+      } @else if (failed()) {
+        <div class="tmp-state" role="alert">
+          <p>{{ t('lookPickerFailed') }}</p>
+          <button type="button" class="tmp-btn" (click)="load()">{{ t('retry') }}</button>
+        </div>
+      } @else {
+        @if (matching().length > 6) {
+          <label class="tmp-search"><lucide-icon [img]="icons.Search" [size]="16" aria-hidden="true" /><span class="tmp-sr">{{ t('lookPickerSearch') }}</span>
+            <input type="search" data-autofocus [placeholder]="t('lookPickerSearch')" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+        }
+        @if (!matching().length) {
+          <p class="tmp-state">{{ t('lookPickerEmpty_' + kind()) }}</p>
+        } @else {
+          <ul class="tmp-list">
+            @for (item of shown(); track item._id) {
+              @let type = itemType(item);
+              <li class="tmp-row" [attr.data-item-id]="item._id">
+                @if (type === 'audio') {
+                  <button type="button" class="tmp-thumb tmp-thumb--sound" [attr.aria-pressed]="playing() === item._id" [attr.aria-label]="t(playing() === item._id ? 'lookPickerPause' : 'lookPickerPlay', { name: itemName(item) })" (click)="toggleSound(item)">
+                    <lucide-icon [img]="playing() === item._id ? icons.Pause : icons.Play" [size]="18" aria-hidden="true" />
+                  </button>
+                } @else {
+                  <span class="tmp-thumb" aria-hidden="true">
+                    @if (type === 'video') { <video [appLazyVideoFrame]="item.asset?.playbackUrl"></video> }
+                    @else { <img [src]="item.asset?.playbackUrl" alt="" loading="lazy" /> }
+                  </span>
+                }
+                <button type="button" class="tmp-pick" (click)="choose(item)" [attr.aria-label]="t('lookPickerUse', { name: itemName(item) })">
+                  <span class="tmp-pick__name">{{ itemName(item) }}</span>
+                  <span class="tmp-pick__meta">{{ tr('triggers.filters.' + type) }} · {{ formatBytes(item.asset?.bytes ?? 0) }}</span>
+                </button>
+              </li>
+            } @empty {
+              <li class="tmp-state">{{ t('lookPickerNoMatches') }}</li>
+            }
+          </ul>
+        }
+      }
+    </div>
+    <footer class="tmp-foot">
+      @if (canUpload()) {
+        <button type="button" class="tmp-btn tmp-btn--primary tmp-upload" [disabled]="loading()" (click)="openUpload()"><lucide-icon [img]="icons.Upload" [size]="16" aria-hidden="true" />{{ t('lookPickerUpload') }}</button>
+      } @else if (!loading()) {
+        <p class="tmp-note">{{ t('lookPickerNoUpload') }}</p>
+      }
+    </footer>
+  } @else {
+    <div class="tmp-body tmp-form">
+      <label class="tmp-drop" tabindex="0" [class.is-dragging]="dragging()" [class.is-filled]="!!file()" [class.is-error]="!!fileIssue()"
+        (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)" (keydown.enter)="fileInput.click()" (keydown.space)="$event.preventDefault(); fileInput.click()">
+        <input #fileInput type="file" class="tmp-drop__input" tabindex="-1" [accept]="accept()" [attr.aria-describedby]="fileIssue() ? 'tmp-file-issue' : null" [attr.aria-label]="tr('triggers.upload.pickFile')" (change)="onFile($event)" />
+        <lucide-icon [img]="icons.Upload" [size]="22" aria-hidden="true" />
+        <strong>{{ file()?.name || tr('triggers.upload.pickFile') }}</strong>
+        <span>
+          @if (dragging() && !file()) { {{ tr('triggers.upload.dropNow') }} }
+          @else if (file()) { {{ formatBytes(file()?.size || 0) }} }
+          @else { {{ tr('triggers.upload.fileHint', { size: limitLabel() }) }} }
+        </span>
+      </label>
+      @if (fileIssue()) { <p class="tmp-error" id="tmp-file-issue" role="alert">{{ fileIssue() }}</p> }
+
+      <label class="tmp-field">
+        <span class="tmp-label">{{ tr('triggers.upload.nameLabel') }}</span>
+        <input type="text" [value]="name()" (input)="setName($event)" [placeholder]="tr('triggers.upload.namePlaceholder')" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false"
+          [attr.aria-invalid]="submitted() && !name() ? 'true' : null" />
+      </label>
+
+      @if (planTier() === 'free') {
+        <p class="tmp-note tmp-note--gold">{{ tr('triggers.upload.freePlanMessage') }}</p>
+      } @else {
+        <fieldset class="tmp-choice">
+          <legend class="tmp-label">{{ tr('triggers.upload.visibility') }}</legend>
+          <label class="tmp-choice__opt" [class.is-on]="scope() === 'private'">
+            <input type="radio" name="tmp-scope" [checked]="scope() === 'private'" (change)="setScope('private')" />
+            <span><strong>{{ tr('triggers.scope.private') }}</strong> {{ tr('triggers.upload.privateHint') }}</span>
+          </label>
+          <label class="tmp-choice__opt" [class.is-on]="scope() === 'public'">
+            <input type="radio" name="tmp-scope" [checked]="scope() === 'public'" (change)="setScope('public')" />
+            <span><strong>{{ tr('triggers.scope.public') }}</strong> {{ tr('triggers.upload.publicHint') }}</span>
+          </label>
+        </fieldset>
+      }
+      @if (uploadError()) { <p class="tmp-error" role="alert">{{ uploadError() }}</p> }
+    </div>
+    <footer class="tmp-foot tmp-foot--split">
+      <button type="button" class="tmp-btn" [disabled]="uploading()" (click)="backToList()">{{ t('lookPickerBack') }}</button>
+      <button type="button" class="tmp-btn tmp-btn--primary tmp-submit" [disabled]="uploading() || !file()" (click)="upload()">{{ uploading() ? tr('triggers.upload.uploading') : t('lookPickerUploadUse') }}</button>
+    </footer>
+  }
+</section>

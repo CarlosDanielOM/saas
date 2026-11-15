@@ -1,0 +1,75 @@
+/* The picker defines its own tokens (light + dark), so it reads the same over the Studio and over the Triggers page. */
+:host {
+  --tmp-bg: #ffffff; --tmp-fg: #14151a; --tmp-muted: #596273; --tmp-line: rgba(15,17,21,.1); --tmp-btn: #eef0f5;
+  --tmp-input: #f8f9fc; --tmp-accent: #7c3aed; --tmp-focus: #7c3aed; --tmp-danger: #b91c1c; --tmp-gold: #92400e; --tmp-gold-soft: rgba(180,83,9,.12);
+  --tmp-accent-soft: rgba(124,58,237,.12);
+  position: fixed; inset: 0; z-index: 1300; display: grid; place-items: end center;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; color: var(--tmp-fg);
+}
+:host-context(html.dark) {
+  --tmp-bg: #171a21; --tmp-fg: #f5f7fb; --tmp-muted: #a7b0c2; --tmp-line: rgba(255,255,255,.1); --tmp-btn: #1d2230;
+  --tmp-input: #12151b; --tmp-focus: #c4b5fd; --tmp-danger: #fca5a5; --tmp-gold: #fbbf24; --tmp-gold-soft: rgba(251,191,36,.14);
+  --tmp-accent-soft: rgba(139,92,246,.18);
+}
+.tmp-backdrop { position: absolute; inset: 0; background: rgba(10,10,14,.6); backdrop-filter: blur(4px) }
+.tmp-panel {
+  position: relative; display: flex; flex-direction: column; box-sizing: border-box; width: 100%; max-height: 92dvh; min-height: 0; overflow: hidden;
+  border: 1px solid var(--tmp-line); border-radius: 1.25rem 1.25rem 0 0; background: var(--tmp-bg); color: var(--tmp-fg); box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+.tmp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; padding: 1rem 1rem .75rem; border-bottom: 1px solid var(--tmp-line) }
+.tmp-head__text { display: grid; gap: .2rem; min-width: 0 }
+.tmp-title { margin: 0; font-size: 1.1rem; font-weight: 800; letter-spacing: -.01em }
+.tmp-note { margin: 0; color: var(--tmp-muted); font-size: .82rem; line-height: 1.5 }
+.tmp-note--gold { padding: .65rem .8rem; border-radius: .8rem; color: var(--tmp-gold); background: var(--tmp-gold-soft) }
+.tmp-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: .75rem; padding: .85rem 1rem }
+.tmp-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .6rem; padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--tmp-line) }
+.tmp-foot--split { justify-content: space-between }
+.tmp-foot .tmp-note { flex: 1 1 14rem }
+.tmp-state { display: grid; gap: .6rem; justify-items: start; margin: 0; padding: .75rem 0; color: var(--tmp-muted); font-size: .9rem; list-style: none }
+.tmp-state p { margin: 0 }
+.tmp-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; padding: .5rem 1rem;
+  border: 1px solid var(--tmp-line); border-radius: .85rem; color: var(--tmp-fg); background: var(--tmp-btn); font: inherit; font-size: .88rem; font-weight: 800; cursor: pointer;
+}
+.tmp-btn--primary { border-color: #7c3aed; color: #fff; background: #7c3aed }
+.tmp-btn:disabled { cursor: not-allowed; opacity: 1; color: var(--tmp-muted); background: var(--tmp-btn); border-color: var(--tmp-line) }
+.tmp-btn lucide-icon, .tmp-icon-btn lucide-icon, .tmp-thumb lucide-icon, .tmp-search lucide-icon, .tmp-drop lucide-icon { display: flex }
+.tmp-icon-btn { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border: 0; border-radius: .8rem; color: var(--tmp-fg); background: var(--tmp-btn); cursor: pointer }
+.tmp-btn:focus-visible, .tmp-icon-btn:focus-visible, .tmp-pick:focus-visible, .tmp-thumb:focus-visible, .tmp-drop:focus-visible, input:focus-visible { outline: 2px solid var(--tmp-focus); outline-offset: 2px }
+.tmp-search { display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: 0 .75rem; border: 1px solid var(--tmp-line); border-radius: .85rem; color: var(--tmp-muted); background: var(--tmp-input) }
+.tmp-search input { flex: 1; min-width: 0; min-height: 42px; border: 0; color: var(--tmp-fg); background: transparent; font: inherit; font-size: 16px }
+.tmp-search input:focus-visible { outline: none }
+.tmp-search:focus-within { outline: 2px solid var(--tmp-focus); outline-offset: 2px }
+.tmp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+.tmp-list { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; min-width: 0 }
+.tmp-row { display: flex; align-items: center; gap: .65rem; min-width: 0; padding: .35rem; border: 1px solid var(--tmp-line); border-radius: .95rem; background: var(--tmp-bg) }
+.tmp-row:hover { border-color: color-mix(in srgb, var(--tmp-accent) 45%, transparent) }
+.tmp-thumb { position: relative; display: grid; place-items: center; flex: none; width: 4.25rem; height: 3rem; overflow: hidden; border-radius: .7rem; color: var(--tmp-fg); background: #0f1115 }
+.tmp-thumb img, .tmp-thumb video { width: 100%; height: 100%; object-fit: cover; display: block }
+.tmp-thumb--sound { border: 0; color: #fff; background: #7c3aed; cursor: pointer }
+.tmp-pick { display: grid; flex: 1; min-width: 0; min-height: 48px; align-content: center; gap: .1rem; padding: .3rem .4rem; border: 0; border-radius: .7rem; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer }
+.tmp-pick__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9rem; font-weight: 800 }
+.tmp-pick__meta { color: var(--tmp-muted); font-size: .78rem; font-variant-numeric: tabular-nums }
+.tmp-form { gap: .9rem }
+.tmp-drop {
+  position: relative; display: grid; justify-items: center; gap: .35rem; padding: 1.25rem 1rem; border: 2px dashed var(--tmp-line); border-radius: 1rem;
+  color: var(--tmp-muted); background: var(--tmp-input); text-align: center; font-size: .85rem; cursor: pointer; overflow-wrap: anywhere;
+}
+.tmp-drop strong { color: var(--tmp-fg); font-size: .95rem }
+.tmp-drop.is-dragging, .tmp-drop.is-filled { border-color: var(--tmp-accent); background: var(--tmp-accent-soft) }
+.tmp-drop.is-error { border-color: var(--tmp-danger) }
+.tmp-drop__input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer }
+.tmp-error { margin: 0; color: var(--tmp-danger); font-size: .85rem; font-weight: 700 }
+.tmp-field { display: grid; gap: .35rem }
+.tmp-label { color: var(--tmp-fg); font-size: .85rem; font-weight: 800 }
+.tmp-field input { box-sizing: border-box; width: 100%; min-height: 44px; padding: .55rem .75rem; border: 1px solid var(--tmp-line); border-radius: .8rem; color: var(--tmp-fg); background: var(--tmp-input); font: inherit; font-size: 16px }
+.tmp-choice { display: grid; gap: .5rem; margin: 0; padding: 0; border: 0; min-width: 0 }
+.tmp-choice__opt { display: flex; align-items: flex-start; gap: .6rem; padding: .7rem .8rem; border: 1px solid var(--tmp-line); border-radius: .85rem; font-size: .85rem; line-height: 1.45; color: var(--tmp-muted); cursor: pointer }
+.tmp-choice__opt strong { color: var(--tmp-fg) }
+.tmp-choice__opt.is-on { border-color: var(--tmp-accent); background: var(--tmp-accent-soft) }
+.tmp-choice__opt input { flex: none; width: 1.1rem; height: 1.1rem; margin: .1rem 0 0; accent-color: #7c3aed }
+@media (min-width: 640px) {
+  :host { place-items: center }
+  .tmp-panel { width: min(36rem, calc(100vw - 2rem)); max-height: min(44rem, 88dvh); border-radius: 1.25rem }
+  .tmp-foot { padding-bottom: .75rem }
+}

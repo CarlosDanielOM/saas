@@ -27,6 +27,10 @@ export class OverlaySoundsComponent {
   /** A different layout (event, look or design): the open row starts over. */
   readonly layoutKey = input('');
   readonly disabled = input(false);
+  /** Replaces the empty-list hint (each host says where its files come from). */
+  readonly hint = input('');
+  /** A trigger look (not an alert): its wording says so. */
+  readonly look = input(false);
   readonly add = output<void>();
   readonly replace = output<string>();
   readonly changed = output<SoundEdit>();

@@ -1,7 +1,7 @@
 import type { ClipMetadata } from '../../clips/clips.model';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, Subscription, map, of, switchMap, timeout } from 'rxjs';
+import { Observable, Subscription, finalize, map, of, shareReplay, switchMap, timeout } from 'rxjs';
 import { io } from 'socket.io-client';
 import { LinksService } from '../../../services/links.service';
 import { ClipsService } from '../../clips/clips.service';
@@ -26,13 +26,21 @@ export class OverlayTestMediaService {
   private readonly clips = inject(ClipsService);
   private readonly triggers = inject(TriggersService);
 
+  /** Requests still running, per channel: parts of the Studio asking at the same time share one catalog request. */
+  private readonly pendingTriggers = new Map<string, Observable<TriggerRecord[]>>();
   getTriggers(channelId: string): Observable<TriggerRecord[]> {
-    return this.http.get<ApiEnvelope<TriggerRecord[]>>(`${this.links.getApiUrl()}/triggers/${channelId}`).pipe(
+    const pending = this.pendingTriggers.get(channelId); if (pending) return pending;
+    const request = this.http.get<ApiEnvelope<TriggerRecord[]>>(`${this.links.getApiUrl()}/triggers/${channelId}`).pipe(
       map(response => {
         if (response.error || !Array.isArray(response.data)) throw new Error('Unable to load triggers');
         return response.data;
-      }), timeout(20000)
+      }), timeout(20000),
+      // Done (or failed): the next ask, such as a retry, fetches again.
+      finalize(() => { if (this.pendingTriggers.get(channelId) === request) this.pendingTriggers.delete(channelId); }),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
+    this.pendingTriggers.set(channelId, request);
+    return request;
   }
 
   randomTrigger(channel: TestChannel, triggerIds?: readonly string[]): Observable<TestMedia | null> {
