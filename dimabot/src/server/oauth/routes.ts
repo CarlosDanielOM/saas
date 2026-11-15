@@ -119,7 +119,8 @@ oauthRoute.get('/metadata', oauthMetadata);
 
 oauthRoute.get('/authorize', asyncRoute(async (req, res) => {
     let requestID: string;
-    try { requestID = await startAuthorization(req.query); } catch (error) {
+    // The caller pays for any CIMD document fetch from its own budget, so unknown visitors cannot use up everyone's.
+    try { requestID = await startAuthorization(req.query, { source: clientIps(req) }); } catch (error) {
         if (error instanceof OAuthRedirectError) return res.redirect(302, error.location);
         throw error;
     }

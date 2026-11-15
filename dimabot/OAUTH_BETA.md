@@ -66,7 +66,9 @@ The successful response is standard top-level JSON fields, not a `{data: ...}` e
 }
 ```
 
-Access tokens last 600 seconds. Refresh tokens have a rolling 30-day idle limit and a 90-day absolute session limit. Refresh rotates the refresh token on every successful call and returns the same response shape with a new access and refresh token. Serialize refresh operations per session: concurrent refreshes or replay of an old refresh token revoke the session. If a refresh response is lost, do not blindly retry the old token; require the user to authorize again if the new token was not safely received and persisted.
+Access tokens last 600 seconds. Refresh tokens have a rolling 30-day idle limit and a 90-day absolute session limit. Refresh rotates the refresh token on every successful call and returns the same response shape with a new access and refresh token.
+
+For 60 seconds after a rotation, the refresh token it replaced can still be presented: each use returns a new access token and the same successor refresh token, as long as that successor has not itself been rotated and the session, client, scope, resource and (for channel-selection apps) channel access still pass the normal checks. Concurrent refreshes with one token therefore all succeed with a single successor, and a refresh whose response was lost can be retried with the old token within that minute. Outside the window, or after the successor has been used, presenting an old refresh token counts as reuse and revokes the session. Still serialize refreshes per session where possible and always persist the newest refresh token; if a response was lost for longer than 60 seconds, require the user to authorize again.
 
 For refresh, POST these form-encoded fields to `/oauth/token`:
 
