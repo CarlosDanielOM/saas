@@ -157,7 +157,7 @@ await duelCommand(channel,'bob',false,'accept');streamerRun=(await svc.loadDuel(
  {assert.equal((await duelCommand(channel,'CDOM201',false,'@domdimabot')).message,'@cdom201 has challenged @domdimabot! The bot accepts. FIGHT!');const r=(await svc.loadDuel(channel)).run;
   assert.deepEqual([r.challenger,r.bot,r.victor,r.winner,r.tracked],['cdom201','right','left','left',false]);const last=r.turns.at(-1);assert.deepEqual([last.move,last.attacker],['ultimate','left']);assert(!r.turns.some(t=>t.move==='ultimate'&&t.attacker==='right'),'the bot never fires its ultimate at its creator');
   assert.equal(domain.remainingHp(r.turns,'right',r.maxHp),0);assert(r.phrases.some(p=>/^ULTIMATE! @cdom201 /.test(p.text)));
-  await finish();assert.match(chats().at(-1).body.message,/^The creator defeats the creation! @cdom201 beats @domdimabot with \d+ HP left\.$/);assert.equal(await stats.DuelResult.countDocuments({_id:r.id}),0);
+  await finish();assert.match(chats().at(-1).body.message,/^@cdom201 has won the duel against @domdimabot with \d+ HP left\.$/,'the usual winner line');assert.equal(await stats.DuelResult.countDocuments({_id:r.id}),0);
   assert(Array.from({length:2000},()=>domain.simulateBattle(undefined,null,domain.DEFAULT_RULES,'left')).every(b=>b.winner==='left'&&b.turns.at(-1).move==='ultimate'),'the creator always wins with an ultimate');}
  assert(!bans().some(c=>c.body?.data?.user_id==='698614112'),'the bot account is never timed out');
  // Every simulated bot fight, under default and custom rules, ends with the bot's ultimate at a varying moment.

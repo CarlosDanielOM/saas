@@ -267,8 +267,6 @@ export function winnerMessage(run: DuelRun): string {
   // Runs accepted before turn-based battles have no turns to count HP from.
   const hp = run.turns?.length ? remainingHp(run.turns, run.winner, run.maxHp) : null;
   const upset = run.enraged && run.enraged !== run.winner, remaining = hp === null ? '' : run.language === 'es' ? ` con ${hp} HP restantes` : ` with ${hp} HP left`;
-  // The bot's creator beating it (BOT_DUEL) gets its own line.
-  if (run.bot && run.victor && run.victor !== run.bot && run.winner === run.victor) return run.language === 'es' ? `¡La creación cae ante quien la creó! @${winnerLogin(run)} vence a @${loserLogin(run)}${remaining}.` : `The creator defeats the creation! @${winnerLogin(run)} beats @${loserLogin(run)}${remaining}.`;
   if (upset) return run.language === 'es' ? `¡IMPOSIBLE! @${winnerLogin(run)} ha derrotado al streamer enfurecido @${loserLogin(run)}${remaining}!` : `UNBELIEVABLE! @${winnerLogin(run)} has defeated the enraged streamer @${loserLogin(run)}${remaining}!`;
   if (run.language === 'es') return `@${winnerLogin(run)} ha ganado el duelo contra @${loserLogin(run)}${hp === null ? '.' : ` con ${hp} HP restantes.`}`;
   return `@${winnerLogin(run)} has won the duel against @${loserLogin(run)}${hp === null ? '.' : ` with ${hp} HP left.`}`;

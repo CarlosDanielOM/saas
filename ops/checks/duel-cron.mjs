@@ -42,10 +42,10 @@ result=await settle({},false);assert(!result.recorded,'chat duels are never reco
 result=await settle({leaderboard:false,rivalries:false},true);assert(!result.recorded,'both switches off: nothing recorded');
 result=await settle({leaderboard:false},true);assert(result.recorded,'rivalries alone still record results');
 assert.equal(await stats.DuelResult.countDocuments({channel}),3);
-// Fights against the bot are never recorded; its creator gets a line of their own, everyone else loses.
-for(const [challenger,victor,line] of [['alice','right',/^@domdimabot has won the duel against @alice with \d+ HP left\.$/],['cdom201','left',/^The creator defeats the creation! @cdom201 beats @domdimabot with \d+ HP left\.$/]]){
+// Fights against the bot are never recorded; its creator always wins, everyone else loses.
+for(const [challenger,victor,line] of [['alice','right',/^@domdimabot has won the duel against @alice with \d+ HP left\.$/],['cdom201','left',/^@cdom201 has won the duel against @domdimabot with \d+ HP left\.$/]]){
  const before=chats().length;result=await settle({},true,false,{challenger,opponent:'domdimabot',bot:'right',victor});assert.equal(result.run.winner,victor);assert.equal(result.run.tracked,false);assert(!result.recorded,'bot fights are never recorded');
  const sent=chats().slice(before).map(c=>c.body.message);assert(sent.some(m=>line.test(m)),'winner line: '+JSON.stringify(sent));}
 await sleep(500);assert.deepEqual(ended.map(e=>[e.id,e.phase,e.winner]),runs.map(r=>[r.id,'ended',domain.winnerLogin(r)]),'one ended per fight, with its winner');
 await feedSub.quit();await redis.quit();await (await getMongoDBConnection('duel-cron-close')).disconnect();
-console.log('PASS duel cron: tracked/legacy/custom-rule/chat/switch-off runs through the real duel worker, custom HP in the winner message, one widget ended per fight, bot and creator fights (unrecorded, creator line)');process.exit(0);
+console.log('PASS duel cron: tracked/legacy/custom-rule/chat/switch-off runs through the real duel worker, custom HP in the winner message, one widget ended per fight, bot and creator fights (unrecorded, usual winner line)');process.exit(0);
