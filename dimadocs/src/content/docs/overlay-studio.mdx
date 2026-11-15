@@ -71,13 +71,30 @@ Subscriptions and raids use variants instead: add one for a subscription tier or
 
 ### Alert sounds
 
-Choose **Choose sound** on an alert event to add a sound from the Asset Library. Sounds can be MP3, WAV, or Ogg, up to 10 minutes and 50 MB. You can set volume, delay, and fade in and out. The sound plays once and stops when the alert or the file ends. A delay longer than the alert means no sound plays. Set the volume to 0% to mute it.
+Select **Add sound** under **Sounds** to add up to 10 sounds from the Asset Library. Each MP3, WAV, or Ogg file can be up to 10 minutes and 50 MB. Set each sound's volume, delay, fade in, fade out, and **Stops at (s)**. **Change sound** keeps its timing when you pick another file. Each sound plays once and stops when the alert or file ends, or at the chosen stop time. A delay longer than the alert is silent; set volume to 0% to mute it.
+
+### Alert timeline
+
+Each object and sound has a row in **Alert timeline**. Drag the left grip to set its start and the right grip to set its end. Leave the right grip at the edge to keep it until the alert ends. For exact values, use **Start delay (seconds)** and **Ends at (seconds)** under the object's **Timing & speed**, or the sound's timing fields. Select **Play timeline** or move **Preview position (seconds)** to preview the result.
 
 ## Images and videos
 
-Select **Browse Asset Library** on an image or video layer to pick a design asset. You can also enter an HTTPS **Media URL**. Videos on global layers loop without sound. See [Media Library](/media-library/#design-assets) for file types and storage limits.
+Select **Browse Asset Library** on an image or video layer to pick a design asset. You can also enter an HTTPS **Media URL**. Videos on global layers loop without sound. In an alert design, turn on **Play its sound** and adjust its volume, or use **Loop**. With **Loop** off, the video plays once from its start time and stays on its last frame. By default, it loops muted. See [Media Library](/media-library/#design-assets) for file types and storage limits.
 
 The overlay link is private, but anything shown on stream is visible to viewers.
+
+## Trigger looks
+
+Give a trigger its own alert-style composition with pictures, GIFs, videos, text, shapes, animations, and up to 10 sounds. Set each object's and sound's start and end on the timeline. A look can last up to 120 seconds.
+
+1. On **Modules → Triggers**, select **Design look** or **Edit look** to open the full-screen editor. Or select a trigger box in Overlay Studio and use **Trigger looks** in its settings.
+2. A new look starts with the trigger's file: a video plays once with sound, a picture shows for 5 seconds, and an audio file becomes a sound. If the file is missing, the look starts empty.
+3. Pick or upload files in the trigger media library picker. These files are separate from the Asset Library used for alert designs.
+4. Select **Save look**. It is live on the next play; no publishing is needed. To return to the plain file, select **Remove look** in **Look settings**.
+
+The trigger's **Volume** is the master volume for its look. Looks play in Overlay Studio overlays; the older trigger overlay link plays the plain file. If an overlay that was already open in OBS does not show a look yet, refresh that browser source once.
+
+In look text, add `$(user)` to show who fired the trigger, such as the chatter running a command or the viewer redeeming a reward. If nobody fired it, such as for a timer, it shows “Viewer”. Editor previews and Studio tests use a sample name. Other text appears as written.
 
 ## Custom widgets
 
@@ -94,7 +111,7 @@ The overlay URL is a private, read-only link. Treat it like a password. **Replac
 
 ### Test in OBS
 
-Use the preview under **Try it** to check layout and sample alerts without sending anything to OBS. For a real test, publish first. Then choose an event under **Test in OBS** and select **Test this overlay in OBS**. You confirm before anything plays on stream. The test needs at least one connected, published source.
+Use the preview under **Try it** to check layout and sample alerts without sending anything to OBS. For trigger tests, use **Trigger to test (here and in OBS)** to choose a trigger or **Any trigger**. For a real test, publish first. Then choose an event under **Test in OBS** and select **Test this overlay in OBS**. You confirm before anything plays on stream. The test needs at least one connected, published source.
 
 ## Queues and playback
 
@@ -114,4 +131,4 @@ Use the preview under **Try it** to check layout and sample alerts without sendi
 
 ## Not yet available
 
-Overlay Studio Alpha does not have a general trigger image or GIF mode, or a way to clear the queue from an alert text value. Alert layers choose events, not triggers. Only trigger widgets can be limited to chosen triggers.
+Overlay Studio Alpha does not have a way to clear the queue from an alert text value. Alert layers choose events, not triggers. Only trigger widgets can be limited to chosen triggers.

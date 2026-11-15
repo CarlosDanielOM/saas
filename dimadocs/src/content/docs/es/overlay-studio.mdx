@@ -71,13 +71,30 @@ Las suscripciones y los raids usan variantes: añade una para un nivel de suscri
 
 ### Sonidos de alerta
 
-Selecciona **Elegir sonido** en un evento de alerta para añadir un sonido de la Biblioteca de recursos. Los sonidos pueden ser MP3, WAV u Ogg, de hasta 10 minutos y 50 MB. Puedes ajustar el volumen, el retardo y los fundidos de entrada y salida. El sonido se reproduce una vez y termina cuando termina la alerta o el archivo. Si el retardo es más largo que la alerta, no se reproduce ningún sonido. Pon el volumen en 0 % para silenciarlo.
+Selecciona **Agregar sonido** en **Sonidos** para añadir hasta 10 sonidos de la Biblioteca de recursos. Cada archivo MP3, WAV u Ogg puede durar hasta 10 minutos y pesar hasta 50 MB. Ajusta el volumen, retardo, entrada gradual, salida gradual y **Se detiene en (s)** de cada sonido. **Cambiar sonido** conserva sus tiempos al elegir otro archivo. Cada sonido se reproduce una vez y se detiene al terminar la alerta o el archivo, o en el momento elegido. Si el retardo supera la duración de la alerta, no suena; pon el volumen en 0 % para silenciarlo.
+
+### Línea de tiempo de la alerta
+
+Cada objeto y sonido tiene una fila en la **Línea de tiempo**. Arrastra el control izquierdo para definir su inicio y el derecho para definir su final. Deja el control derecho en el borde para que dure hasta que termine la alerta. Para usar valores exactos, ajusta **Retraso inicial (segundos)** y **Termina en (segundos)** en **Tiempos y velocidad** del objeto, o los campos de tiempo del sonido. Selecciona **Reproducir línea de tiempo** o mueve **Posición de vista previa (segundos)** para ver el resultado.
 
 ## Imágenes y videos
 
-Selecciona **Explorar biblioteca de recursos** en una capa de imagen o video para elegir un recurso de diseño. También puedes escribir una **URL multimedia (HTTPS)**. Los videos de las capas globales se repiten sin sonido. Consulta [Biblioteca multimedia](/es/media-library/#recursos-para-diseños) para ver los tipos de archivo y los límites de almacenamiento.
+Selecciona **Explorar biblioteca de recursos** en una capa de imagen o video para elegir un recurso de diseño. También puedes escribir una **URL multimedia (HTTPS)**. Los videos de las capas globales se repiten sin sonido. En un diseño de alerta, activa **Reproducir su sonido** y ajusta el volumen, o usa **Repetir en bucle**. Sin bucle, el video se reproduce una vez desde su inicio y se queda en su último cuadro. Por defecto, se repite sin sonido. Consulta [Biblioteca multimedia](/es/media-library/#recursos-para-diseños) para ver los tipos de archivo y los límites de almacenamiento.
 
 El enlace del overlay es privado, pero todo lo que aparece en el stream lo ven los espectadores.
+
+## Diseños de triggers
+
+Dale a un trigger una composición como una alerta con imágenes, GIF, videos, texto, formas, animaciones y hasta 10 sonidos. Ajusta el inicio y el final de cada objeto y sonido en la línea de tiempo. Un diseño puede durar hasta 120 segundos.
+
+1. En **Módulos → Triggers**, selecciona **Crear diseño** o **Editar diseño** para abrir el editor en pantalla completa. También puedes seleccionar un cuadro de trigger en Overlay Studio y usar **Diseños de triggers** en sus ajustes.
+2. Un diseño nuevo empieza con el archivo del trigger: un video se reproduce una vez con sonido, una imagen aparece durante 5 segundos y un archivo de audio se convierte en sonido. Si falta el archivo, el diseño empieza vacío.
+3. Elige o sube archivos en el selector de la biblioteca de triggers. Estos archivos son independientes de la Biblioteca de recursos usada para diseños de alerta.
+4. Selecciona **Guardar diseño**. Queda en vivo en la próxima reproducción; no hace falta publicar. Para volver al archivo normal, selecciona **Quitar diseño** en **Ajustes del diseño**.
+
+El **Volumen** del trigger es el volumen general de su diseño. Los diseños se reproducen en overlays de Overlay Studio; el enlace anterior del overlay de triggers reproduce el archivo normal. Si un overlay que ya estaba abierto en OBS todavía no muestra un diseño, actualiza una vez esa fuente de navegador.
+
+En el texto del diseño, añade `$(user)` para mostrar quién activó el trigger, como la persona que escribió el comando o quien canjeó la recompensa. Si nadie lo activó, por ejemplo en un temporizador, muestra “Viewer”. Las vistas previas del editor y las pruebas de Studio usan un nombre de ejemplo. El resto del texto aparece tal como lo escribiste.
 
 ## Widgets personalizados
 
@@ -94,7 +111,7 @@ El enlace del overlay es privado y de solo lectura. Trátalo como una contraseñ
 
 ### Prueba en OBS
 
-Usa la vista previa de **Pruébalo** para revisar el diseño y las alertas de ejemplo sin enviar nada a OBS. Para una prueba real, publica primero. Después elige un evento en **Probar en OBS** y selecciona **Probar esta overlay en OBS**. Confirmas antes de que algo se reproduzca en el directo. La prueba necesita al menos una fuente publicada conectada.
+Usa la vista previa de **Pruébalo** para revisar el diseño y las alertas de ejemplo sin enviar nada a OBS. Para probar triggers, usa **Trigger para probar (aquí y en OBS)** para elegir uno o **Cualquier trigger**. Para una prueba real, publica primero. Después elige un evento en **Probar en OBS** y selecciona **Probar esta overlay en OBS**. Confirmas antes de que algo se reproduzca en el directo. La prueba necesita al menos una fuente publicada conectada.
 
 ## Colas y reproducción
 
@@ -114,4 +131,4 @@ Usa la vista previa de **Pruébalo** para revisar el diseño y las alertas de ej
 
 ## Todavía no disponible
 
-Overlay Studio Alpha no tiene un modo general de imagen o GIF para triggers, ni una forma de vaciar la cola desde el texto de una alerta. Las capas de alerta eligen eventos, no triggers. Solo los widgets de trigger se pueden limitar a los triggers que elijas.
+Overlay Studio Alpha no tiene una forma de vaciar la cola desde el texto de una alerta. Las capas de alerta eligen eventos, no triggers. Solo los widgets de trigger se pueden limitar a los triggers que elijas.
