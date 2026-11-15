@@ -28,12 +28,12 @@ const state = {
     credits: [] as unknown[][],
     logged: [] as Array<{ level: string; data: Record<string, unknown> }>,
     callLog: [] as Array<Record<string, unknown>>,
-    lateLog: [] as Array<[string, boolean]>,
+    lateLog: [] as Array<[string, boolean, number]>,
 };
 mock.module('../mcp_call_log.js', {
     namedExports: {
-        recordMcpCall: (record: Record<string, unknown>) => { state.callLog.push(record); },
-        settleLateMcpCall: (operationId: string, landed: boolean) => { state.lateLog.push([operationId, landed]); },
+        recordMcpCall: async (record: Record<string, unknown>) => { state.callLog.push(record); },
+        settleLateMcpCall: async (operationId: string, landed: boolean, charged: number) => { state.lateLog.push([operationId, landed, charged]); },
     },
 });
 
@@ -379,6 +379,8 @@ test('a write over 120 s is unknown; its hold is settled once if it lands later,
         assert.equal(changesDb.store.size, ending === 'lands' ? 1 : 0, 'a landed write is logged');
         await flush();
         assert.equal(state.credits.length, 2, 'exactly once');
+        // Its log row learns how it ended and, when it landed, what it was charged.
+        assert.deepEqual(state.lateLog.at(-1), [state.credits[0][3], ending === 'lands', ending === 'lands' ? 1 : 0]);
     }
 });
 
@@ -656,6 +658,58 @@ test('parallel calls of one connection: up to 12 run at once, the rest wait thei
         assert.equal(peak, 12);
         // Another connection is not held up by this one.
         assert.equal((await call('search_docs', {}, { sessionId: 'sess-2' })).ok, true);
+    } finally {
+        slow.run = original;
+    }
+});
+
+test('an unknown tool name is logged only when it looks like a tool name, and never echoed in the reason', async () => {
+    await call('v2_tool');
+    await call(`dima_rt_${'A'.repeat(43)}`);
+    await call('no spaces allowed');
+    assert.deepEqual(state.callLog.map((row) => [row.tool, row.reason]), [
+        ['v2_tool', 'There is no tool with that name.'],
+        ['(not a tool name)', 'There is no tool with that name.'],
+        ['(not a tool name)', 'There is no tool with that name.'],
+    ]);
+});
+
+test('the connection re-check runs after the slow preflight, right before apply; a client gone by then stops it', async () => {
+    let revoked = false;
+    const original = createCommand.executableFields;
+    createCommand.executableFields = async (input, proposal, ctx) => { revoked = true; return original!(input, proposal, ctx); };
+    try {
+        const outcome = await call('create_command', { body: 'hi' }, { stillAuthorized: async () => !revoked });
+        assert.equal(outcome.ok === false && outcome.code, 'no_access', 'revoked during the safe-text check');
+        assert.equal(applied.length, 0);
+        const controller = new AbortController();
+        createCommand.executableFields = async (input, proposal, ctx) => { controller.abort(); return original!(input, proposal, ctx); };
+        const gone = await call('create_command', { body: 'hi' }, { stillAuthorized: async () => true }, controller.signal);
+        assert.equal(gone.ok === false && gone.code, 'failed');
+        assert.match(gone.ok === false ? gone.message : '', /Cancelled before anything was changed/);
+        assert.equal(applied.length, 0);
+    } finally {
+        createCommand.executableFields = original;
+    }
+});
+
+test('a tool that outlives its answer (client gone) keeps its call slot until its work ends', async () => {
+    const { callSlotState } = await import('./concurrency.js');
+    let finish!: () => void;
+    const slow = siteTools.find((tool) => tool.name === 'search_docs')!;
+    const original = slow.run;
+    slow.run = () => new Promise((resolve) => { finish = () => resolve({ type: 'result', result: { hits: [] } }); });
+    try {
+        const controller = new AbortController();
+        const answered = call('search_docs', {}, { sessionId: 'sess-slot' }, controller.signal);
+        await flush(10);
+        controller.abort();
+        const outcome = await answered;
+        assert.equal(outcome.ok === false && outcome.code, 'failed');
+        assert.deepEqual(callSlotState('sess-slot'), { running: 1, waiting: 0 }, 'the abandoned work still holds its slot');
+        finish();
+        await flush(10);
+        assert.deepEqual(callSlotState('sess-slot'), { running: 0, waiting: 0 });
     } finally {
         slow.run = original;
     }

@@ -126,23 +126,37 @@ function row(record: McpCallRecord, now = Date.now()): IMcpCallLog {
     };
 }
 
-/** Saves the call's row in the background; never throws, never delays the caller. */
-export function recordMcpCall(record: McpCallRecord): void {
+/**
+ * Saves the call's row. Fire-and-forget for the caller: the returned promise never rejects and only orders later
+ * updates of the same row after its insert (settleLateMcpCall).
+ */
+export function recordMcpCall(record: McpCallRecord): Promise<void> {
     let doc: IMcpCallLog;
-    try { doc = row(record); } catch { return; }
-    void McpCallLog.collection.insertOne(doc as never).catch((err: unknown) => {
+    try { doc = row(record); } catch { return Promise.resolve(); }
+    return McpCallLog.collection.insertOne(doc as never).then(() => undefined, (err: unknown) => {
         void warn({ function: 'mcp.callLog', operationId: record.operationId, error: err instanceof Error ? err.message : String(err) }, { channelId: record.channelId, destination: 'cache' }).catch(() => undefined);
     });
 }
 
-/** A late write ended: applied (charged) or not. Background, never throws. */
-export function settleLateMcpCall(operationId: string, landed: boolean): void {
-    void McpCallLog.collection.updateOne({ _id: operationId as never, late: 'pending' }, { $set: { late: landed ? 'applied' : 'failed' } }).catch(() => undefined);
+/** A late write ended: whether it landed and what it was charged. Call after the row's insert. Never throws. */
+export async function settleLateMcpCall(operationId: string, landed: boolean, charged: number): Promise<void> {
+    await McpCallLog.collection.updateOne({ _id: operationId as never, late: 'pending' },
+        { $set: { late: landed ? 'applied' : 'failed', ...(landed ? { charged } : {}) } }).catch(() => undefined);
 }
 
-/** Account deletion: the channel's rows and the person's rows on other channels. */
+/**
+ * Calls answer up to a few minutes after they started (a 30 s wait for a slot, 90 s to run, 120 s to apply), so a
+ * call that was already running when the account was deleted can still insert its row: two later sweeps remove them.
+ */
+export const MCP_CALL_LOG_DELETE_SWEEPS_MS: readonly number[] = [15_000, 5 * 60_000];
+
+/** Account deletion: the channel's rows and the person's rows on other channels, now and in the later sweeps. */
 export async function deleteMcpCallLogs(channelId: string): Promise<number> {
-    const result = await McpCallLog.collection.deleteMany({ $or: [{ channelId }, { 'user.id': channelId }] });
+    const filter = { $or: [{ channelId }, { 'user.id': channelId }] };
+    const result = await McpCallLog.collection.deleteMany(filter);
+    for (const delay of MCP_CALL_LOG_DELETE_SWEEPS_MS) {
+        setTimeout(() => { void McpCallLog.collection.deleteMany(filter).catch(() => undefined); }, delay).unref?.();
+    }
     return result.deletedCount ?? 0;
 }
 

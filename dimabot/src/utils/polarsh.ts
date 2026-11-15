@@ -71,8 +71,9 @@ interface IngestPolarSHEventOptions {
   /** Descriptive receipt metadata. It does not affect pricing or credits. */
   usage?: AiUsageContextInput;
   /**
-   * Batch/cache modes: called once the event is in the durable queue and projected locally (the local
-   * balance already shows the charge), before Polar is called. Errors it throws are ignored.
+   * Batch/cache modes: called once the event is in the durable queue and the local balance shows the charge
+   * (recordAiCreditUsage confirmed the debit), before Polar is called. Not called when the local debit did not
+   * happen. Errors it throws are ignored.
    */
   onProjected?: () => Promise<void> | void;
 }
@@ -186,8 +187,8 @@ async function projectAcceptedUsage(
   eventData: EventData,
   context: AiUsageContext,
   channelID?: string,
-): Promise<void> {
-  await recordAiCreditUsage(channelID || "", eventData.metadata.credits, eventData.externalId, cache);
+): Promise<boolean> {
+  const debited = await recordAiCreditUsage(channelID || "", eventData.metadata.credits, eventData.externalId, cache);
   if (channelID) {
     try {
       await enqueueAiUsageReceipt(cache, buildQueuedAiUsageReceipt({
@@ -205,6 +206,7 @@ async function projectAcceptedUsage(
     }
   }
   trackAcceptedUsage(eventData, context);
+  return debited;
 }
 
 /**
@@ -421,8 +423,7 @@ export async function ingestPolarSHEvent(
       try {
         await queueEvent(cacheClient, cacheKey, eventData);
         queued = true;
-        await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
-        await runProjectedHook(onProjected);
+        if (await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID)) await runProjectedHook(onProjected);
       } catch (queueErr) {
         await error(
           {
@@ -442,8 +443,7 @@ export async function ingestPolarSHEvent(
       // interrupted ingest must never lose it.
       await queueEvent(cacheClient, cacheKey, eventData);
       queued = true;
-      await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
-      await runProjectedHook(onProjected);
+      if (await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID)) await runProjectedHook(onProjected);
 
       if (mode === "cache") {
         return { error: false };

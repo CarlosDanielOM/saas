@@ -40,6 +40,8 @@ const SCRUBS: ReadonlyArray<readonly [RegExp, string]> = [
     // a dash or an underscore included ("-sk-proj-…", "KEY_sk-…").
     [/(?<![A-Za-z0-9])(?:sk|pk|rk)[-_][A-Za-z0-9_-]{16,}/g, '[redacted key]'],
     [/\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}/g, '[redacted key]'],
+    // DomDimaBot's own OAuth access and refresh tokens.
+    [/\bdima_(?:at|rt)_[A-Za-z0-9_-]{20,}/g, '[redacted token]'],
     [/(?<![A-Za-z0-9])xox[abprs]-[A-Za-z0-9-]{10,}/g, '[redacted key]'],
     // A bare Twitch OAuth token: exactly thirty lower-case letters and digits, both present.
     [/\b(?=[a-z0-9]{0,29}\d)(?=[a-z0-9]{0,29}[a-z])[a-z0-9]{30}\b/g, '[redacted token]'],

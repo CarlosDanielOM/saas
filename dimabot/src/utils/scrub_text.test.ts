@@ -43,6 +43,8 @@ test('secrets with no name in front: JWTs, provider key prefixes, a bare Twitch 
     assert.equal(gone('pk_live_51AbCdEfGhIjKlMnOp', '51AbCdEfGhIjKlMnOp'), '[redacted key]');
     assert.equal(gone('ghp_abcdefghijklmnopqrstuvwxyz0123456789', 'abcdefghijklmnopqrstuvwxyz'), '[redacted key]');
     assert.equal(gone('xoxb-123456789012-abcdefghijkl', '123456789012'), '[redacted key]');
+    assert.equal(gone(`tool dima_rt_${'Ab9_-'.repeat(8)}xyz here`, 'Ab9_-Ab9_-'), 'tool [redacted token] here');
+    assert.equal(gone(`dima_at_${'Q'.repeat(43)}`, 'QQQQQQQQ'), '[redacted token]');
     // A key right after a dash or an underscore is still a key.
     assert.equal(gone('run -sk-proj-AbCdEfGhIjKlMnOpQrStUv now', 'AbCdEfGhIjKl'), 'run -[redacted key] now');
     assert.equal(gone('OPENAI_sk-proj-AbCdEfGhIjKlMnOpQrStUv', 'AbCdEfGhIjKl'), 'OPENAI_[redacted key]');

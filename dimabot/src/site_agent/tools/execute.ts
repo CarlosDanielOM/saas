@@ -227,8 +227,6 @@ async function applyWrite(call: Call, tool: AgentTool, input: unknown, proposal:
     // Fresh, right before the write: access, role, plan and permissions (no card was shown, so this is the approval).
     const access = await resolveAccess(p.requesterId, p.channelId, 'mcp');
     if (!access) return no(fail('no_access', 'This account no longer has access to this channel on the website. Nothing was changed.'));
-    // The connection itself (revoked on the website, app blocked by the operator) is checked again here too.
-    if (p.stillAuthorized && !(await p.stillAuthorized())) return no(fail('no_access', 'This app\'s connection was removed or blocked. Nothing was changed.'));
     const fresh: Call = { check: call.check, ctx: { ...call.ctx, channelLogin: access.channelLogin, role: roleFor(p.requesterId, access), plan: access.plan } };
     if (!planAllows(tool, fresh.ctx.plan)) return no(fail('plan_required', `This needs the ${planName(tool)} plan. Nothing was changed.`));
     if (!tool.apply || !(await holds(fresh, tool.permissions, true)) || !(await holds(fresh, proposal.permissions))) {
@@ -256,6 +254,11 @@ async function applyWrite(call: Call, tool: AgentTool, input: unknown, proposal:
         ...changeFromApply(fresh.ctx, proposal, change), tool: tool.name,
         source: { surface: 'mcp', clientId: p.clientId, clientName: fresh.ctx.mcp?.clientName ?? cleanName(p.clientName) },
     }, meta);
+    // Last gate, after every await above: the client is still there and the connection itself (revoked on the
+    // website, app blocked by the operator) is still valid. Past this point the write starts and always finishes.
+    if (opts.signal.aborted) return no(fail('failed', 'Cancelled before anything was changed.'));
+    if (p.stillAuthorized && !(await p.stillAuthorized())) return no(fail('no_access', 'This app\'s connection was removed or blocked. Nothing was changed.'));
+    if (opts.signal.aborted) return no(fail('failed', 'Cancelled before anything was changed.'));
     let applied: Awaited<ReturnType<typeof applyProposal>>;
     try {
         // No abort signal: a write that has started finishes (and is charged) even if the client goes away.
@@ -295,11 +298,14 @@ async function applyWrite(call: Call, tool: AgentTool, input: unknown, proposal:
     };
 }
 
-async function perform(call: Call, tool: AgentTool, input: unknown, p: McpPrincipal, opts: { operationId: string; signal: AbortSignal }, meta: Record<string, unknown>): Promise<Done> {
+async function perform(call: Call, tool: AgentTool, input: unknown, p: McpPrincipal, opts: { operationId: string; signal: AbortSignal }, meta: Record<string, unknown>, busy: Promise<unknown>[]): Promise<Done> {
     let outcome: ToolOutcome;
+    const running = tool.run(input as never, call.ctx);
     try {
-        outcome = await withTimeout(tool.run(input as never, call.ctx), RUN_TIMEOUT_MS, opts.signal);
+        outcome = await withTimeout(running, RUN_TIMEOUT_MS, opts.signal);
     } catch (err) {
+        // The answer gave up on it (timeout, client gone), but the tool's own work goes on: it keeps its call slot.
+        if (err instanceof Error && (err.message === 'tool_timeout' || err.message === 'tool_aborted')) busy.push(running.catch(() => undefined));
         const denied = refused(err, false);
         if (denied) return { outcome: denied, billable: false };
         if (err instanceof Error && err.message === 'tool_timeout') return { outcome: fail('failed', 'The tool took too long.'), billable: false };
@@ -318,8 +324,20 @@ async function perform(call: Call, tool: AgentTool, input: unknown, p: McpPrinci
     }
 }
 
-/** What a call learned along the way, for its log row. */
-interface Trace { kind?: AgentTool['kind']; channelLogin?: string; login?: string; role?: 'owner' | 'admin'; late?: Promise<boolean> }
+/**
+ * What a call learned along the way: for its log row, and the work still running after it answered (a tool that
+ * outlived its timeout or the client, a write that outlived 120 s), which keeps the connection's call slot.
+ */
+interface Trace { kind?: AgentTool['kind']; channelLogin?: string; login?: string; role?: 'owner' | 'admin'; late?: Promise<boolean>; price?: number; busy: Promise<unknown>[] }
+
+/** A tool that never settles frees its call slot after this, so a stuck tool can't block a connection forever. */
+const SLOT_HOLD_MAX_MS = 10 * 60_000;
+function releaseWhenDone(release: () => void, outstanding: Promise<unknown>[]): void {
+    if (!outstanding.length) { release(); return; }
+    let timer: NodeJS.Timeout | undefined;
+    const cap = new Promise<void>((resolve) => { timer = setTimeout(resolve, SLOT_HOLD_MAX_MS); timer.unref?.(); });
+    void Promise.race([Promise.allSettled(outstanding), cap]).then(() => { clearTimeout(timer); release(); });
+}
 
 const CREDIT_MESSAGES: Record<CreditError['code'], (login: string) => string> = {
     credits_exhausted: (login) => `The channel is out of AI credits. More credits: https://domdimabot.com/${login}/credits`,
@@ -358,7 +376,8 @@ async function runCall(p: McpPrincipal, tool: AgentTool, rawArgs: unknown, opts:
                 return fail('credits_unavailable', CREDIT_MESSAGES.credits_unavailable(call.ctx.channelLogin));
             }
         }
-        const done = await perform(call, tool, input, p, opts, meta);
+        trace.price = price;
+        const done = await perform(call, tool, input, p, opts, meta, trace.busy);
         billable = done.outcome.ok && done.billable;
         late = done.late ?? null;
         if (late) trace.late = late;
@@ -385,7 +404,7 @@ async function runCall(p: McpPrincipal, tool: AgentTool, rawArgs: unknown, opts:
 export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs: unknown, opts: { operationId: string; signal: AbortSignal }): Promise<ExecuteOutcome> {
     const startedAt = Date.now();
     const tool = mcpTool(name);
-    const trace: Trace = {};
+    const trace: Trace = { busy: [] };
     let outcome: ExecuteOutcome | undefined;
     if (!tool) outcome = fail('unknown_tool', `There is no tool named "${String(name).slice(0, 100)}".`);
     else if (opts.signal.aborted) outcome = fail('failed', 'Cancelled.');
@@ -402,18 +421,32 @@ export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs:
                 trace.kind = tool.kind;
                 outcome = await runCall(p, tool, rawArgs, opts, trace);
             } finally {
-                release();
+                // The slot stays taken while work this call started is still running (see Trace).
+                releaseWhenDone(release, [...trace.busy, ...(trace.late ? [trace.late] : [])]);
             }
         }
     }
     const result = outcome ?? fail('failed', 'Something went wrong. Try again in a moment.');
-    recordMcpCall({
+    const logged = recordMcpCall({
         operationId: opts.operationId, startedAt, channelId: p.channelId, channelLogin: trace.channelLogin,
         user: { id: p.requesterId, login: trace.login, role: trace.role }, client: { id: p.clientId, name: p.clientName },
-        sessionId: p.sessionId, tool: tool?.name ?? String(name ?? '').slice(0, 64), kind: tool?.kind,
-        code: result.ok ? null : result.code, reason: result.ok ? '' : result.message, charged: result.ok ? result.charged : 0,
-        changeId: result.ok ? result.changeId : undefined, late: Boolean(trace.late),
+        sessionId: p.sessionId, tool: tool?.name ?? loggedToolName(name), kind: tool?.kind,
+        code: result.ok ? null : result.code,
+        // An unknown name is the app's own text: the row keeps a checked name only (loggedToolName), never an echo.
+        reason: result.ok ? '' : tool ? result.message : 'There is no tool with that name.',
+        charged: result.ok ? result.charged : 0, changeId: result.ok ? result.changeId : undefined, late: Boolean(trace.late),
     });
-    if (trace.late) void trace.late.then((landed) => settleLateMcpCall(opts.operationId, landed), () => settleLateMcpCall(opts.operationId, false));
+    // A write that outlived the answer: once it ends, its row says whether it landed and what it was charged.
+    const late = trace.late;
+    if (late) {
+        void late.then((landed) => landed, () => false)
+            .then((landed) => logged.then(() => settleLateMcpCall(opts.operationId, landed, landed ? trace.price ?? 0 : 0)));
+    }
     return result;
+}
+
+/** A tool name worth keeping in the log: tool-like, short, and never something shaped like a Dima token. */
+function loggedToolName(name: unknown): string {
+    const text = String(name ?? '');
+    return /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(text) && !/^dima_(?:at|rt)_/i.test(text) ? text : '(not a tool name)';
 }

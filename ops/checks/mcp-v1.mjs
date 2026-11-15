@@ -235,10 +235,14 @@ events = await billing();
 assert.equal(events.reduce((sum, event) => sum + event.metadata.credits, 0), events.length, 'one credit per billed call');
 
 // v1.1 parallel tool calls: 16 at once on one connection all run (12 at a time, the rest wait their turn), each charged once.
-const billedBeforeParallel = (await billing()).length;
+// A charge is either accepted by Polar (the mock) or still in the channel's durable queue for the next flush.
+const chargedIds = async () => new Set([...(await billing()), ...(await redis.lRange(`twitch:${OWNER}:ai:polarshevent`, 0, -1)).map(item => JSON.parse(item))]
+  .map(event => event.external_id ?? event.externalId));
+const billedBeforeParallel = (await chargedIds()).size;
 const parallel = await Promise.all(Array.from({ length: 16 }, () => tool(writer, 'list_commands')));
 assert.deepEqual(parallel.map(item => item.error), Array(16).fill(false), parallel.find(item => item.error)?.text);
-assert.equal((await billing()).length, billedBeforeParallel + 16, 'every parallel call charged exactly once');
+assert.deepEqual(parallel.map(item => item.json.charged), Array(16).fill(1));
+assert.equal((await chargedIds()).size, billedBeforeParallel + 16, 'every parallel call charged exactly once (accepted or queued)');
 // Batches (old 2025-03-26 clients): every message counts against the limits; more than 20 is refused.
 const batch = (token, messages, version = '2025-03-26') => http('POST', '/mcp', { host: 'mcp.domdimabot.com',
   headers: { Authorization: `Bearer ${token}`, 'MCP-Protocol-Version': version },
@@ -340,15 +344,22 @@ result = await authorizeFrom('203.0.113.61', CIMD);
 assert.equal(result.status, 302);
 assert.equal(new URL(result.headers.location).origin, 'https://domdimabot.com', 'another source still connects');
 // Use up the shared per-minute budget for unknown ids from fresh sources (10 each), until a fresh source is refused.
-let exhausted = false;
-for (let n = 0; n < 13 && !exhausted; n++) for (let i = 0; i < 10 && !exhausted; i++) {
-  const id = junk(`s${n}-${i}`);
-  result = await authorizeFrom(`198.51.100.${n + 10}`, id);
-  assert.equal(result.status, 400);
-  exhausted = await redis.exists(failKey(id)) === 0;
+// The budget is a one-minute window per process: if it rolls over between running out and the next request, run out
+// again (at most twice) instead of failing on the clock.
+let windowRound = 0;
+for (;;) {
+  let exhausted = false;
+  for (let n = 0; n < 13 && !exhausted; n++) for (let i = 0; i < 10 && !exhausted; i++) {
+    const id = junk(`s${windowRound}-${n}-${i}`);
+    result = await authorizeFrom(`198.51.${100 + windowRound}.${n + 10}`, id);
+    assert.equal(result.status, 400);
+    exhausted = await redis.exists(failKey(id)) === 0;
+  }
+  assert.ok(exhausted, 'the shared budget for unknown client ids ran out');
+  result = await authorizeFrom(`198.51.${100 + windowRound}.200`, CIMD);
+  if (result.status === 302 && windowRound++ < 2) continue;
+  break;
 }
-assert.ok(exhausted, 'the shared budget for unknown client ids ran out');
-result = await authorizeFrom('198.51.100.200', CIMD);
 assert.deepEqual([result.status, result.body], [400, { error: 'invalid_client' }], 'an unknown app now waits for the next minute');
 result = await authorizeFrom('198.51.100.201', RECOGNIZED);
 assert.equal(result.status, 302, 'a recognized app is not starved');

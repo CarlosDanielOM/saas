@@ -261,23 +261,29 @@ if data.balance <= 0 then
     redis.call('SET', KEYS[2], 'true')
     redis.call('SET', KEYS[3], 'true')
 end
-return data.balance <= 0 and 1 or 0
+return data.balance <= 0 and 1 or 3
 `;
 
+/**
+ * Debits the local credit snapshot. Resolves true when the snapshot now shows this charge (debited now, or already by
+ * an earlier call with the same externalId); false when nothing was debited (no usable snapshot, Dragonfly down).
+ * Never throws.
+ */
 export async function recordAiCreditUsage(
     channelID: string,
     credits: number,
     externalId?: string,
     cacheOverride?: Awaited<ReturnType<typeof getDragonflyClient>>
-): Promise<void> {
-    if (!channelID || !Number.isFinite(credits) || credits <= 0) return;
+): Promise<boolean> {
+    if (!channelID || !Number.isFinite(credits) || credits <= 0) return false;
 
     try {
         const cache = cacheOverride || await getDragonflyClient('recordAiCreditUsage');
         const markerSuffix = externalId
             ? createHash('sha256').update(externalId).digest('hex')
             : 'untracked';
-        await cache.eval(APPLY_AI_CREDIT_USAGE_SCRIPT, {
+        // 1 = debited (now exhausted), 3 = debited, 2 = already debited for this externalId, 0 = nothing debited.
+        const applied = await cache.eval(APPLY_AI_CREDIT_USAGE_SCRIPT, {
             keys: [
                 `twitch:${channelID}:ai:credits`,
                 `twitch:${channelID}:ai:exhaust`,
@@ -292,6 +298,7 @@ export async function recordAiCreditUsage(
                 externalId ? '1' : '0'
             ]
         });
+        return [1, 2, 3].includes(Number(applied));
     } catch (err) {
         // Polar remains the source of truth and its webhook will reconcile this
         // best-effort local projection if Dragonfly is temporarily unavailable.
@@ -299,6 +306,7 @@ export async function recordAiCreditUsage(
             channelID,
             error: err instanceof Error ? err.message : String(err)
         });
+        return false;
     }
 }
 

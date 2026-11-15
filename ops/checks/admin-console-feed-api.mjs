@@ -171,7 +171,7 @@ try {
         const summary = await read(`feed/summary?${qs({ ...window, ...query, kinds: 'docs', outcome: 'failed' })}`);
         assert.deepEqual(Object.keys(summary).sort(), ['from', 'kinds', 'partial', 'to']);
         assert.deepEqual(summary.partial, expectedPartial(expectation(query)), `summary partial ${JSON.stringify(query)}`);
-        assert.equal(summary.kinds.length, 11);
+        assert.equal(summary.kinds.length, 12);
         const expected = expectedCounts(seed, expectation(query));
         for (const row of summary.kinds) {
             assert.deepEqual({ total: row.total, problems: row.problems, failed: row.failed }, expected[row.kind] || { total: 0, problems: 0, failed: 0 }, `${JSON.stringify(query)} ${row.kind}`);

@@ -90,7 +90,8 @@ const fakeCache = {
 // Module mocks. polarsh.ts and ai_usage_event.ts stay real.
 // ---------------------------------------------------------------------------------------------------------
 const polarIngest = mock.fn(async ({ events }: { events: unknown[] }) => ({ inserted: events.length, duplicates: 0 }));
-const recordAiCreditUsage = mock.fn(async (_channelID: string, _credits: number, _externalId?: string) => {});
+/** true = the local snapshot shows the charge (debited now or earlier); the real function never throws. */
+const recordAiCreditUsage = mock.fn(async (_channelID: string, _credits: number, _externalId?: string): Promise<boolean> => true);
 const getAiCredits = mock.fn(async (_user: unknown, _channelId: string, _options?: { requireVerified?: boolean }) => ({}) as unknown);
 const receipts: Array<Record<string, unknown>> = [];
 const logs: Array<{ level: string; data: Record<string, unknown> }> = [];
@@ -450,4 +451,22 @@ test('settle drops the hold once the charge is on the local balance, before Pola
     answer();
     await settling;
     assert.equal(holds()['op-a'], undefined);
+});
+
+test('settle: when the local balance did not take the charge, the hold stays until Polar answers', async () => {
+    setSnapshot({ balance: 2 });
+    const held = await reserveToolCredits(CH, 1, 'op-b');
+    recordAiCreditUsage.mock.mockImplementationOnce(async () => false);
+    let answer!: () => void;
+    polarIngest.mock.mockImplementationOnce(async ({ events }: { events: unknown[] }) => {
+        await new Promise<void>((resolve) => { answer = resolve; });
+        return { inserted: events.length, duplicates: 0 };
+    });
+    const settling = settleToolCredits(held, { tool: 'list_commands', surface: 'mcp' });
+    for (let i = 0; i < 50 && !answer; i++) await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.ok(answer, 'Polar was called');
+    assert.ok(holds()['op-b'], 'no confirmed local debit: the hold still guards the balance');
+    answer();
+    await settling;
+    assert.equal(holds()['op-b'], undefined, 'dropped once Polar accepted it');
 });
