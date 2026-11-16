@@ -1,4 +1,4 @@
-import type { MotionPhase, MotionProperty, MotionSequence, MotionEasing } from './overlay-keyframes.model';
+import type { MotionPhase, MotionProperty, MotionSequence, MotionEasing } from './overlay-keyframes.generated';
 import type { MotionWindow } from './overlay-motion-timing';
 export const MOTION_CURVES: Record<MotionEasing, string> = {
   linear: 'linear', smooth: 'cubic-bezier(.45,0,.55,1)', 'ease-in': 'cubic-bezier(.64,0,.78,0)',

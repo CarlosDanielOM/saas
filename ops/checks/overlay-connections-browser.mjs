@@ -70,19 +70,25 @@ try {
   fail = true; await refresh(); await body.getByText(/Connection status is unavailable/).waitFor();
   assert.equal(await body.getByText('No connected sources', { exact: true }).count(), 0, 'API failure must not look offline');
   fail = false; diagnostics.pollingFailed = false; saved.sources = [source()]; await refresh(); await body.getByText('Ready', { exact: true }).waitFor();
+  assert.equal(await panel.locator('[data-outdated]').count(), 0, 'a current page shows no version hint');
+  saved.sources = [source({ protocol: 0, build: 'before-protocol', outdated: true }), source({ protocol: 1, build: 'main-CHECK1234', outdated: false })]; await refresh();
+  await panel.locator('[data-outdated]').first().waitFor();
+  assert.equal(await panel.locator('[data-outdated]').count(), 1, 'only the older page gets the hint');
+  assert((await panel.locator('[data-outdated]').textContent()).includes('older version of the overlay page'));
+  saved.sources = [source()]; await refresh(); await body.getByText('Ready', { exact: true }).waitFor();
   await switchStudioScene(page, 'second'); await openStudio(page, 'obs');
   await body.getByText('No connected sources', { exact: true }).waitFor();
   assert.equal(writes, 0); await context.close();
   console.log('PASS diagnostics UI: unpublished/ready/reconnect/update/error states, duplicate guidance, published dimensions, automatic polling, recovery, scene isolation, no dirty draft, en/es, light/dark, 320–1440px and axe.');
 
-  const runtime = await browser.newContext(); const health = [], events = new Map(); let socket, currentRevision = 1, failSnapshot = false, failEvent = false;
+  const runtime = await browser.newContext(); const health = [], events = new Map(), handshakes = []; let socket, currentRevision = 1, failSnapshot = false, failEvent = false;
   const snapshot = { width: 800, height: 450, widgets: scene.widgets, waitFor: scene.waitFor, designs: [design] };
   const wav = Buffer.alloc(44 + 16000); wav.write('RIFF', 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22); wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(16000, 40);
   const send = (name, value) => socket.send(`42/overlay-studio/${publicId},${JSON.stringify([name, value])}`);
   await runtime.routeWebSocket('**/*', ws => {
     if (!ws.url().includes('/socket.io/')) return ws.close(); socket = ws;
     ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');
-    ws.onMessage(message => { const m = String(message); if (m.startsWith('40/overlay-studio/')) { ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`); send('overlay-state', { revision: currentRevision, snapshot }); } else if (m.includes('overlay-health')) health.push(JSON.parse(m.slice(m.indexOf(',') + 1))[1]); });
+    ws.onMessage(message => { const m = String(message); if (m.startsWith('40/overlay-studio/')) { handshakes.push(JSON.parse(m.slice(m.indexOf(',') + 1))); ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`); send('overlay-state', { revision: currentRevision, snapshot }); } else if (m.includes('overlay-health')) health.push(JSON.parse(m.slice(m.indexOf(',') + 1))[1]); });
   });
   await runtime.route('**/*', route => {
     const url = new URL(route.request().url());
@@ -98,6 +104,9 @@ try {
   await sourcePage.goto(base + '/overlays/' + publicId); await sourcePage.locator('.canvas').waitFor();
   const waitHealth = async predicate => { for (let i = 0; i < 160; i++) { if (health.some(predicate)) return; await new Promise(r => setTimeout(r, 50)); } throw new Error('Missing health report ' + JSON.stringify(health)); };
   await waitHealth(h => h.revision === 1 && h.issue === null);
+  assert.equal(handshakes[0]?.protocol, 1, 'the OBS page reports its protocol');
+  assert.match(handshakes[0]?.build ?? '', /^main-[A-Za-z0-9]{6,32}$/, 'the OBS page reports its build (main bundle hash)');
+  assert.match(handshakes[0]?.clientId ?? '', /^[a-f0-9-]{36}$/);
   await sourcePage.clock.runFor(16000); await waitHealth(() => health.length >= 2); await sourcePage.clock.resume();
   failSnapshot = true; send('overlay-updated', { revision: 2 }); await waitHealth(h => h.issue === 'snapshot'); assert.equal(await sourcePage.locator('.canvas').count(), 1);
   failSnapshot = false; currentRevision = 2; send('overlay-updated', { revision: 2 }); await waitHealth(h => h.revision === 2 && h.issue === null);
@@ -111,5 +120,6 @@ try {
   assert.equal(await sourcePage.evaluate(() => document.body.style.background), 'transparent');
   assert.equal(await sourcePage.locator('app-overlay-connections').count(), 0, 'diagnostics never appear on the OBS canvas');
   assert.deepEqual(errors, []); await runtime.close();
+  console.log('PASS runtime version: the OBS page sends protocol 1 and its main bundle build; the Studio hints only for older pages.');
   console.log('PASS runtime diagnostics: initial layout acknowledgement, heartbeat, failed update preserving canvas, event/media errors, successful recovery, autoplay blocking and transparent output.');
 } finally { await browser.close(); }

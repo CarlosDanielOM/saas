@@ -15,6 +15,7 @@ import { channelLogins as realChannelLogins, creditsToUSD } from '../routes/admi
 import { listFeed as realListFeed, summarizeFeed as realSummarizeFeed, type FeedItem, type FeedKindCount } from './admin_feed/index.js';
 import { FAILED_STATUSES } from './admin_feed/sources/protection.js';
 import { moderationReviewCountsCached } from './moderation_review.service.js';
+import { removableCompatCount } from '../../overlays/client-versions.js';
 
 /**
  * `GET /admin-site/overview`: what is happening across all channels, what it costs, and what needs the
@@ -28,7 +29,7 @@ import { moderationReviewCountsCached } from './moderation_review.service.js';
 export const SPEND_FEATURES = ['voice', 'ai_chat', 'memory', 'protection', 'assistant', 'docs', 'other'] as const;
 export type SpendFeature = typeof SPEND_FEATURES[number];
 export type AttentionKey = 'verdicts_waiting' | 'failed_24h' | 'dead_deliveries' | 'usage_import_stuck'
-    | 'polar_unsent' | 'gifts_need_support' | 'credits_exhausted';
+    | 'polar_unsent' | 'gifts_need_support' | 'credits_exhausted' | 'compat_removable';
 /** In the order the contract lists them; `partial` keeps this order. */
 export const OVERVIEW_PARTS = ['feed', 'usage', 'decisions', 'assistant', 'docs', 'attention'] as const;
 export type OverviewPart = typeof OVERVIEW_PARTS[number];
@@ -189,7 +190,7 @@ export function buildOverview(input: OverviewInputs): AdminOverview {
 
     const ranked = rankChannels(fragments);
     const logins = input.logins || new Map<string, string>();
-    const attentionOrder: AttentionKey[] = ['verdicts_waiting', 'failed_24h', 'dead_deliveries', 'usage_import_stuck', 'polar_unsent', 'gifts_need_support', 'credits_exhausted'];
+    const attentionOrder: AttentionKey[] = ['verdicts_waiting', 'failed_24h', 'dead_deliveries', 'usage_import_stuck', 'polar_unsent', 'gifts_need_support', 'credits_exhausted', 'compat_removable'];
     return {
         generatedAt: windows.now.toISOString(),
         day: {
@@ -546,19 +547,22 @@ export async function loadDocsFragment(w: OverviewWindows): Promise<OverviewFrag
  */
 export async function loadAttentionFragment(w: OverviewWindows): Promise<OverviewFragment> {
     const redis = await getDragonflyClient('admin-overview');
-    const [reviews, dead, importStuck, gifts] = await Promise.all([
+    const [reviews, dead, importStuck, gifts, compat] = await Promise.all([
         moderationReviewCountsCached(),
         DomainEventDeliverySchema.countDocuments({ status: 'dead', deadLetteredAt: { $gte: new Date(w.now.getTime() - DEAD_DELIVERY_DAYS * DAY_MS) } }).maxTimeMS(QUERY_MS),
         redis.lLen(AI_USAGE_BACKFILL_DEAD_KEY),
         // Only money that was received: before payment the flag came from transient errors, and nothing is owed.
-        CreditGiftSchema.countDocuments({ status: 'needs_support', paidAt: { $exists: true, $ne: null } }).maxTimeMS(QUERY_MS)
+        CreditGiftSchema.countDocuments({ status: 'needs_support', paidAt: { $exists: true, $ne: null } }).maxTimeMS(QUERY_MS),
+        // Old-version code no page has needed for COMPAT_QUIET_DAYS (overlays/compat.ts); the owner decides to remove it.
+        removableCompatCount(w.now.getTime())
     ]);
     return {
         attention: {
             verdicts_waiting: Object.values(reviews).reduce((sum, count) => sum + num(count), 0),
             dead_deliveries: dead,
             usage_import_stuck: num(importStuck),
-            gifts_need_support: gifts
+            gifts_need_support: gifts,
+            compat_removable: compat
         }
     };
 }

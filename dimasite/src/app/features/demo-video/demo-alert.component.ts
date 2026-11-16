@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { OverlaySceneRendererComponent } from '../overlays/overlay-scene-renderer.component';
 import type { Snapshot } from '../overlays/overlay-api.service';
 import type { AlertTransport } from '../overlays/overlay-sound.component';
-import type { AlertMotion, OverlayWidget } from '../overlays/overlay.model';
-import type { AlertKeyframes } from '../overlays/overlay-keyframes.model';
+import type { AlertMotion, OverlayWidget } from '../overlays/overlay-model.generated';
+import type { AlertKeyframes } from '../overlays/overlay-keyframes.generated';
 import { MOTION_PRESETS, presetSequence } from '../overlays/overlay-motion-presets';
 import type { DemoBeat, DemoLang, DemoLook } from './demo-scene';
 

@@ -14,9 +14,11 @@ import { ActivatedRoute } from '@angular/router';
 import { io } from 'socket.io-client';
 import { OverlayApi, Snapshot } from './overlay-api.service';
 import type { TestMedia, OverlaySpeechPlayback } from './overlay-media.component';
-import { layoutSounds, matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
+import { layoutSounds, matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay-model.generated';
 import { placeTrigger } from './overlay-trigger-placement';
-import { libraryUrl } from './overlay-library';
+import { libraryUrl } from './overlay-library.generated';
+import { OVERLAY_PROTOCOL } from './overlay-protocol.generated';
+import { siteBuild } from '../../shared/site-build';
 import { LiveWidgetEnv } from './widget-runtime/live-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; look?: TriggerLook; snapshot?: Snapshot; revision?: number }
@@ -65,7 +67,8 @@ export class OverlayRuntimeComponent {
   private readonly receipts = this.readReceipts();
   private clientId = this.receipts.clientId;
   private releaseIdentity?: () => void;
-  private readonly socket = io(`${this.api.base}/overlay-studio/${this.publicId}`, { auth: { clientId: this.clientId }, transports: ['websocket'], autoConnect: false });
+  /** Protocol and build tell the API which page versions are in use (admin site: when old compatibility code can go). */
+  private readonly socket = io(`${this.api.base}/overlay-studio/${this.publicId}`, { auth: this.sourceAuth(), transports: ['websocket'], autoConnect: false });
   private queue: Event[] = [];
   private inFlight = new Map<string, Event>();
   /** Alert widgets occupied by each started event: one alert per box at a time. */
@@ -145,11 +148,12 @@ export class OverlayRuntimeComponent {
       if (this.disposed) return;
       if (!lock) {
         this.clientId = crypto.randomUUID(); this.completed.clear(); this.seen.clear();
-        this.socket.auth = { clientId: this.clientId }; this.saveReceipts(); this.connectSource(); return;
+        this.socket.auth = this.sourceAuth(); this.saveReceipts(); this.connectSource(); return;
       }
       await new Promise<void>(resolve => { this.releaseIdentity = resolve; this.saveReceipts(); this.socket.connect(); });
     }).catch(() => { if (!this.disposed) this.socket.connect(); });
   }
+  private sourceAuth() { return { clientId: this.clientId, protocol: OVERLAY_PROTOCOL, build: siteBuild() }; }
   private readReceipts(): { clientId: string; completed: string[] } {
     try {
       const value = JSON.parse(sessionStorage.getItem(this.receiptKey) || 'null');

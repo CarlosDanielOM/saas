@@ -412,6 +412,26 @@ class OpsTests(unittest.TestCase):
             for stale in self.ops.state.glob("cron-*"):
                 shutil.rmtree(stale)
 
+    def test_shared_overlay_files_are_checked_before_api_bot_cron_and_site_builds(self):
+        checked = []
+        with patch.object(mod, "run", side_effect=lambda argv, **kw: checked.append([str(a) for a in argv]) or ""):
+            (self.root / "scripts").mkdir(exist_ok=True)
+            (self.root / mod.SHARED_FILE_CHECK).write_text("")
+            self.ops.check_shared_files()
+        self.assertEqual(checked, [["node", str(self.root / mod.SHARED_FILE_CHECK), "--check"]])
+        self.assertEqual(mod.SHARED_FILE_TARGETS, {"api", "bot", "cron", "site"})
+
+    def test_build_refuses_stale_shared_overlay_files(self):
+        def stale(argv, **kw):
+            raise mod.OpsError("node failed (exit 1)")
+        (self.root / "scripts").mkdir(exist_ok=True)
+        (self.root / mod.SHARED_FILE_CHECK).write_text("")
+        with patch.object(mod, "run", side_effect=stale), self.assertRaisesRegex(mod.OpsError, "Shared overlay files are out of sync"):
+            self.cron_build("FROM node:24-alpine\n")
+        receipt = json.loads(next(self.ops.state.glob("cron-*/receipt.json")).read_text())
+        self.assertEqual(receipt["status"], "build-failed")
+        self.assertEqual(self.ops.calls, [])
+
     def test_build_takes_no_compiler_options(self):
         for option in ("--rust-cpus", "--rust-memory-gib", "--rust-feature-matrix"):
             with self.subTest(option=option), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):

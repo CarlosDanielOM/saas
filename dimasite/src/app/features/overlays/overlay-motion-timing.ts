@@ -1,5 +1,5 @@
-import type { AlertMotion } from './overlay.model';
-import type { AlertKeyframes } from './overlay-keyframes.model';
+import type { AlertMotion } from './overlay-model.generated';
+import type { AlertKeyframes } from './overlay-keyframes.generated';
 export interface MotionWindow { start: number; duration: number; span: number; iterations: number }
 /**
  * When the object is gone, in seconds from the alert's start: `motion.end` clamped between just after its start

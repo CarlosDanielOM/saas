@@ -2,7 +2,7 @@ import { motionStop, motionWindows } from './overlay-motion-timing';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
 import { defaultMotion } from './overlay-object-motion';
-import { layoutSounds, soundStop, type AlertLayout, type OverlayWidget } from './overlay.model';
+import { layoutSounds, soundStop, type AlertLayout, type OverlayWidget } from './overlay-model.generated';
 import type { AlertTransport } from './overlay-sound.component';
 /** `end` with `value: undefined` removes the end key, so the object or sound follows the alert's length again.
  * `id` is the row id: an object's id, or `$sound:<sound id>`. */

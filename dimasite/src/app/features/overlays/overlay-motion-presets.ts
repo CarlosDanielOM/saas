@@ -1,4 +1,4 @@
-import { MOTION_LIMITS, neutralValue, type MotionEasing, type MotionPhase, type MotionProperty, type MotionSequence, type MotionTrack } from './overlay-keyframes.model';
+import { MOTION_LIMITS, neutralValue, type MotionEasing, type MotionPhase, type MotionProperty, type MotionSequence, type MotionTrack } from './overlay-keyframes.generated';
 export type MotionMood = 'gentle' | 'playful' | 'bold';
 export interface MotionPreset { id: string; phase: MotionPhase; mood: MotionMood; duration: number; sequence: MotionSequence }
 const track = (property: MotionProperty, values: number[], offsets?: number[], easing: MotionEasing = 'smooth'): MotionTrack => ({property, points: values.map((value, i) => ({value, offset: offsets?.[i] ?? i / (values.length - 1), easing}))});

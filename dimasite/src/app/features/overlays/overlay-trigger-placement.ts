@@ -1,4 +1,4 @@
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 
 interface CanvasSize { width: number; height: number }
 

@@ -5,7 +5,7 @@ import { LanguageService } from '../../services/language.service';
 import { fieldValue, groupFields, resolveFieldData, type JsonObject, type JsonValue, type WidgetField } from './custom-widget-format.generated';
 import { CustomWidgetsService } from './custom-widgets.service';
 import { EditorWidgetEnv } from './widget-runtime/editor-env';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import type { WidgetSettingsContext } from './overlay-widget-module';
 
 /** Popular Google Fonts offered as suggestions; any Google Font name can be typed. */

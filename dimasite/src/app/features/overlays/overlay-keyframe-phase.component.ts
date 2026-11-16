@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, ElementRef, afterRenderEffect, inject, input, untracked } from '@angular/core';
-import type { AlertMotion } from './overlay.model';
-import type { AlertKeyframes, MotionPhase, MotionProperty } from './overlay-keyframes.model';
+import type { AlertMotion } from './overlay-model.generated';
+import type { AlertKeyframes, MotionPhase, MotionProperty } from './overlay-keyframes.generated';
 import { motionStop, motionWindows } from './overlay-motion-timing';
 import { playKeyframeSequence } from './overlay-keyframe-player';
 @Component({

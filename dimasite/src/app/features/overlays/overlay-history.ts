@@ -1,5 +1,5 @@
 import { signal } from '@angular/core';
-import type { AlertDesign, AlertEvent, OverlayScene } from './overlay.model';
+import type { AlertDesign, AlertEvent, OverlayScene } from './overlay-model.generated';
 
 type DraftScene = Omit<OverlayScene, 'publicId' | 'revision' | 'published'>;
 type DraftDesign = Omit<AlertDesign, 'revision'>;

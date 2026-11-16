@@ -3,9 +3,9 @@ import { LanguageService } from '../../services/language.service';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { defaultMotion } from './overlay-object-motion';
 import { motionWindows } from './overlay-motion-timing';
-import { MOTION_PHASES, type AlertKeyframes, type MotionPhase, type MotionSequence } from './overlay-keyframes.model';
+import { MOTION_PHASES, type AlertKeyframes, type MotionPhase, type MotionSequence } from './overlay-keyframes.generated';
 import { MOTION_PRESETS, presetSequence, type MotionMood, type MotionPreset } from './overlay-motion-presets';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 export interface MotionCatalogChoice { phase: MotionPhase; sequence: MotionSequence; duration: number; combine: boolean }
 @Component({
   selector: 'app-overlay-motion-catalog', imports: [OverlayLayerComponent], changeDetection: ChangeDetectionStrategy.OnPush,

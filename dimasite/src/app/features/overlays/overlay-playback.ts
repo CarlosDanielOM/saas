@@ -1,7 +1,7 @@
 import type { Snapshot } from './overlay-api.service';
 import type { TestMedia } from './overlay-media.component';
-import type { AlertEvent, AlertLayout, EventKind, OverlayWidget } from './overlay.model';
-import { ALERT_EVENTS } from './overlay.model';
+import type { AlertEvent, AlertLayout, EventKind, OverlayWidget } from './overlay-model.generated';
+import { ALERT_EVENTS } from './overlay-model.generated';
 import { clipPlaybackLimit } from './overlay-clip-motion';
 import type { OverlayPlatform } from './overlay-queue.model';
 

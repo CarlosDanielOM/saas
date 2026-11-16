@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 @Component({
   selector: 'app-overlay-appearance', changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<section [attr.aria-label]="t('appearance')">

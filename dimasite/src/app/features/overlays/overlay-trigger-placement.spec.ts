@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { placeTrigger, triggerPlacementMargin } from './overlay-trigger-placement';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 
 const canvas = { width: 1920, height: 1080 };
 const widget: OverlayWidget = { id: 'trigger-a', kind: 'trigger', x: 70, y: 80, width: 400, height: 200,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALERT_READY_LIMIT_MS, alertPlacementIds, eventLook, lookFit, placementLayout, placementMediaSeconds, placementMountSeconds, placementStartSeconds, sceneScale, waitsForPictures, type OverlayRenderEvent } from './overlay-playback';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 const widget = (id: string,designId: string): OverlayWidget => ({id,designId,kind:'alert',x:0,y:0,width:800,height:240,visible:true,locked:false,events:['follow','bits']});
 
 describe('shared OBS playback rules',() => {

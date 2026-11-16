@@ -69,7 +69,7 @@ export interface TriggerLookSummary {
 
 /**
  * A trigger's look in editor form (GET/PUT `/triggers/:channelID/:triggerID/look`). Its layout is an alert layout
- * (see `features/overlays/overlay.model.ts` `AlertLayout`) whose files reference trigger library items (`mediaId`);
+ * (see `features/overlays/overlay-model.generated.ts` `AlertLayout`) whose files reference trigger library items (`mediaId`);
  * the API adds `mediaUrl`/`url`, `mediaType` and `unavailable: true` to each of them. No master volume applied.
  */
 export interface TriggerLook {

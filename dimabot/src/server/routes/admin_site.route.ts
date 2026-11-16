@@ -39,6 +39,7 @@ import { adminDecisionsRouter } from './admin_site/decisions.route.js';
 import { adminUsageRouter } from './admin_site/usage.route.js';
 import { adminAssistantsRouter } from './admin_site/assistants.route.js';
 import { adminChannelDebugRouter } from './admin_site/channel_debug.route.js';
+import { adminClientVersionsRouter } from './admin_site/client_versions.route.js';
 import { adminGiftsRouter } from './admin_site/gifts.route.js';
 import { BUILT_IN_ACTIONS, COMMAND_ROW_FIELDS, EVENTSUB_ROW_FIELDS, commandRow, eventsubRow } from './admin_site/channel_rows.js';
 import { adminChannelEditRouter } from './admin_site/channel_edit.route.js';
@@ -1184,5 +1185,6 @@ router.use(adminChannelDebugRouter);
 router.use(adminGiftsRouter);
 router.use(adminChannelEditRouter);
 router.use(adminReferralsRouter);
+router.use(adminClientVersionsRouter);
 
 export const adminSiteRoute = router;

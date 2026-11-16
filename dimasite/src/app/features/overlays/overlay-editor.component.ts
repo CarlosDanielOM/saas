@@ -17,18 +17,21 @@ import { OverlayKeyframeEditorComponent } from './overlay-keyframe-editor.compon
 import { OverlayAppearanceComponent } from './overlay-appearance.component';
 import { OverlayVariantsComponent } from './overlay-variants.component';
 import { OverlayBitsLooksComponent } from './overlay-bits-looks.component';
-import { matchingVariant, selectAlertLayout, withoutLegacyBitsLooks, type AlertLayout, type AlertVariant } from './overlay.model';
-import { libraryUrl } from './overlay-library';
+import { matchingVariant, selectAlertLayout, type AlertLayout, type AlertVariant } from './overlay-model.generated';
+import { withDesignSoundLists, withoutLegacyBitsLooks } from './overlay-editor-sounds';
+import { STUDIO_WRITER } from './overlay-protocol.generated';
+import { siteBuild } from '../../shared/site-build';
+import { libraryUrl } from './overlay-library.generated';
 import { BitsRulesService } from '../bits-rules/bits-rules.service';
 import { amountText, matchBitsRule } from '../bits-rules/bits-rules.model';
 import { OverlayTimelineComponent, type TimelineEdit } from './overlay-timeline.component';
 import type { AlertTransport } from './overlay-sound.component';
-import { MAX_ALERT_SOUNDS, layoutSounds, withDesignSoundLists, type AlertSound } from './overlay.model';
+import { MAX_ALERT_SOUNDS, layoutSounds, type AlertSound } from './overlay-model.generated';
 import { OverlaySoundsComponent, type SoundEdit } from './overlay-sounds.component';
 import { OverlayVideoPlaybackComponent } from './overlay-video-playback.component';
 import { SOUND_ROW } from './overlay-timeline.component';
 import { defaultMotion } from './overlay-object-motion';
-import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay.model';
+import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay-model.generated';
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
 import { OverlayQueueComponent } from './overlay-queue.component';
 import { TriggerLookSession, type TriggerLookClosed, type TriggerLookTarget } from './trigger-look-session';
@@ -61,7 +64,7 @@ import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, Clapperboard, Code2, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileUp, FlaskConical, Image, Keyboard, Languages, Link2, Moon, PanelsTopLeft, Scan, Sun, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Puzzle, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, ZoomIn, ZoomOut, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
-import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene, matchesTrigger } from './overlay.model';
+import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene, matchesTrigger } from './overlay-model.generated';
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
 interface PointerSession { id: string; action: 'move' | 'resize'; startX: number; startY: number; original: OverlayWidget; canvas: DOMRect }
@@ -1428,7 +1431,7 @@ export class OverlayEditorComponent {
     this.stopPointer(); this.endHistoryGroup();
     this.busy.set(true); this.error.set('');
     // writer 2: `sounds` is authoritative; the editor never sends the legacy `sound` key.
-    try { this.accept(await this.api.save(this.channel, { schemaVersion: 1, writer: 2, revision: this.revision, scenes: this.scenes(), designs: this.designs() })); return true; }
+    try { this.accept(await this.api.save(this.channel, { schemaVersion: 1, writer: STUDIO_WRITER, build: siteBuild(), revision: this.revision, scenes: this.scenes(), designs: this.designs() })); return true; }
     catch (e) { this.report(e); return false; } finally { this.busy.set(false); }
   }
   private accept(state: StudioState, preserveRecovery = false): void {

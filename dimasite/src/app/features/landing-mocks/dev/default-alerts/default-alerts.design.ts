@@ -1,5 +1,5 @@
-import type { AlertDesign, AlertLayout, AlertMotion, AlertSound, OverlayWidget } from '../../../overlays/overlay.model';
-import type { AlertKeyframes, MotionEasing, MotionPhase, MotionProperty, MotionTrack } from '../../../overlays/overlay-keyframes.model';
+import type { AlertDesign, AlertLayout, AlertMotion, AlertSound, OverlayWidget } from '../../../overlays/overlay-model.generated';
+import type { AlertKeyframes, MotionEasing, MotionPhase, MotionProperty, MotionTrack } from '../../../overlays/overlay-keyframes.generated';
 
 /**
  * The Dima default alerts every streamer gets: follow, Bits, sub, gifted subs (a sub look) and raid, on the 800×240

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
 import { OverlayApi, type OverlayConnections } from './overlay-api.service';
-import type { OverlayScene } from './overlay.model';
+import type { OverlayScene } from './overlay-model.generated';
 
 /** One-word answer to "is this overlay showing in OBS?", used by the Studio header and setup strip. */
 export type ConnectionState = 'checking' | 'unknown' | 'unsaved' | 'waiting' | 'unpublished' | 'offline' | 'ready' | 'attention';
@@ -49,6 +49,7 @@ export type ConnectionState = 'checking' | 'unknown' | 'unsaved' | 'waiting' | '
                   @if (source.status === 'reconnecting') { <p>{{ t('connectionsReconnectHelp') }}</p> }
                   @if (source.status === 'loading' || source.status === 'unresponsive') { <p>{{ t('connectionsRefreshHelp') }}</p> }
                   @if (source.status === 'updating') { <p>{{ t('connectionsUpdateHelp') }}</p> }
+                  @if (source.outdated) { <p class="outdated" data-outdated>{{ t('connectionsOutdated') }}</p> }
                   @if (source.activationFailed) { <p class="warning">{{ t('connectionsActivationError') }}</p> }
                   @if (source.stateFailed) { <p class="warning">{{ t('connectionsStateError') }}</p> }
                   @if (source.issue) { <p class="warning">{{ t('connectionIssue_' + source.issue) }} <span>{{ time(source.issueAt) }}</span></p> }

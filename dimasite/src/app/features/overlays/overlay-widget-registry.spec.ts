@@ -3,7 +3,7 @@ import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from '.
 import { WIDGET_DEFINITIONS, validWidgetModuleConfig } from './overlay-widget-contract.generated';
 import { interactionDesign } from './overlay-interaction.model';
 import { acceptWidgetStates, legacyWidgetStates, stateForWidget, WidgetStateTransport } from './overlay-widget-state';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 
 const poll = (): OverlayWidget => createWidget('poll', { id: 'poll-a', placement: 'scene' })!;
 describe('overlay widget modules', () => {

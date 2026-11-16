@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
-import type { AlertEvent, AlertVariant } from './overlay.model';
+import type { AlertEvent, AlertVariant } from './overlay-model.generated';
 /** Sub/raid variants of an alert design: one vertical list (Default, each variant, Add), then the open variant's settings. */
 @Component({
   selector: 'app-overlay-variants', changeDetection: ChangeDetectionStrategy.OnPush,

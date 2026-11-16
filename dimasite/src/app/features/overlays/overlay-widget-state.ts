@@ -1,5 +1,5 @@
 import type { InteractionSnapshot } from './overlay-interaction.model';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import { type WidgetStates, type WidgetStateSnapshot } from './overlay-widget-contract.generated';
 import { OVERLAY_WIDGET_MODULES, widgetModuleFor } from './overlay-widget-registry';
 

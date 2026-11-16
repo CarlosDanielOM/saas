@@ -5,7 +5,7 @@ import { OverlayCustomWidgetSettingsComponent } from './overlay-custom-widget-se
 import { OverlayInteractionSettingsComponent } from './overlay-interaction-settings.component';
 import { OverlayInteractionWidgetComponent } from './overlay-interaction-widget.component';
 import { sampleInteraction, type InteractionKind, type InteractionPreview } from './overlay-interaction.model';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import { getWidgetDefinition, validWidgetModuleConfig, widgetKinds, type WidgetKind, type WidgetPlacement } from './overlay-widget-contract.generated';
 import type { OverlayWidgetModule, WidgetCreationContext, WidgetPreview } from './overlay-widget-module';
 

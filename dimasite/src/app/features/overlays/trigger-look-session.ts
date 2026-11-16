@@ -3,7 +3,8 @@ import type { TriggerLookState, TriggerLookSummary, TriggerLookTarget } from '..
 import { TriggerLookError, type TriggerLooksService } from '../triggers/trigger-looks.service';
 import { createWidget } from './overlay-widget-registry';
 import { defaultMotion } from './overlay-object-motion';
-import { layoutSounds, makeDesign, withSoundList, type AlertDesign, type AlertLayout, type AlertSound, type OverlayWidget } from './overlay.model';
+import { layoutSounds, makeDesign, type AlertDesign, type AlertLayout, type AlertSound, type OverlayWidget } from './overlay-model.generated';
+import { withSoundList } from './overlay-editor-sounds';
 
 export type { TriggerLookClosed, TriggerLookTarget } from '../triggers/triggers.model';
 

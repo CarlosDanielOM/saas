@@ -1,9 +1,9 @@
 # Overlay Studio Alpha
 
 The production editor lives at `/:streamer/modules/overlays`. It is marked Alpha and
-requires the channel owner's Pro plan. Management requests enforce both ownership
-and entitlement on the server. Published browser sources check Pro on connection,
-HTTP reads, and while connected. The earlier mock remains at `/mocks/dev/overlay-editor`.
+available on the Free plan. Management requests enforce channel access on the server;
+the channel must have an account. Published browser sources only check that the channel still has an account.
+The earlier mock remains at `/mocks/dev/overlay-editor`.
 
 ## Documents and publishing
 
@@ -39,16 +39,18 @@ retains its render snapshot. Publishing neither clears nor restarts the pending 
 also activates their producers without requiring an OBS reconnect.
 One event can appear in multiple matching instances, and completes when all finish.
 Media errors, load timeouts and finite alert durations release their queue slots.
-There is no age or length cutoff for connected clients' pending events.
+Pending events are bounded: each source keeps at most 200, a channel's retained media at most
+512 MB (the oldest go first and the source is told), and a delivery expires after 30 minutes.
 
 Generated clip and TTS files are copied before their producer advances. Each copy is
 retained until every receiving client completes it. If no legacy subscriber is present,
 the producer can advance after copying; client playback acknowledgments release only
 that client's retention claim. Clip completion rejects duplicate/stale acknowledgments.
 An interrupted socket can reconnect with its existing client ID for two minutes and
-recover unacknowledged events. Disconnected claims are then removed. These playback
-queues are session state: refreshing an OBS page or restarting the API does not provide
-a durable replay of pending media. Saved documents and published layouts survive restarts.
+recover unacknowledged events. Disconnected claims are then removed. Deliveries and reconnect
+leases are stored in Mongo, so this also covers an OBS page refresh (the page keeps its client ID)
+and an API restart; TTS deliveries are not restored after a restart. Saved documents and
+published layouts survive restarts.
 
 Alerts subscribe to new Twitch events in the existing Mongo domain-event journal while
 the source is open: bits, follows, subscriptions/gifts, and raids. This API browser
@@ -82,7 +84,7 @@ and trigger tests remain available; its TTS button currently uses a sample anima
 
 ## Verification
 
-- `ops/checks/overlay-studio-backend.mjs`: isolated actual API, ownership/Pro gates,
+- `ops/checks/overlay-studio-backend.mjs`: isolated actual API, ownership and account checks,
   revision conflicts, real AST, publication isolation, domain journal delivery, independent
   clients, generated media retention, reconnection, rotation and downgrade.
 - `ops/checks/overlay-studio-browser.mjs`: editor interactions and API contracts, shared

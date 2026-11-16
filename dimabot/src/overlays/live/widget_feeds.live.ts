@@ -375,6 +375,8 @@ export async function tickWidgetFeeds(): Promise<void> {
   }
 }
 let lastDemand = 0;
+/** Each Studio registration starts with a fresh chat demand throttle (as when it lived in registerStudio). */
+export function resetChatDemand(): void { lastDemand = 0; }
 /** The bot only builds chat events for channels whose published widgets read chat. */
 export async function tickChatDemand(): Promise<void> {
   if (Date.now() - lastDemand > 20000) {

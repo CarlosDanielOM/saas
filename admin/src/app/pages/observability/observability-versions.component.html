@@ -1,0 +1,158 @@
+<!-- The answer: can any old-version code go now? -->
+@if (answer(); as a) {
+  <div
+    class="lf-status"
+    [class.lf-status--warn]="a.tone === 'warn'"
+    [class.lf-status--ok]="a.tone === 'ok'"
+    [class.lf-status--muted]="a.tone === 'muted'"
+    role="status"
+    [attr.aria-busy]="loading()"
+    [attr.data-tone]="a.tone"
+    data-versions-answer
+  >
+    <app-icon [name]="a.icon" />
+    <div class="lf-status__body">
+      <strong class="lf-status__title">{{ a.title }}</strong>
+      <span class="lf-status__text">{{ a.text }}</span>
+    </div>
+  </div>
+} @else if (failure(); as f) {
+  <div class="lf-tile lf-empty" role="alert" data-versions-error>
+    <app-icon name="alert" />
+    <strong>{{ f.text }}</strong>
+    @if (f.retry) {
+      <span>Nothing was changed.</span>
+      <button type="button" class="lf-btn" (click)="load()" [disabled]="loading()"><app-icon name="refresh" [class.lf-spinning]="loading()" />Retry</button>
+    }
+  </div>
+} @else {
+  <div class="lf-status" aria-busy="true" data-versions-loading>
+    <span class="sr-only">Loading page versions…</span>
+    <app-skeleton width="1.35rem" height="1.35rem" variant="circle" />
+    <div class="lf-status__body"><app-skeleton width="65%" height="1.15rem" /><app-skeleton width="85%" height="0.9rem" /></div>
+  </div>
+}
+
+@if (report() && failure(); as f) {
+  <div class="lf-notice" role="alert" data-versions-stale>
+    <span>{{ f.retry ? "Couldn't refresh." : f.text }} This is the report from {{ checkedAt() }}.</span>
+    @if (f.retry) {
+      <button type="button" class="lf-btn" (click)="load()" [disabled]="loading()">Retry</button>
+    }
+  </div>
+}
+
+@if (report(); as r) {
+  <section class="lf-tile lf-tile--flush" aria-labelledby="ver-code-h" data-compat>
+    <div class="lf-tile__head ver-head">
+      <h2 class="lf-h2" id="ver-code-h"><app-icon name="files" />Old-version code</h2>
+      <p class="lf-note">
+        OBS overlay pages and Studio editor tabs tell the API their version. Code kept for older versions can go once no page that
+        needs it has been seen for {{ r.quietDays }} days. Nothing is removed automatically: ask an agent to remove it.
+      </p>
+    </div>
+
+    @if (!entries().length) {
+      <div class="lf-empty" data-compat-empty>
+        <app-icon name="ok" />
+        <strong>Nothing kept for older pages</strong>
+        <span>New pieces show up here when they are added.</span>
+      </div>
+    } @else {
+      <ul class="ver-entries" aria-label="Old-version code">
+        @for (e of entries(); track e.id) {
+          <li class="ver-entry" [attr.data-compat-entry]="e.id" [attr.data-state]="e.state">
+            <div class="ver-entry__top">
+              <span
+                class="lf-chip"
+                [class.lf-chip--ok]="e.tone === 'ok'"
+                [class.lf-chip--muted]="e.tone === 'muted'"
+                [class.lf-chip--accent]="e.tone === 'accent'"
+                data-compat-chip
+              >@if (e.state === 'removable') {<app-icon name="check" />}{{ e.chip }}</span>
+              <code class="ver-id">{{ e.id }}</code>
+            </div>
+            <p class="ver-entry__summary">@for (part of e.summary; track $index) {@if (part.code) {<code>{{ part.text }}</code>} @else {<span>{{ part.text }}</span>}}</p>
+            <p class="ver-entry__meta" data-compat-meta>
+              <span>{{ e.who }}</span>
+              <span [attr.title]="e.lastSeenTitle">{{ e.lastSeen }}</span>
+              @if (e.when) {
+                <span data-compat-when>{{ e.when }}</span>
+              }
+            </p>
+            <details class="lf-more ver-more" data-compat-code>
+              <summary>Where the code is<app-icon name="down" /></summary>
+              <div class="lf-more__body ver-more__body">
+                <ul class="ver-code">
+                  @for (line of e.code; track $index) {
+                    <li><code>{{ line }}</code></li>
+                  }
+                </ul>
+                @if (e.request) {
+                  <button
+                    type="button"
+                    class="lf-btn ver-copy"
+                    [attr.aria-label]="copied() === e.id ? 'Copied the request for ' + e.id : 'Copy request for an agent to remove ' + e.id"
+                    (click)="copy(e)"
+                    data-copy-request
+                  >
+                    <app-icon [name]="copied() === e.id ? 'check' : 'copy'" />{{ copied() === e.id ? 'Copied' : 'Copy request for an agent' }}
+                  </button>
+                  @if (manual() === e.id) {
+                    <p class="lf-error" role="alert">Couldn't copy automatically. Select the text below and copy it.</p>
+                    <textarea class="lf-input ver-manual" readonly rows="7" aria-label="Request for an agent" [value]="e.request" data-copy-manual></textarea>
+                  }
+                } @else {
+                  <p class="lf-note" data-copy-later>A request to remove it appears here once no page needs it.</p>
+                }
+              </div>
+            </details>
+          </li>
+        }
+      </ul>
+    }
+    <span class="sr-only" role="status">{{ copied() ? 'Copied' : '' }}</span>
+  </section>
+
+  <section class="lf-tile lf-tile--flush" aria-labelledby="ver-list-h" data-versions>
+    <div class="lf-tile__head ver-head">
+      <h2 class="lf-h2" id="ver-list-h"><app-icon name="monitor" />Versions in use</h2>
+      <p class="lf-note">Most recently seen first. "Connected now" counts OBS pages on the API server that answered.</p>
+    </div>
+
+    @if (!versions().length) {
+      <div class="lf-empty" data-versions-empty>
+        <app-icon name="monitor" />
+        <strong>No page has reported a version yet</strong>
+        <span>OBS overlay pages and Studio editor tabs report it when they connect.</span>
+      </div>
+    } @else {
+      <div class="ver-cols" aria-hidden="true">
+        <span>Page</span><span>Version</span><span>Build</span><span>Connected now</span><span>First seen</span><span>Last seen</span>
+      </div>
+      <ul class="ver-list" aria-label="Versions in use">
+        @for (v of versions(); track v.key) {
+          <li class="ver-row" data-version-row [attr.data-client]="v.client" [attr.data-tag]="v.tag">
+            <strong class="ver-row__page">{{ v.page }}</strong>
+            <span class="ver-row__ver">
+              {{ v.version }}
+              <span
+                class="lf-chip ver-tag"
+                [class.lf-chip--ok]="v.tag === 'current'"
+                [class.lf-chip--warn]="v.tag === 'older'"
+                [class.lf-chip--accent]="v.tag === 'newer'"
+              >{{ v.tag }}</span>
+            </span>
+            <span class="ver-cell ver-row__build"><span class="ver-k">Build</span><span [class.ver-mono]="v.buildRaw">{{ v.build }}</span></span>
+            <span class="ver-cell"><span class="ver-k">Connected now</span><span>{{ v.connected }}</span></span>
+            <span class="ver-cell"><span class="ver-k">First seen</span><span [attr.title]="v.firstTitle">{{ v.first }}</span></span>
+            <span class="ver-cell"><span class="ver-k">Last seen</span><span [attr.title]="v.lastTitle">{{ v.last }}</span></span>
+          </li>
+        }
+      </ul>
+      @if (versionsCut(); as cut) {
+        <p class="lf-note ver-cut" data-versions-cut>{{ cut }}</p>
+      }
+    }
+  </section>
+}

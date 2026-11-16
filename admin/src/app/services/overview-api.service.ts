@@ -18,10 +18,11 @@ export type SpendFeature = 'voice' | 'ai_chat' | 'memory' | 'protection' | 'assi
  * - polar_unsent: channels with usage not yet reported to billing.
  * - gifts_need_support: gifted credit purchases that could not be delivered.
  * - credits_exhausted: channels with no AI credits left.
+ * - compat_removable: pieces of old-version overlay/Studio code no page has needed for 14 days (System → Versions).
  */
 export type AttentionKey =
   | 'verdicts_waiting' | 'failed_24h' | 'dead_deliveries' | 'usage_import_stuck'
-  | 'polar_unsent' | 'gifts_need_support' | 'credits_exhausted';
+  | 'polar_unsent' | 'gifts_need_support' | 'credits_exhausted' | 'compat_removable';
 
 export interface AdminOverview {
   generatedAt: string;

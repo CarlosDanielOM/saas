@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import type { WidgetSettingsContext } from './overlay-widget-module';
 import { interactionDesign } from './overlay-interaction.model';
 

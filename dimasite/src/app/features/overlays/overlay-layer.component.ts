@@ -2,12 +2,12 @@ import { OverlayKeyframePhaseComponent } from './overlay-keyframe-phase.componen
 import { Component, ChangeDetectionStrategy, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { defaultMotion, playObjectMotion } from './overlay-object-motion';
 import { motionStop } from './overlay-motion-timing';
-import { isTimedVideo, type OverlayWidget } from './overlay.model';
+import { isTimedVideo, type OverlayWidget } from './overlay-model.generated';
 import type { AlertTransport } from './overlay-sound.component';
 import { LanguageService } from '../../services/language.service';
 import { AssetPreviewComponent } from '../../shared/asset-library/asset-preview.component';
 import { LinksService } from '../../services/links.service';
-import { libraryUrl } from './overlay-library';
+import { libraryUrl } from './overlay-library.generated';
 @Component({
   selector: 'app-overlay-layer', imports: [AssetPreviewComponent, OverlayKeyframePhaseComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-overlay-image]': "layer().kind === 'image' && (layer().assetId || pictureUrl()) ? '' : null", '[attr.data-overlay-video]': "layer().kind === 'video' && (layer().assetId || layer().mediaUrl) ? '' : null", '[attr.data-overlay-failed]': "broken() ? '' : null", '[attr.data-timed-video]': "videoTiming() ? '' : null" },

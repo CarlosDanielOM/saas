@@ -128,6 +128,15 @@ const ATTENTION: Record<AttentionId, Omit<AttentionRow, 'key' | 'count' | 'title
     query: { sort: 'actived', order: 'asc' },
     where: 'Users',
   },
+  // Housekeeping, never urgent: nothing breaks while the code stays, and nothing is removed automatically.
+  compat_removable: {
+    icon: 'tag',
+    title: (n) => `${plural(n, 'piece')} of old-version code can be removed`,
+    why: 'No page that needs it has been seen for 14 days. Ask an agent to remove it.',
+    link: '/observability',
+    query: { tab: 'versions' },
+    where: 'System',
+  },
 };
 const ATTENTION_ORDER = Object.keys(ATTENTION) as AttentionId[];
 

@@ -5,7 +5,7 @@ import { loserLogin, winnerLogin, type DuelRun } from '../duel/model.js';
 
 /**
  * Custom widget bot events produced outside the API process (or by more than one process): published on the
- * `widget-feed` channel, validated and deduplicated by the API (overlays/live.ts). Public fields only; never awaited.
+ * `widget-feed` channel, validated and deduplicated by the API (overlays/live/widget_feeds.live.ts). Public fields only; never awaited.
  */
 
 /** The pet started (`speaking`) or finished (`done`) a reply. Private desktop-app requests never reach widgets. */

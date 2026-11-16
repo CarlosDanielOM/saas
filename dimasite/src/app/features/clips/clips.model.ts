@@ -1,8 +1,9 @@
+// Clip designs are part of the shared overlay model (dimabot src/overlays/model.ts).
+import type { ClipDesignVariant } from '../overlays/overlay-model.generated';
+export { CLIP_DESIGN_VARIANTS, type ClipDesignVariant } from '../overlays/overlay-model.generated';
 export type ClipDesignStatus = 'stable' | 'beta' | 'alpha' | 'coming_soon';
 export type PlanTier = 'free' | 'premium' | 'pro';
 
-export const CLIP_DESIGN_VARIANTS = ['classic', 'third', 'tile', 'cinema', 'orbit', 'pill', 'hud', 'slash'] as const;
-export type ClipDesignVariant = typeof CLIP_DESIGN_VARIANTS[number];
 /** Natural canvas size: video-led compositions differ from the wide banners. */
 export function clipDesignHeight(variant: ClipDesignVariant): number {
   return ['third', 'cinema', 'pill', 'hud', 'slash'].includes(variant) ? 450 : 225;

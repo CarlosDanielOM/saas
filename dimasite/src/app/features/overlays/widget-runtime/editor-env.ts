@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import type { OverlayWidget } from '../overlay.model';
+import type { OverlayWidget } from '../overlay-model.generated';
 import { CustomWidgetsService } from '../custom-widgets.service';
 import type { DimaAlert, DimaChat, DimaEvent, DimaSession, DimaSignal, DimaState } from './dima-events';
 import { sessionAfterAlert } from './session-preview';

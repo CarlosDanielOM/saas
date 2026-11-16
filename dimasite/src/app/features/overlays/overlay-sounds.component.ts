@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { LucideAngularModule, Plus, Trash2, Volume2, ChevronDown } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
-import { MAX_ALERT_SOUNDS, type AlertSound } from './overlay.model';
+import { MAX_ALERT_SOUNDS, type AlertSound } from './overlay-model.generated';
 
 /** One edited field of one sound; `end: undefined` removes the key. The host applies it to its current list, so two
  * edits made before the panel re-renders never overwrite each other. */

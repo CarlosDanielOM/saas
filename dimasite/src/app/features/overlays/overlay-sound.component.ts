@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, ElementRef, afterRenderEffect, inje
 import { AssetLibraryService } from '../../shared/asset-library/asset-library.service';
 import { LinksService } from '../../services/links.service';
 import { LanguageService } from '../../services/language.service';
-import { soundStop, type AlertSound } from './overlay.model';
-import { libraryUrl } from './overlay-library';
+import { soundStop, type AlertSound } from './overlay-model.generated';
+import { libraryUrl } from './overlay-library.generated';
 
 export interface AlertTransport { time: number; playing: boolean; seek: number }
 

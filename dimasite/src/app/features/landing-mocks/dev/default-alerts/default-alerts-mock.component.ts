@@ -5,8 +5,8 @@ import { Gem, Gift, Heart, LucideAngularModule, Play, Rocket, Square, Star, type
 import { OverlaySceneRendererComponent } from '../../../overlays/overlay-scene-renderer.component';
 import type { OverlayRenderJob, OverlayPlaybackId } from '../../../overlays/overlay-playback';
 import type { Snapshot } from '../../../overlays/overlay-api.service';
-import type { AlertEvent, OverlayWidget } from '../../../overlays/overlay.model';
-import { LIBRARY_URLS } from '../../../overlays/overlay-library';
+import type { AlertEvent, OverlayWidget } from '../../../overlays/overlay-model.generated';
+import { LIBRARY_URLS } from '../../../overlays/overlay-library.generated';
 import {
   DEFAULT_ALERT_COPY, DEFAULT_ALERT_DURATION, DEFAULT_ALERT_KINDS, defaultAlertLayout, makeDefaultDesign,
   type DefaultAlertKind, type DefaultAlertLanguage

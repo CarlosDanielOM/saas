@@ -5,7 +5,7 @@ import { BitsRuleDialogComponent } from '../bits-rules/bits-rule-dialog.componen
 import { BitsRuleEditor } from '../bits-rules/bits-rule-editor';
 import { BitsRulesService } from '../bits-rules/bits-rules.service';
 import { amountText, sortRules, type BitsRule, type BitsRuleInput } from '../bits-rules/bits-rules.model';
-import type { AlertVariant } from './overlay.model';
+import type { AlertVariant } from './overlay-model.generated';
 
 /**
  * Bits tab of an alert design: the shared Bits rules (same list as Chat events) and which of them

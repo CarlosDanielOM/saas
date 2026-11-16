@@ -8080,6 +8080,7 @@
     "connectionsReconnectHelp": "The source disconnected. Its pending events are retained for up to 2 minutes while it reconnects. Check OBS and your internet connection.",
     "connectionsRefreshHelp": "The server has not received a recent runtime report. Make the OBS source active, then refresh its browser cache. Older open tabs may need a refresh after a site update.",
     "connectionsUpdateHelp": "This source has not confirmed the latest published version. Wait a moment or refresh the OBS browser source.",
+    "connectionsOutdated": "This source runs an older version of the overlay page. It keeps working; refresh its browser cache in OBS when convenient to get the latest fixes.",
     "connectionsActivationError": "TTS or clip connections could not start. The server is retrying automatically.",
     "connectionsStateError": "The server could not check this source’s published layout. It is retrying and keeping the last version.",
     "connectionsWaiting": "Waiting for this saved overlay to appear in connection status. Refresh status in a moment.",

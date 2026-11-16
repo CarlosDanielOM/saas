@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
-import type { AlertMotion, OverlayWidget } from './overlay.model';
+import type { AlertMotion, OverlayWidget } from './overlay-model.generated';
 import { defaultMotion } from './overlay-object-motion';
-import { MOTION_EASINGS, MOTION_LIMITS, MOTION_PHASES, MOTION_PROPERTIES, neutralValue, type AlertKeyframes, type MotionEasing, type MotionPhase, type MotionPoint, type MotionProperty, type MotionSequence, type MotionTrack } from './overlay-keyframes.model';
+import { MOTION_EASINGS, MOTION_LIMITS, MOTION_PHASES, MOTION_PROPERTIES, neutralValue, type AlertKeyframes, type MotionEasing, type MotionPhase, type MotionPoint, type MotionProperty, type MotionSequence, type MotionTrack } from './overlay-keyframes.generated';
 import { MOTION_CURVES, easeProgress } from './overlay-keyframe-player';
 import { motionWindows } from './overlay-motion-timing';
 import { combineSequences } from './overlay-motion-presets';

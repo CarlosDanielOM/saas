@@ -1,7 +1,7 @@
 import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import type { WidgetPlacement } from './overlay-widget-contract.generated';
 import type { WidgetRenderContext } from './overlay-widget-module';
 import { widgetFixture, widgetModuleFor } from './overlay-widget-registry';

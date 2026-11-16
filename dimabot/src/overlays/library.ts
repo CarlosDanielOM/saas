@@ -4,7 +4,7 @@ import type { AlertDesign, AlertLayout, AlertSound, OverlayWidget } from './mode
  * Dima's public overlay library: pictures and sounds that alert designs point to by id (`library` on an image object
  * or a sound). The files belong to us and are served by the site under /overlay-library/; they are never copied into
  * a streamer's asset library and use none of their storage. Versioned folders are immutable: a new look is a new id.
- * Mirrored in dimasite `features/overlays/overlay-library.ts` (same ids and files).
+ * Portable: copied to dimasite as `overlay-library.generated.ts` by `node scripts/sync-overlay-widget-contract.mjs`.
  */
 export interface LibraryItem { kind: 'image' | 'audio'; file: string }
 const EVENTS = ['follow', 'bits', 'sub', 'gift', 'raid'] as const;
@@ -17,7 +17,10 @@ export const OVERLAY_LIBRARY: Readonly<Record<string, LibraryItem>> = Object.fre
 export const isLibraryId = (value: unknown, kind: LibraryItem['kind']): value is string =>
   typeof value === 'string' && Object.hasOwn(OVERLAY_LIBRARY, value) && OVERLAY_LIBRARY[value].kind === kind;
 /** Site-relative: every renderer (OBS page, Overlay Studio) runs on the site. */
-export const libraryUrl = (id: string): string => Object.hasOwn(OVERLAY_LIBRARY, id) ? `/overlay-library/${OVERLAY_LIBRARY[id].file}` : '';
+/** Site-relative file URL of a library item, or '' for an unknown or missing id. */
+export const libraryUrl = (id: string | undefined): string => id && Object.hasOwn(OVERLAY_LIBRARY, id) ? `/overlay-library/${OVERLAY_LIBRARY[id].file}` : '';
+/** Every library file (preloading, checks). */
+export const LIBRARY_URLS: readonly string[] = Object.values(OVERLAY_LIBRARY).map(item => `/overlay-library/${item.file}`);
 
 const widgetUrl = (w: OverlayWidget): OverlayWidget => w.library && Object.hasOwn(OVERLAY_LIBRARY, w.library) ? { ...w, mediaUrl: libraryUrl(w.library) } : w;
 const soundUrl = (s: AlertSound): AlertSound => s.library && Object.hasOwn(OVERLAY_LIBRARY, s.library) ? { ...s, url: libraryUrl(s.library) } : s;

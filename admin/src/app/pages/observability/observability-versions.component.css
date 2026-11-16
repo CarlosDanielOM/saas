@@ -1,0 +1,174 @@
+/* System → Versions: old-version code (state, who needs it, where it lives) and the page versions in use. */
+:host {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ver-head {
+  display: grid;
+  gap: 0.25rem;
+  justify-content: stretch;
+}
+.ver-entries,
+.ver-list,
+.ver-code {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------- Old-version code ---------- */
+.ver-entry {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.85rem 1rem 0;
+  border-top: 1px solid var(--line);
+}
+.ver-entry__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+.ver-id {
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.ver-entry__summary {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ver-entry__summary code,
+.ver-code code {
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: var(--input-bg);
+  font-size: 0.82em;
+}
+.ver-entry__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.ver-more {
+  margin: 0 -1rem;
+}
+.ver-more__body {
+  display: grid;
+  gap: 0.65rem;
+}
+.ver-code {
+  display: grid;
+  gap: 0.4rem;
+}
+.ver-code code {
+  display: block;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ver-copy {
+  justify-self: start;
+}
+.ver-manual {
+  font-family: var(--mono);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+/* ---------- Versions in use: cards on phones, columns on wide screens ---------- */
+.ver-cols {
+  display: none;
+}
+.ver-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.4rem 0.75rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--line);
+}
+.ver-row__page {
+  align-self: center;
+  font-weight: 750;
+}
+.ver-row__ver {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ver-tag {
+  min-height: 1.4rem;
+  padding-block: 0.05rem;
+  text-transform: capitalize;
+}
+.ver-cell {
+  position: relative;
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ver-k {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.ver-mono {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.ver-cut {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 960px) {
+  .ver-cols,
+  .ver-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.4fr) 7rem 7rem 7rem;
+    gap: 0 0.75rem;
+    align-items: center;
+  }
+  .ver-cols {
+    display: grid;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .ver-row {
+    padding-block: 0.6rem;
+  }
+  .ver-row__ver {
+    justify-content: flex-start;
+  }
+  /* The column heads label the cells; the inline labels stay for screen readers. */
+  .ver-k {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}

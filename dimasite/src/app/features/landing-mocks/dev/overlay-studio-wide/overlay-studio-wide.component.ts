@@ -14,7 +14,7 @@ import { ThemeService } from '../../../../services/theme.service';
 import { OverlayClipComponent } from '../../../overlays/overlay-clip.component';
 import { OverlayWidgetHostComponent } from '../../../overlays/overlay-widget-host.component';
 import { createWidget } from '../../../overlays/overlay-widget-registry';
-import type { OverlayWidget } from '../../../overlays/overlay.model';
+import type { OverlayWidget } from '../../../overlays/overlay-model.generated';
 import type { ClipDesignVariant } from '../../../clips/clips.model';
 import { OswCopy } from './osw-copy';
 import {

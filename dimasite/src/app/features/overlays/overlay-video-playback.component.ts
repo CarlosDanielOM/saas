@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 
 /**
  * How a video object of an alert design plays: with its own sound (`volume` present) and/or once (`loop: false`).

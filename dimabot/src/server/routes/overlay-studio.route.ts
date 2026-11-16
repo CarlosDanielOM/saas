@@ -1,5 +1,6 @@
 import { activateInteraction, interactionReadiness } from '../../overlays/interaction-subscriptions.js';
 import { publicWidgetStateFor } from '../../overlays/live/index.js';
+import { clientVersion, sawClient } from '../../overlays/client-versions.js';
 import { prepareTest, previewMedia, testFile, withTestLock } from '../../overlays/test-playback.js';
 import { recoverCopies } from '../../overlays/recover.js';
 import { pipeline } from 'node:stream/promises';
@@ -102,12 +103,15 @@ overlayStudioRoute.get('/:channelID/connections', wrap(async (req, res) => {
   const channel = param(req, 'channelID'), state = await load(channel);
   return ok(res, studioConnections(channel, state.scenes));
 }));
-overlayStudioRoute.put('/:channelID', wrap(async (req, res) => { const channel = param(req, 'channelID'); return ok(res, await studio(channel, await withAssetLibrary(channel, () => change(channel, req.body.revision, async state => {
+overlayStudioRoute.put('/:channelID', wrap(async (req, res) => { const channel = param(req, 'channelID'); const saved = await withAssetLibrary(channel, () => change(channel, req.body.revision, async state => {
   const validated = validateState(req.body, state);
   await validateAssets(channel, validated);
   await checkCustomLayers(channel, validated.scenes);
   Object.assign(state, validated);
-})))); }));
+}));
+  // Which editor version saves (`writer`, plus the site build), for the admin client versions report (overlays/compat.ts).
+  sawClient('studio', clientVersion({ protocol: req.body?.writer, build: req.body?.build }));
+  return ok(res, await studio(channel, saved)); }));
 overlayStudioRoute.post('/:channelID/scenes/:sceneId/:action', wrap(async (req, res) => {
   const action = param(req, 'action'); if (!['publish', 'rotate'].includes(action)) throw new OverlayError('Unknown action');
   const channel = param(req, 'channelID');

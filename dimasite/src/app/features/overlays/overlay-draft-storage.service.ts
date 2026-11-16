@@ -1,9 +1,11 @@
-import { validKeyframes } from './overlay-keyframes.model';
+import { validKeyframes } from './overlay-keyframes.generated';
 import { CLIP_DESIGN_VARIANTS } from '../clips/clips.model';
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
-import { ALERT_EVENTS, EVENT_KINDS, ALERT_TRANSITIONS, ALERT_LOOPS, MAX_ALERT_SOUNDS, mergeOldEditorSounds, withDesignSoundLists, type AlertDesign, type AlertEvent, type AlertLayout, type OverlayScene, type OverlayWidget } from './overlay.model';
+import { ALERT_EVENTS, EVENT_KINDS, ALERT_TRANSITIONS, ALERT_LOOPS, MAX_ALERT_SOUNDS, type AlertDesign, type AlertEvent, type AlertLayout, type OverlayScene, type OverlayWidget } from './overlay-model.generated';
+import { mergeOldEditorSounds, withDesignSoundLists } from './overlay-editor-sounds';
 import { validWidgetModuleConfig, type WidgetPlacement } from './overlay-widget-contract.generated';
+import { isLibraryId } from './overlay-library.generated';
 
 export type DraftScene = Omit<OverlayScene, 'publicId' | 'published' | 'revision'>;
 export interface LocalOverlayDraft {
@@ -41,7 +43,7 @@ function validWidgets(value: unknown, placement: WidgetPlacement): value is Over
     && ['x', 'y', 'width', 'height'].every(key => finite(w[key]))
     && typeof w['visible'] === 'boolean' && typeof w['locked'] === 'boolean'
     && (w['showTtsText'] === undefined || w['kind'] === 'tts' && typeof w['showTtsText'] === 'boolean')
-    && ['name', 'mediaUrl', 'assetId', 'color', 'designId', 'text'].every(key => w[key] === undefined || typeof w[key] === 'string')
+    && ['name', 'mediaUrl', 'assetId', 'library', 'color', 'designId', 'text'].every(key => w[key] === undefined || typeof w[key] === 'string')
     && (w['clipDesign'] === undefined || w['kind'] === 'clip' && CLIP_DESIGN_VARIANTS.includes(w['clipDesign'] as never))
     && (w['triggerIds'] === undefined || w['kind'] === 'trigger' && Array.isArray(w['triggerIds']) && w['triggerIds'].length <= 1000 && new Set(w['triggerIds']).size === w['triggerIds'].length && w['triggerIds'].every(value => typeof value === 'string' && /^[a-f0-9]{24}$/.test(value)))
     && (w['keyframes'] === undefined || validKeyframes(w['keyframes']))
@@ -54,7 +56,9 @@ function validWidgets(value: unknown, placement: WidgetPlacement): value is Over
 function validSound(value: unknown): boolean {
   if (value === undefined) return true;
   if (!record(value) || value['id'] !== undefined && (typeof value['id'] !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(value['id']))) return false;
-  if (typeof value['assetId'] !== 'string' || !/^[a-f0-9]{24}$/.test(value['assetId'])) return false;
+  // Same sources as the API (store.ts alertSound): a Studio asset, or a Dima library sound when there is no asset.
+  if (value['assetId'] === undefined && value['library'] !== undefined) { if (!isLibraryId(value['library'], 'audio')) return false; }
+  else if (typeof value['assetId'] !== 'string' || !/^[a-f0-9]{24}$/.test(value['assetId'])) return false;
   if (value['name'] !== undefined && (typeof value['name'] !== 'string' || !value['name'].trim() || value['name'].length > 120)) return false;
   return ([['volume', 1], ['delay', 120], ['fadeIn', 10], ['fadeOut', 10]] as [string, number][]).every(([key, max]) => finite(value[key]) && value[key] >= 0 && value[key] <= max) && validEnd(value['end']);
 }
@@ -89,7 +93,8 @@ function validDesign(value: unknown): value is AlertDesign {
     const variants = value['variants'];
     if (!record(variants) || Object.entries(variants).some(([kind, items]) => !['sub','bits','raid'].includes(kind) || !Array.isArray(items) || items.length > (kind === 'bits' ? 50 : 10) || items.some(v => !record(v) || typeof v['id'] !== 'string' || typeof v['name'] !== 'string' || typeof v['enabled'] !== 'boolean' || !validLayout(v['layout'])
       // Bits looks belong to a shared Bits rule; older amount-based Bits looks are still accepted and dropped on restore.
-      || (kind === 'sub' ? !['1000','2000','3000'].includes(v['tier'] as string)
+      // Sub looks match a tier or gifted subs (`gift: true` without a tier), like the API's validator.
+      || (kind === 'sub' ? !(['1000','2000','3000'].includes(v['tier'] as string) || v['gift'] === true && v['tier'] === undefined)
         : kind === 'bits' && typeof v['ruleId'] === 'string' ? false
         : !finite(v['min']) || v['min'] < 0 || (v['max'] !== undefined && (!finite(v['max']) || v['max'] < v['min'])))))) return false;
   }

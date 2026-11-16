@@ -4,11 +4,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map, timeout } from 'rxjs';
 import { LinksService } from '../../services/links.service';
-import type { AlertDesign, OverlayScene, AlertEvent } from './overlay.model';
+import type { AlertDesign, OverlayScene, AlertEvent } from './overlay-model.generated';
 export interface StudioState {
   schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[];
   /** Save bodies only: 2 = this editor (layouts carry `sounds`; the legacy `sound` key is never sent). */
   writer?: number;
+  /** Save bodies only: the site build that saved (admin client versions report). */
+  build?: string;
   /** Server responses only: per overlay, whether OBS already plays its saved draft (publishing would change nothing). */
   live?: Record<string, boolean>;
 }
@@ -18,6 +20,10 @@ export interface OverlaySourceConnection {
   connected: boolean; connectedAt: number; disconnectedAt: number | null; lastReportAt: number | null; revision: number | null;
   status: 'reconnecting' | 'loading' | 'unresponsive' | 'updating' | 'ready';
   issue: 'snapshot' | 'event' | 'media' | 'autoplay' | null; issueAt: number | null; activationFailed: boolean; stateFailed: boolean; dropped?: number;
+  /** What the page reported when it connected; null right after an API restart until it reconnects. Absent from older APIs. */
+  protocol?: number | null; build?: string | null;
+  /** The page runs an older version than the site: refreshing the OBS source loads the current one. */
+  outdated?: boolean;
 }
 export interface OverlayConnections {
   checkedAt: number; pollingFailed: boolean;

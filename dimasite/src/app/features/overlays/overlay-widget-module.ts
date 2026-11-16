@@ -1,6 +1,6 @@
 import type { InputSignal, OutputEmitterRef, Type } from '@angular/core';
 import type { LucideIconData } from 'lucide-angular';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import type { WidgetDefinition, WidgetPlacement } from './overlay-widget-contract.generated';
 
 export interface WidgetFixture { id: string; labelKey: string }

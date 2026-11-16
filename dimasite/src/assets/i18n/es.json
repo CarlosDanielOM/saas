@@ -8080,6 +8080,7 @@
     "connectionsReconnectHelp": "La fuente se desconectó. Sus eventos pendientes se conservan hasta 2 minutos mientras se reconecta. Revisa OBS y tu conexión a internet.",
     "connectionsRefreshHelp": "El servidor no ha recibido un informe reciente de la fuente. Actívala en OBS y actualiza su caché de navegador. Las pestañas antiguas pueden necesitar una actualización tras un cambio del sitio.",
     "connectionsUpdateHelp": "Esta fuente aún no ha confirmado la última versión publicada. Espera un momento o actualiza la fuente de navegador en OBS.",
+    "connectionsOutdated": "Esta fuente usa una versión anterior de la página del overlay. Sigue funcionando; actualiza su caché de navegador en OBS cuando puedas para tener las últimas correcciones.",
     "connectionsActivationError": "No se pudieron iniciar las conexiones de TTS o clips. El servidor está reintentando automáticamente.",
     "connectionsStateError": "El servidor no pudo comprobar el diseño publicado de esta fuente. Está reintentando y conserva la última versión.",
     "connectionsWaiting": "Esperando a que este overlay guardado aparezca en el estado de conexión. Actualiza el estado en un momento.",

@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
-import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertSound, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeScene } from './model.js';
+import { CLIP_DESIGN_VARIANTS, MAX_ALERT_SOUNDS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertSound, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeScene } from './model.js';
 import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
 import { parseWidgetModuleConfig } from './widget-contract.js';
@@ -136,7 +136,7 @@ function alertSound(raw: unknown, mode: LayoutMode, withId: boolean): AlertSound
   return { ...(withId ? { id: id(sound.id) } : {}), ...source, ...(sound.name === undefined ? {} : { name: string(sound.name, 120) }),
     volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10), ...endTime(sound) };
 }
-export const MAX_LAYOUT_SOUNDS = 10;
+export const MAX_LAYOUT_SOUNDS = MAX_ALERT_SOUNDS;
 /**
  * `writer` is the save body's editor version. From 2 on, `sounds` is authoritative and `sound` is ignored. Without one
  * (an old editor tab, which keeps `sounds` as an unknown field and edits only `sound`), its edit is merged: `sound`

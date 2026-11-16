@@ -73,6 +73,9 @@ TARGETS = {
     "admin": Target("admin", "dima-admin", "dima-admin", output="dist/admin/browser"),
     "docs": Target("dimadocs", "dimadocs", "dimadocs", compose="docker-compose.yml", output="dist"),
 }
+# Targets that compile the overlay files dimabot shares with dimasite (generated copies, see the script).
+SHARED_FILE_TARGETS = {"api", "bot", "cron", "site"}
+SHARED_FILE_CHECK = "scripts/sync-overlay-widget-contract.mjs"
 DEPENDENCIES = {
     "postgres": ("pgvector/pgvector:0.8.1-pg17", ("sh", "-c", "export POSTGRES_HOST_AUTH_METHOD=trust POSTGRES_DB=observability_test; exec docker-entrypoint.sh postgres")),
     "mongo": ("mongo:8.2.6", ("mongod", "--bind_ip_all")),
@@ -326,6 +329,17 @@ class Ops:
             directory.chmod(0o755)
         require(any(destination.iterdir()), "Empty build context")
 
+    def check_shared_files(self, source_dir=None):
+        """dimabot's shared overlay files and their dimasite copies must match before either side is built."""
+        root = self.source_root(source_dir)
+        script = root / SHARED_FILE_CHECK
+        if not script.is_file():
+            return  # a source from before shared files
+        try:
+            run(["node", script, "--check"], cwd=root, timeout=120)
+        except OpsError as exc:
+            raise OpsError("Shared overlay files are out of sync: run node " + SHARED_FILE_CHECK + " in the source, then build again") from exc
+
     def build(self, name, source_dir=None):
         target = TARGETS[name]
         live, config, config_hash, full_hash = self.baseline(target)
@@ -340,6 +354,8 @@ class Ops:
         print(f"Run: {run_id}", flush=True)
         try:
             atomic_json(path / "compose.json", config)  # private: resolved config contains credentials
+            if name in SHARED_FILE_TARGETS:
+                self.check_shared_files(source_dir)
             self.snapshot(target, path / "source", source_dir)
             if name == "cron":
                 # Every cron worker is TypeScript and no compiler runs here. A stale branch whose

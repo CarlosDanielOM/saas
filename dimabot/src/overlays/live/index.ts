@@ -6,7 +6,7 @@
  * - tts.live.ts           TTS speech ownership, playback reports, skip/clear/refresh, status
  * - widget_feeds.live.ts  state widgets (polls, predictions) and custom widget feeds
  */
-export { registerStudio, studioHasSource, studioConnections } from './connections.live.js';
+export { registerStudio, studioHasSource, studioConnections, connectedClientVersions } from './connections.live.js';
 export { publishStudioMedia, publishStudioTrigger, publishTest, eventFor, fileFor, queueStatus, controlStudio } from './delivery.live.js';
 export type { ClipMetadata, LiveMedia, LiveEvent } from './delivery.live.js';
 export { bitsRuleFor, publishStudioAlert } from './alerts.live.js';

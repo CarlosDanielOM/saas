@@ -7,7 +7,7 @@ import { slotsFor, type Roulette, type RouletteDraw } from '../roulette/roulette
 import { OverlaySceneRendererComponent } from '../overlays/overlay-scene-renderer.component';
 import type { Snapshot } from '../overlays/overlay-api.service';
 import type { OverlayRenderJob } from '../overlays/overlay-playback';
-import type { OverlayWidget } from '../overlays/overlay.model';
+import type { OverlayWidget } from '../overlays/overlay-model.generated';
 import { DemoAlertComponent, ALERT_BOX } from './demo-alert.component';
 import { DemoClockDirective } from './demo-clock.directive';
 import { DemoGameComponent } from './demo-game.component';

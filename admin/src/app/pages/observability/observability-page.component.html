@@ -8,8 +8,8 @@
         </div>
         @if (grant()) {
           <div class="lf-head__actions">
-            <button type="button" class="lf-btn lf-btn--sm obs-refresh" aria-label="Refresh" (click)="retry()" [disabled]="loading()">
-              <app-icon name="refresh" [class.lf-spinning]="loading()" /><span class="obs-refresh__text">Refresh</span>
+            <button type="button" class="lf-btn lf-btn--sm obs-refresh" aria-label="Refresh" (click)="retry()" [disabled]="busy()">
+              <app-icon name="refresh" [class.lf-spinning]="busy()" /><span class="obs-refresh__text">Refresh</span>
             </button>
           </div>
         }
@@ -65,7 +65,7 @@
           }
         </nav>
 
-        @if (tab() !== 'access') {
+        @if (tab() !== 'access' && tab() !== 'versions') {
           <section class="obs-filters" aria-label="Filters">
             <div class="obs-filterbar">
               <div class="obs-range" role="group" aria-label="Time range">
@@ -772,6 +772,11 @@
                 <div class="lf-empty"><app-icon name="ok" /><strong>No warnings or errors</strong><span>{{ search() ? 'Nothing matches "' + search() + '".' : 'Nothing was logged in this range.' }}</span></div>
               }
             </section>
+          }
+
+          <!-- ================= Versions (owner API; loads its own report) ================= -->
+          @if (tab() === 'versions' && grant()?.role === 'owner') {
+            <app-observability-versions />
           }
 
           <!-- ================= Access ================= -->

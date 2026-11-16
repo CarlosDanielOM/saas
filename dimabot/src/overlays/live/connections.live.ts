@@ -11,15 +11,17 @@ import { EVENT_KINDS, type AlertEvent, type EventKind, type OverlayScene } from 
 import type { QueueCommand } from '../controls.js';
 import { resyncInteractions } from '../interactions.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
+import { clientVersion, sawClient, type ClientVersionInfo } from '../client-versions.js';
+import { OVERLAY_PROTOCOL } from '../protocol.js';
 import { discard, expirePending, pending, publishStudioMedia, publishStudioTrigger, saveDelivery, write } from './delivery.live.js';
 import { controlStudioTts, endStudioReadTts, onSpeechReports, publishStudioReadTts, studioTtsStatus } from './tts.live.js';
 import { channels, pollChannelAlerts } from './alerts.live.js';
-import { feedWidgets, interactionKinds, publicWidgetStateFor, refreshWidgets, sendCustomState, subscribeChatFeed, tickChatDemand, tickWidgetFeeds, widgetRpc, widgetUses, type WidgetLayers } from './widget_feeds.live.js';
+import { feedWidgets, interactionKinds, publicWidgetStateFor, refreshWidgets, sendCustomState, subscribeChatFeed, resetChatDemand, tickChatDemand, tickWidgetFeeds, widgetRpc, widgetUses, type WidgetLayers } from './widget_feeds.live.js';
 
 export type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
-export interface Peer { rouletteSent?: Map<string, 'spinning' | 'result'>; widgets?: WidgetLayers; rpc?: { at: number; count: number }; widgetStateVersion?: string; customStates?: Record<string, string>; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+export interface Peer { /** What the page reported when it connected (protocol 0 = a page from before protocols). */ version?: ClientVersionInfo; rouletteSent?: Map<string, 'spinning' | 'result'>; widgets?: WidgetLayers; rpc?: { at: number; count: number }; widgetStateVersion?: string; customStates?: Record<string, string>; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 export const peers = new Map<string, Peer>();
 /** Shown in the Studio's OBS diagnostics: the last loop pass or a durable write failed. */
 export const studioStatus = { pollingFailed: false };
@@ -62,7 +64,9 @@ export function studioConnections(channel: string, scenes: OverlayScene[]) {
       lastReportAt: p.health?.reportedAt ?? null, revision: p.health?.revision ?? null,
       status: !p.socket?.connected ? 'reconnecting' : !p.health ? 'loading' : now - p.health.reportedAt > 45000 ? 'unresponsive' : p.health.revision !== scene.revision ? 'updating' : 'ready',
       issue: p.health?.issue ?? null, issueAt: p.health?.issueAt ?? null,
-      activationFailed: !!p.activationFailed, stateFailed: !!p.stateFailed, dropped: p.dropped ?? 0
+      activationFailed: !!p.activationFailed, stateFailed: !!p.stateFailed, dropped: p.dropped ?? 0,
+      // Pages restored after an API restart report again when they reconnect.
+      protocol: p.version?.protocol ?? null, build: p.version?.build ?? null, outdated: !!p.version && p.version.protocol < OVERLAY_PROTOCOL
     }))
   })) };
 }
@@ -112,7 +116,9 @@ export function registerStudio(io: Server): void {
     // Enforce the lease here too: a reconnect can race the periodic expiry sweep.
     if (previous && !previous.socket?.connected && !reconnecting(previous)) { dropPeer(key); previous = undefined; }
     previous?.socket?.disconnect(true);
-    const peer: Peer = { commands: previous?.commands ?? [], playback: previous?.playback, connectedAt: Date.now(), key, channel: state.channel, publicId: state.publicId, state, socket, since: previous?.since ?? Date.now() };
+    const version = clientVersion(socket.handshake.auth);
+    const peer: Peer = { version, commands: previous?.commands ?? [], playback: previous?.playback, connectedAt: Date.now(), key, channel: state.channel, publicId: state.publicId, state, socket, since: previous?.since ?? Date.now() };
+    sawClient('overlay', version);
     peers.set(key, peer);
     await savePeer(peer);
     if (!socket.connected) { peer.socket = undefined; peer.disconnectedAt = Date.now(); await savePeer(peer); return; }
@@ -166,6 +172,7 @@ export function registerStudio(io: Server): void {
     void resyncInteractions(peer.channel, interactionKinds(state.snapshot)).catch(() => { peer.stateFailed = true; });
   }
   let busy = false, lastSweep = 0;
+  resetChatDemand();
   subscribeChatFeed();
   const timer = setInterval(() => { void (async () => {
     if (busy) return; busy = true;
@@ -173,7 +180,7 @@ export function registerStudio(io: Server): void {
       await restore();
       if (Date.now() - lastSweep > 15000) {
         await expirePending();
-        for (const peer of peers.values()) if (peer.socket?.connected) await savePeer(peer);
+        for (const peer of peers.values()) if (peer.socket?.connected) { await savePeer(peer); if (peer.version) sawClient('overlay', peer.version); }
         await (await deliveries()).deleteMany({ expiresAt: { $lte: new Date() } });
         await (await leases()).deleteMany({ expiresAt: { $lte: new Date() } });
         await sweepFiles(); lastSweep = Date.now();
@@ -229,3 +236,7 @@ registerStudioBridge({ queueChannels: function* () {
     }
     return sent;
   } });
+/** Versions of the OBS pages connected to this API server right now (admin client versions report). */
+export function connectedClientVersions(): ClientVersionInfo[] {
+  return [...peers.values()].filter(peer => peer.socket?.connected && peer.version).map(peer => peer.version!);
+}

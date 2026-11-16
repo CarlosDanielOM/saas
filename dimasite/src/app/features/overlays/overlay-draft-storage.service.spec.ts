@@ -3,7 +3,7 @@ import { DOCUMENT } from '@angular/common';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { OverlayDraftStorage, type LocalOverlayDraft } from './overlay-draft-storage.service';
 import { createWidget } from './overlay-widget-registry';
-import { makeDesign } from './overlay.model';
+import { makeDesign } from './overlay-model.generated';
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -37,6 +37,21 @@ describe('module-aware local draft recovery', () => {
     expect(recovered?.draft.scenes[0].widgets[0].interactionDesign).toBe('compact');
     expect(recovered?.draft.scenes[0].widgets[1].interactionDesign).toBe('card');
     expect(storage.find('other-channel')).toBeNull();
+  });
+  it('recovers designs with Dima library sounds and gifted subs looks (the default alerts)', () => {
+    const value: LocalOverlayDraft = { ...draft(), writer: 2 }, design = value.designs[0];
+    design.events.follow = { ...design.events.follow, sounds: [{ id: 'sound', library: 'dima-follow-sound', volume: .8, delay: 0, fadeIn: 0, fadeOut: 0 }] };
+    design.variants = { sub: [{ id: 'gift-look', name: 'Gifted subs', enabled: true, gift: true, layout: structuredClone(design.events.sub) }] };
+    storage.write('123', value);
+    const recovered = storage.find('123')?.draft.designs[0];
+    expect(recovered?.events.follow.sounds?.[0]?.library).toBe('dima-follow-sound');
+    expect(recovered?.variants?.sub?.[0]?.gift).toBe(true);
+  });
+  it('still rejects a sound from an unknown library item', () => {
+    const value: LocalOverlayDraft = { ...draft(), writer: 2 };
+    value.designs[0].events.follow = { ...value.designs[0].events.follow, sounds: [{ id: 'sound', library: 'dima-follow-badge', volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }] };
+    storage.write('123', value);
+    expect(storage.find('123')).toBeNull();
   });
   it('leaves unsupported drafts intact and still offers the newest recoverable draft', () => {
     const old = draft(); storage.write('123', old);

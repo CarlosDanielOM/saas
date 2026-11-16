@@ -1,6 +1,6 @@
 import { motionStop, motionWindows } from './overlay-motion-timing';
-import type { AlertKeyframes } from './overlay-keyframes.model';
-import type { AlertMotion, WidgetKind } from './overlay.model';
+import type { AlertKeyframes } from './overlay-keyframes.generated';
+import type { AlertMotion, WidgetKind } from './overlay-model.generated';
 
 export const defaultMotion = (kind?: WidgetKind): AlertMotion => ({ enter: 'none', exit: 'none', loop: kind === 'animation' ? 'pulse' : 'none', delay: 0, enterDuration: .5, exitDuration: .5, loopDuration: 2 });
 

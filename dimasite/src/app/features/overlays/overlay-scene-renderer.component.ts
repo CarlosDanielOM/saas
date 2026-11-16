@@ -8,7 +8,7 @@ import { OverlaySoundComponent, type AlertTransport } from './overlay-sound.comp
 import { widgetModuleFor } from './overlay-widget-registry';
 import { stateForWidget } from './overlay-widget-state';
 import type { WidgetPlacement, WidgetStates } from './overlay-widget-contract.generated';
-import { layoutSounds, type AlertSound, type OverlayWidget } from './overlay.model';
+import { layoutSounds, type AlertSound, type OverlayWidget } from './overlay-model.generated';
 import type { PreparedAsset } from './overlay-asset-cache';
 import { ALERT_READY_LIMIT_MS, eventLook, lookFit, placementLayout, sceneScale, waitsForPictures, type PlacementLayout, type OverlayPlacementReport, type OverlayPlaybackId, type OverlayRenderJob } from './overlay-playback';
 import { waitForOverlayMedia } from './overlay-image-readiness';

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ViewContainerRef, computed, effect, input, inputBinding, output, outputBinding, viewChild } from '@angular/core';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import type { WidgetPlacement } from './overlay-widget-contract.generated';
 import type { WidgetSettingsContext } from './overlay-widget-module';
 import { widgetFixture, widgetModuleFor } from './overlay-widget-registry';

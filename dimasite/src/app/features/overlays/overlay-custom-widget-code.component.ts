@@ -12,7 +12,7 @@ import type { CodeEditor, CodeLanguage, CodeTab } from './custom-widget-code-mir
 import { starterFiles, type StarterKind, type StarterTexts } from './custom-widget-templates';
 import { CustomWidgetsService, errorCode, message, type CustomWidgetView } from './custom-widgets.service';
 import { OverlayCustomWidgetComponent } from './overlay-custom-widget.component';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import type { WidgetRenderContext } from './overlay-widget-module';
 import { EditorWidgetEnv, type LayerLog } from './widget-runtime/editor-env';
 import { BOT_TEST_USES, botTestEvents, isStateTest, testState, type AlertTest, type BotTestKind, type ChatTest } from './widget-runtime/test-events';

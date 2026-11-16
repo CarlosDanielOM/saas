@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
@@ -21,6 +22,7 @@ import { ObservabilityTraceComponent, type Span } from './observability-trace.co
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ObservabilityServersComponent } from './observability-servers.component';
+import { ObservabilityVersionsComponent } from './observability-versions.component';
 import { formatBytes, infraIssues, type InfraBlock } from './observability-infra';
 
 interface NamedChannels {
@@ -133,11 +135,11 @@ interface ProcessView {
   };
 }
 
-export type Tab = 'overview' | 'endpoints' | 'chat' | 'queues' | 'resources' | 'traces' | 'logs' | 'access';
+export type Tab = 'overview' | 'endpoints' | 'chat' | 'queues' | 'resources' | 'traces' | 'logs' | 'versions' | 'access';
 type CallKind = 'all' | 'http' | 'http_client' | 'database' | 'cache';
 type CallSort = 'busiest' | 'slowest' | 'failing';
 
-const TABS: Tab[] = ['overview', 'endpoints', 'chat', 'queues', 'resources', 'traces', 'logs', 'access'];
+const TABS: Tab[] = ['overview', 'endpoints', 'chat', 'queues', 'resources', 'traces', 'logs', 'versions', 'access'];
 const RANGES = [
   { minutes: 15, label: '15m', long: '15 minutes' },
   { minutes: 60, label: '1h', long: 'hour' },
@@ -154,6 +156,7 @@ const TAB_LABEL: Record<Tab, string> = {
   resources: 'Servers',
   traces: 'Traces',
   logs: 'Logs',
+  versions: 'Versions',
   access: 'Access',
 };
 const CALL_KINDS: Array<{ id: CallKind; label: string }> = [
@@ -212,7 +215,7 @@ const CHART_TOP = 12;
 
 @Component({
   selector: 'app-observability-page',
-  imports: [DatePipe, IconComponent, AvatarComponent, SkeletonComponent, ObservabilityAccessComponent, ObservabilityTraceComponent, ObservabilityServersComponent],
+  imports: [DatePipe, IconComponent, AvatarComponent, SkeletonComponent, ObservabilityAccessComponent, ObservabilityTraceComponent, ObservabilityServersComponent, ObservabilityVersionsComponent],
   templateUrl: './observability-page.component.html',
   styleUrl: './observability-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -276,9 +279,14 @@ export class ObservabilityPageComponent implements OnInit {
     const result: Tab[] = ['overview', 'endpoints', 'chat', 'queues'];
     if (!grant?.channels.length) result.push('resources');
     if (grant?.role !== 'viewer') result.push('traces', 'logs');
-    if (grant?.role === 'owner') result.push('access');
+    // Versions reads the owner-only admin API (not analytics), so only the owner gets it.
+    if (grant?.role === 'owner') result.push('versions', 'access');
     return result;
   });
+  /** The Versions view loads its own report; the header's Refresh asks it to reload. */
+  private readonly versionsView = viewChild(ObservabilityVersionsComponent);
+  /** The header's Refresh spins and waits while either the analytics or the Versions report is loading. */
+  readonly busy = computed(() => this.loading() || !!this.versionsView()?.loading());
   readonly systemWide = computed(() => !this.grant()?.channels.length);
   readonly rangeLong = computed(() => RANGES.find((r) => r.minutes === this.minutes())?.long ?? `${this.minutes()} minutes`);
   readonly knownChannels = computed(() =>
@@ -730,7 +738,7 @@ export class ObservabilityPageComponent implements OnInit {
     if (sort && ['busiest', 'slowest', 'failing'].includes(sort)) this.callSort.set(sort);
     if (this.auth.token()) await this.initialize();
     const timer = setInterval(() => {
-      if (!document.hidden && this.grant() && !this.loading() && this.tab() !== 'access') void this.refresh(false);
+      if (!document.hidden && this.grant() && !this.loading() && this.tab() !== 'access' && this.tab() !== 'versions') void this.refresh(false);
     }, 15000);
     this.destroy.onDestroy(() => {
       clearInterval(timer);
@@ -831,6 +839,14 @@ export class ObservabilityPageComponent implements OnInit {
   async refresh(updateUrl = true): Promise<void> {
     const id = ++this.request;
     const tab = this.tab();
+    if (tab === 'versions') {
+      // Nothing to fetch from analytics: the Versions view loads its own report (it loads itself when it first opens).
+      this.loading.set(false);
+      this.error.set('');
+      if (updateUrl) this.updateUrl();
+      this.versionsView()?.load();
+      return;
+    }
     this.loading.set(true);
     this.error.set('');
     if (updateUrl) this.updateUrl();

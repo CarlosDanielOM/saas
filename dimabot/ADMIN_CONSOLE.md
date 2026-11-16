@@ -60,13 +60,16 @@ Register new owner-only endpoints with `ownerGet`, `ownerPut`, `ownerPost`, `own
 
 100,000 AI credits equal 1 USD; 1,000 credits equal 1 cent. Always show the channel's credits and their dollar value separately from provider cost. Provider cost is shown only where recorded, never estimated. Receipt actor, provider cost, voice, model and more-specific source are receipt-only enrichment; preserve the existing Polar and PostHog event bytes. `src/utils/polarsh.ts` centralizes `providerReportedCostUsd` and `receiptCostUsd`; explicit unknown provider cost stays unknown. See `src/utils/ai_usage_event.ts` and `src/utils/ai_usage_ledger.ts`.
 
+Overview’s “needs you” row `compat_removable` links to System → Versions. The owner-only tab shows OBS and Studio versions and compatibility entries; nothing is removed automatically. See [Overlay Studio widget modules](./OVERLAY_WIDGET_MODULES.md#page-versions-and-compatibility-code) for tracking and removal rules.
+
 ### New endpoints
 
 All paths below have the `/admin-site` prefix and use GET unless stated otherwise.
 
 | Path | Purpose |
 | --- | --- |
-| `/overview` | Cross-channel overview; `gifts_need_support` counts paid gifts only. |
+| `/overview` | Cross-channel overview; `gifts_need_support` counts paid gifts only and `compat_removable` counts removable compatibility entries. |
+| `/client-versions` | Owner-only page versions and compatibility report for System → Versions. |
 | `/gifts` | Gift list and counts by `needs_support`, `in_progress`, `awaiting_payment`, `delivered`, `expired` or `all`; filter by channel ID or login, with cursor and limit up to 50. Unpaid legacy `needs_support` rows count as awaiting payment. |
 | `/gifts/:id` | One gift and its delivery details. |
 | `POST /gifts/:id/retry` | Make a paid, undelivered gift due now if it is not being processed. The worker rechecks payment and does not deliver twice. |

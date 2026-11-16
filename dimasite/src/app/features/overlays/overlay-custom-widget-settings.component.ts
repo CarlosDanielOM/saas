@@ -10,7 +10,7 @@ import { layerGoalSource, type GoalSource } from './widget-runtime/goal-source';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
 import { OverlayCustomWidgetCodeComponent } from './overlay-custom-widget-code.component';
 import { OverlayCustomWidgetImportComponent } from './overlay-custom-widget-import.component';
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 import type { WidgetSettingsContext } from './overlay-widget-module';
 
 /** Settings-section block for a custom widget layer: which widget it is, replacing its files and exporting it. */

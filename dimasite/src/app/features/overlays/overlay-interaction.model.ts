@@ -1,4 +1,4 @@
-import type { OverlayWidget } from './overlay.model';
+import type { OverlayWidget } from './overlay-model.generated';
 
 export type InteractionKind = 'poll' | 'prediction';
 /** Namespaced module config wins; legacy flattened scenes keep their original preset. */

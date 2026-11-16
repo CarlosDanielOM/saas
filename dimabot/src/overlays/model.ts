@@ -1,6 +1,10 @@
 import type { AlertKeyframes } from './keyframes.js';
 import type { WidgetKind } from './widget-contract.js';
 export type { WidgetKind } from './widget-contract.js';
+/**
+ * Overlay Studio data model, shared by the API and the site. Portable: copied to dimasite as
+ * `overlay-model.generated.ts` by `node scripts/sync-overlay-widget-contract.mjs` (edit only this file).
+ */
 export const CLIP_DESIGN_VARIANTS = ['classic', 'third', 'tile', 'cinema', 'orbit', 'pill', 'hud', 'slash'] as const;
 export type ClipDesignVariant = typeof CLIP_DESIGN_VARIANTS[number];
 export type AlertEvent = 'sub' | 'bits' | 'follow' | 'raid';
@@ -10,13 +14,14 @@ export const ALERT_LOOPS = ['none', 'pulse', 'float', 'sway', 'spin'] as const;
 export interface AlertMotion {
   enter: typeof ALERT_TRANSITIONS[number]; exit: typeof ALERT_TRANSITIONS[number]; loop: typeof ALERT_LOOPS[number];
   delay: number; enterDuration: number; exitDuration: number; loopDuration: number;
-  /** Seconds from the alert's start at which the object is gone (0.1–120). Absent: it stays until the alert ends. */
+  /** Seconds from the alert's start at which the object is gone (its exit finishes then). Omitted = stays until the alert ends. */
   end?: number;
 }
 export interface OverlayWidget {
   id: string; kind: WidgetKind; name?: string;
-  /** Missing on legacy widgets; absence means version 1. */
+  /** Absent on legacy widgets: each module treats omission as its original v1 config. */
   configVersion?: number;
+  /** Module-owned, validated configuration for new modules; legacy flattened fields remain supported. */
   config?: Record<string, unknown>;
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
@@ -29,31 +34,53 @@ export interface OverlayWidget {
   shape?: 'rectangle' | 'ellipse'; borderColor?: string; borderWidth?: number; radius?: number; opacity?: number;
   shadow?: { color: string; blur: number; x: number; y: number };
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
-  /** Trigger looks only: a channel media library item (`UserMediaLibraryItem._id`) instead of a Studio asset. */
-  mediaId?: string;
-  /** Alert design pictures only: an item of Dima's public overlay library (see library.ts) instead of a Studio asset. */
-  library?: string;
-  /** Videos inside layouts: `volume` present = plays its own sound (0 = silent but timed); `loop` absent = true. */
-  volume?: number; loop?: boolean;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
   triggerPlacement?: { mode: 'fixed' | 'random'; margin: number };
+  /** Videos in alert layouts only. Present = the video plays its own sound at this volume (0–1, 0 = silent but timed). */
+  volume?: number;
+  /** Videos in alert layouts only. Absent = loops (as before); `false` = plays once from its start time and holds its last frame. */
+  loop?: boolean;
+  /** Trigger looks only: the trigger library item shown (the API adds `mediaUrl`, `mediaType` and `unavailable` in editor form). */
+  mediaId?: string;
+  /** Alert design pictures: an item of Dima's public overlay library (library.ts) instead of a Studio asset. */
+  library?: string;
+  /** Editor form of a trigger look (from the API, never stored): the file's kind. */
+  mediaType?: 'image' | 'gif' | 'video' | 'audio';
+  /** Editor form of a trigger look (from the API, never stored): the library item or its file is gone. */
+  unavailable?: boolean;
 }
 /** An omitted selection receives all triggers; an empty selection receives none. */
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
 /**
- * `end`: seconds from the alert's start at which the sound has stopped (0.1–120). Absent: it plays out or stops with the alert.
- * Alert designs reference `assetId` (a Studio asset) or `library` (Dima's public overlay library), trigger looks `mediaId`;
- * `url` is only ever produced by the server (trigger looks, library sounds sent to OBS).
+ * `end`: seconds from the alert's start at which the sound has stopped (its fade-out finishes then). Omitted = plays until its file or the alert ends.
+ * `id` is unique inside its layout (the legacy single sound has none). `assetId` = Overlay Studio asset (alert designs),
+ * `mediaId` = trigger library item (trigger looks); `url` is a playback URL only the server produces (never stored).
  */
-export interface AlertSound { id?: string; assetId?: string; mediaId?: string; library?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
-/** `sounds` is canonical; `sound` is the legacy mirror of `sounds[0]` (without its id) that older OBS pages play. */
+export interface AlertSound { id?: string; assetId?: string; mediaId?: string; library?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number;
+  /** Editor form of a trigger look (from the API): the file's kind, and whether its library item is gone. */
+  mediaType?: 'image' | 'gif' | 'video' | 'audio'; unavailable?: boolean }
+export const MAX_ALERT_SOUNDS = 10;
+/** When the sound has stopped: `end` capped at the alert length. At or before `delay` the sound stays silent. */
+export function soundStop(sound: AlertSound, duration: number): number {
+  return typeof sound.end === 'number' && Number.isFinite(sound.end) ? Math.min(duration, sound.end) : duration;
+}
+/** `sounds` is the canonical list (0–10, unique ids); `sound` is the legacy single sound / the server's mirror of `sounds[0]`. */
 export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sounds?: AlertSound[]; sound?: AlertSound }
-/** Every sound of a layout. When `sounds` is present it wins; a legacy single `sound` reads as one sound with id `sound`. */
-export const layoutSounds = (layout: AlertLayout): AlertSound[] => layout.sounds ?? (layout.sound ? [{ id: 'sound', ...layout.sound }] : []);
+const legacySounds = new WeakMap<AlertSound, AlertSound[]>();
 /**
- * Sub variants match a tier, or gifted subs (`gift`); raid variants an amount; Bits variants are looks for a shared Bits
- * rule (`ruleId`).
+ * The layout's sounds: `sounds` wins; a legacy-only `sound` reads as one sound with id `sound`. The same layout always
+ * gives the same objects (renderer inputs compare by identity, so a new copy would restart the sound).
  */
+export function layoutSounds(layout: AlertLayout | Pick<AlertLayout, 'sounds' | 'sound'>): AlertSound[] {
+  if (layout.sounds) return layout.sounds;
+  const sound = layout.sound; if (!sound) return [];
+  let list = legacySounds.get(sound);
+  if (!list) { list = [{ id: 'sound', ...sound }]; legacySounds.set(sound, list); }
+  return list;
+}
+/** A video in an alert layout that plays on the alert's clock: it has its own sound (`volume`) or plays once (`loop: false`). */
+export const isTimedVideo = (widget: Pick<OverlayWidget, 'kind' | 'volume' | 'loop'>): boolean => widget.kind === 'video' && (typeof widget.volume === 'number' || widget.loop === false);
+/** Sub variants match a tier and raid variants an amount; Bits variants are looks for a shared Bits rule (`ruleId`). */
 export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; gift?: true; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
 export interface AlertDesign {
   id: string; name: string; revision: number; width: number; height: number;
