@@ -78,6 +78,8 @@ Producer/consumer contracts, account ownership, recovery, Polar behavior, and ex
 
 Overlay Studio's portable widget contract, frontend module registry, state source adapters, compatibility envelope, and extension recipe are documented in [`OVERLAY_WIDGET_MODULES.md`](./OVERLAY_WIDGET_MODULES.md).
 
+For releases touching overlays, TTS delivery, custom widgets or Studio routes, run the overlay API suite and fix failing checks in the same release; see [Verification](./OVERLAY_WIDGET_MODULES.md#verification).
+
 Overlay live delivery uses [`src/overlays/live/index.ts`](./src/overlays/live/index.ts) as its public entry (`overlays/live/index.js` in imports). `connections.live.ts` owns OBS sockets, reconnect leases, published overlay reloads, the one-second loop and producer bridge. `delivery.live.ts` owns pending events, durable reconnect copies, retained media, event details and queue controls. `alerts.live.ts` handles domain-log Twitch alerts and Bits rules; `tts.live.ts` handles speech ownership, reports, controls and status; `widget_feeds.live.ts` handles poll and prediction state and custom widget feeds.
 
 Page version tracking and compatibility removal are documented in [Overlay Studio widget modules](./OVERLAY_WIDGET_MODULES.md#page-versions-and-compatibility-code).

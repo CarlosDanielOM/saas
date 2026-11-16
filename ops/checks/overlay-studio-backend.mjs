@@ -65,7 +65,9 @@ async function connect(publicId, clientId = crypto.randomUUID()) {
   ws.addEventListener('message', event => { const m = String(event.data); if (m.startsWith('0')) ws.send(`40${ns},${JSON.stringify({ clientId })}`); else if (m === '2') ws.send('3'); else messages.push(m); });
   const wait = async predicate => { for (let i=0;i<120;i++) { const found = messages.find(predicate); if(found)return found; await new Promise(r=>setTimeout(r,50)); } throw new Error('Socket timeout: '+JSON.stringify(messages)); };
   const events = () => messages.filter(m=>m.startsWith(`42${ns},`)).map(m=>JSON.parse(m.slice(m.indexOf(',')+1)));
-  return { ws, wait, events, clientId, health: body=>ws.send(`42${ns},${JSON.stringify(['overlay-health',body])}`), ack: id=>ws.send(`42${ns},${JSON.stringify(['overlay-ended',id])}`) };
+  // The namespace connect ack carries the socket id: a TTS owner proves itself with clientId + socketId.
+  const socketId = () => { const m = messages.find(m => m.startsWith(`40${ns},`)); return m ? JSON.parse(m.slice(m.indexOf(',') + 1)).sid : null; };
+  return { ws, wait, events, clientId, socketId, health: body=>ws.send(`42${ns},${JSON.stringify(['overlay-health',body])}`), ack: id=>ws.send(`42${ns},${JSON.stringify(['overlay-ended',id])}`) };
 }
 const a = await connect(publicId), b = await connect(publicId);
 await a.wait(m=>m.includes('overlay-state')); await b.wait(m=>m.includes('overlay-state'));
@@ -205,11 +207,21 @@ process.env.PIPER_HTTP_URL=base+'/piper-fixture';
 await redis.set(`twitch:${channel}:tts:queue:data:studio-tts`,JSON.stringify({channelID:channel,speechID:'studio-tts',timestamp:Date.now(),source:'ast',mode:'speak',provider:'piper',text:'Queue bridge fixture',language:'en',voice:'fixture-voice'}));
 await redis.zAdd(`twitch:${channel}:tts:queue`,{score:Date.now(),value:'studio-tts'});
 await ttsQueueHandler.processNext(channel);
-await c.wait(m=>m.includes('overlay-event')&&m.includes('tts'));
-const speech=c.events().find(e=>e[0]==='overlay-event'&&e[1].kind==='tts')[1];
-const speechMedia=await request('GET',`public/${nextId}/events/${speech.id}`,undefined,200,'');
+// One connected source owns each speech (plays its audio); the others only get captions (dima032 ownership).
+await c.wait(m=>m.includes('overlay-event')&&m.includes('tts'));await reconnect.wait(m=>m.includes('overlay-event')&&m.includes('tts'));
+const speechOf=x=>x.events().find(e=>e[0]==='overlay-event'&&e[1].kind==='tts')[1];
+const owner=[c,reconnect].find(x=>speechOf(x).tts?.ownerClientId===x.clientId),listener=[c,reconnect].find(x=>x!==owner);
+assert(owner&&listener,'exactly one source owns the speech');assert.equal(speechOf(listener).tts.ownerClientId,null);assert.equal(speechOf(listener).media,undefined);
+const speech=speechOf(owner),asSource=x=>`?${new URLSearchParams({clientId:x.clientId,socketId:x.socketId()})}`;
+const speechMedia=await request('GET',`public/${nextId}/events/${speech.id}${asSource(owner)}`,undefined,200,'');
 assert.equal((await fetch(base+speechMedia.media.url)).status,200);
-await new Promise(r=>setTimeout(r,100));assert.equal(await redis.get(`twitch:${channel}:tts:processing`),null,'global clients retain their own speech without blocking synthesis');
+await request('GET',`public/${nextId}/events/${speech.id}`,undefined,404,'');
+const captionOnly=await request('GET',`public/${nextId}/events/${speech.id}${asSource(listener)}`,undefined,200,'');assert.equal(captionOnly.media,undefined,'a caption-only source never gets the audio');
+// Turns follow real playback (DIMA-032): the queue waits for the owner's end report, then moves on.
+await new Promise(r=>setTimeout(r,100));assert.equal(await redis.get(`twitch:${channel}:tts:processing`),'studio-tts','the queue waits while the owner plays');
+owner.ws.send(`42/overlay-studio/${nextId},${JSON.stringify(['overlay-speech-ended',{eventId:speech.id,speechID:'studio-tts',reason:'ended'}])}`);
+for(let i=0;i<150&&await redis.get(`twitch:${channel}:tts:processing`)!==null;i++)await new Promise(r=>setTimeout(r,20));
+assert.equal(await redis.get(`twitch:${channel}:tts:processing`),null,"the owner's end report lets the queue move on");
 // Stub only the external downloader process; the real clip queue, bridge and serving path execute.
 const child=require('node:child_process'),originalExec=child.exec;const {syncBuiltinESMExports}=await import('node:module');const {EventEmitter}=await import('node:events');
 let downloads=0;child.exec=(command)=>{downloads++;assert(command.includes('https://fixture.invalid/clip'));const proc=new EventEmitter();proc.stdout=new EventEmitter();proc.stderr=new EventEmitter();proc.kill=()=>{};setImmediate(async()=>{const file=command.match(/-o "([^"]+)"/)[1];await writeFile(file,'clip-fixture-bytes');proc.emit('exit',0);});return proc;};syncBuiltinESMExports();

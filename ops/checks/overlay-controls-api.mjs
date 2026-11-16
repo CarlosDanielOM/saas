@@ -52,7 +52,10 @@ console.log('PASS actual API and AST: owner/plan permissions, invalid input, all
 // Exercise the actual Socket.IO controller with synthetic event origins. This
 // isolated API instance shares disposable Mongo only, never production data.
 const express=require('express'),{Server}=require('socket.io');
-const app=express();app.use(express.json());app.use('/overlay-studio',(await import('/app/dist/server/routes/overlay-studio.route.js')).overlayStudioRoute);
+// Same body limit as server.ts for /overlay-studio (studios with the default alerts exceed express's 100 kB default).
+const app=express();app.use(express.json({limit:'5mb'}));app.use('/overlay-studio',(await import('/app/dist/server/routes/overlay-studio.route.js')).overlayStudioRoute);
+// Show a route error's message instead of express's HTML page.
+app.use((err,req,res,next)=>{console.error('route error',req.method,req.url,err&&err.message);res.status(err&&err.status||500).json({error:true,message:String(err&&err.message)});});
 const server=createServer(app), io=new Server(server);live.registerStudio(io);
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));base='http://127.0.0.1:'+server.address().port;
 let state=await request('GET',channel);state.scenes[0].widgets.find(w=>w.kind==='alert').events=['follow'];

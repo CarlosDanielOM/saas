@@ -66,6 +66,8 @@ node scripts/sync-overlay-widget-contract.mjs --check
 (cd dimasite && NG_BUILD_MAX_WORKERS=2 ./node_modules/.bin/ng test --watch=false --ts-config=tsconfig.overlays.spec.json --include='src/app/features/overlays/*.spec.ts')
 ```
 
+For releases touching dimabot overlays, TTS delivery, custom widgets or Studio routes, run `ops/checks/overlay-api-suite.sh api-<run-id> [check-name ...]` from the production checkout. It runs the overlay/TTS/widget API checks one at a time against the same API candidate, stages their fixtures, and runs the broad backend check last. Fix any failing check in the same release; never leave it stale.
+
 For a release, use the existing isolated `scripts/saas-ops` workflow in the root and project agent guides. Its behavior checks are under `ops/checks/overlay-widget-modules-*.mjs`; update or extend the check that covers the changed API, browser runtime, or site behavior.
 
 Changes to shared editor/OBS visuals should also exercise [`overlay-renderer-parity-browser.mjs`](../ops/checks/overlay-renderer-parity-browser.mjs) against the exact candidate. It compares sampled animation definitions and frames, normalized design geometry, text/font and image rendering, selection/resize stability, TTS captions/audio ownership, and per-placement completion/queue timing. See the current scope and verification state in [`overlay-shared-renderer.md`](../migration-notes/overlay-shared-renderer.md).
