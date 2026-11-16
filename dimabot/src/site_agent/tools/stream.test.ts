@@ -7,7 +7,7 @@ process.env.SECRET_KEY ??= 'tool-test-secret';
 const calls: string[] = [];
 const state: { activated: boolean; clients: number; bitsAlert: boolean; reward: any; twitch: any } = { activated: true, clients: 1, bitsAlert: true, reward: null, twitch: null };
 const realChannels = await import('../../functions/channels/index.js');
-const realLive = await import('../../overlays/live.js');
+const realLive = await import('../../overlays/live/index.js');
 const realStore = await import('../../overlays/store.js');
 const realRewards = await import('../../server/services/reward_creation.service.js');
 const realHeader = await import('../../utils/header.js');
@@ -18,7 +18,7 @@ mock.module('../../functions/channels/index.js', { namedExports: { ...realChanne
 mock.module('../../functions/polls/index.js', { namedExports: { createPoll: async (...args: unknown[]) => { calls.push(`poll:${JSON.stringify(args.slice(1))}`); return { id: 'poll-1' }; } } });
 mock.module('../../functions/predictions/index.js', { namedExports: { createPrediction: async (...args: unknown[]) => { calls.push(`prediction:${JSON.stringify(args.slice(1))}`); return { id: 'pred-1' }; } } });
 mock.module('../../functions/search/index.js', { namedExports: { searchCategories: async () => ({ error: false, data: [{ id: '509658', name: 'Just Chatting' }, { id: '27471', name: 'Minecraft' }] }) } });
-mock.module('../../overlays/live.js', { namedExports: { ...realLive,
+mock.module('../../overlays/live/index.js', { namedExports: { ...realLive,
     bitsRuleFor: async (_c: string, kind: string) => kind === 'bits' ? { name: 'Quiet', alert: state.bitsAlert } : null,
     publishStudioAlert: async (_c: string, kind: string, raw: any) => { calls.push(`alert:${kind}:${raw.user_name}:${raw.bits}`); return state.clients; } } });
 mock.module('../../overlays/store.js', { namedExports: { ...realStore, requireOverlayAccount: async () => {} } });

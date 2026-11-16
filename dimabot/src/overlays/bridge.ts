@@ -1,6 +1,6 @@
 import type { OverlayPlatform } from './controls.js';
 import type { EventKind } from './model.js';
-import type { LiveMedia } from './live.js';
+import type { LiveMedia } from './live/index.js';
 // Queue producers stay independent of the HTTP/AST/store initialization graph.
 export type ReadTtsPublication = 'emitted' | 'unavailable' | 'cancelled';
 export interface ReadTtsDelivery { beforeEmit?: () => boolean; onOwner?: (source: string) => void; cancelled?: () => boolean; speechID: string; durationMs: number; text: string; legacy: boolean; file?: string; mime?: string }

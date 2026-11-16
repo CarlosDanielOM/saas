@@ -11,7 +11,7 @@ import { getChannelClips } from '../functions/clips/get_clips.clip.js';
 import { TriggerSchema } from '../schemas/trigger.schema.js';
 import { MediaAssetSchema } from '../schemas/media_asset.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
-import type { LiveMedia } from './live.js';
+import type { LiveMedia } from './live/index.js';
 import { MAX_MEDIA_BYTES } from './delivery-store.js';
 import { recordActivity } from '../utils/activity_log.js';
 import { resolveLook, sampleViewer, type PlaybackLook } from './trigger-look.js';

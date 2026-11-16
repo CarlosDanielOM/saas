@@ -1,5 +1,5 @@
 import { activateInteraction, interactionReadiness } from '../../overlays/interaction-subscriptions.js';
-import { publicWidgetStateFor } from '../../overlays/live.js';
+import { publicWidgetStateFor } from '../../overlays/live/index.js';
 import { prepareTest, previewMedia, testFile, withTestLock } from '../../overlays/test-playback.js';
 import { recoverCopies } from '../../overlays/recover.js';
 import { pipeline } from 'node:stream/promises';
@@ -8,7 +8,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { change, load, publicState, validateState, object, string, token, OverlayError, requireOverlayAccount, type StudioState } from '../../overlays/store.js';
-import { bitsRuleFor, ensureWidgetModeration, eventFor, feedSignal, feedTestAlert, feedTestEvent, fileFor, publishStudioAlert, publishTest, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
+import { bitsRuleFor, ensureWidgetModeration, eventFor, feedSignal, feedTestAlert, feedTestEvent, fileFor, publishStudioAlert, publishTest, studioConnections, queueStatus, controlStudio } from '../../overlays/live/index.js';
 import { renderTemplate, sampleEvent } from '../../overlays/ast.js';
 import { ALERT_EVENTS, EVENT_KINDS, type EventKind, type AlertEvent } from '../../overlays/model.js';
 import { AssetError, withAssetLibrary } from '../../assets/library.js';

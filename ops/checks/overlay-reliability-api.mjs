@@ -19,7 +19,7 @@ ttsQueueHandler.resumeIfIdle = async()=>{}; clipQueueHandler.subscribeToChannel 
 const { piperTtsService } = await import('/app/dist/server/services/tts/piper_tts.service.js');
 const audio='/tmp/reliability-speech.wav';
 piperTtsService.synthesize=async request=>{assert.equal(request.provider,'piper');await writeFile(audio,'test-speech');return {error:false,outputPath:audio,mimeType:'audio/wav'};};
-const live=await import('/app/dist/overlays/live.js');
+const live=await import('/app/dist/overlays/live/index.js');
 const { overlayStudioRoute }=await import('/app/dist/server/routes/overlay-studio.route.js');
 let server,io; const base='http://127.0.0.1:3211';
 async function start(){const app=express();app.use(express.json({limit:'5mb'}));app.use('/overlay-studio',overlayStudioRoute);server=createServer(app);io=new Server(server);live.registerStudio(io);await new Promise(r=>server.listen(3211,'127.0.0.1',r));}

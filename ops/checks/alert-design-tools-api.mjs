@@ -54,7 +54,7 @@ await req('GET',publicPath+'/assets/'+foreign.id,null,404);
 const {createServer}=await import('node:http');const {Server}=require('socket.io');const server=createServer(),io=new Server(server);
 const {ttsQueueHandler}=await import('/app/dist/handlers/tts_queue.handler.js');ttsQueueHandler.resumeIfIdle=async()=>{};
 const {clipQueueHandler}=await import('/app/dist/handlers/clip_queue.handler.js');clipQueueHandler.subscribeToChannel=async()=>{};
-const live=await import('/app/dist/overlays/live.js');live.registerStudio(io);await new Promise(r=>server.listen(3212,'127.0.0.1',r));
+const live=await import('/app/dist/overlays/live/index.js');live.registerStudio(io);await new Promise(r=>server.listen(3212,'127.0.0.1',r));
 const ws=new WebSocket('ws://127.0.0.1:3212/socket.io/?EIO=4&transport=websocket'),ns='/overlay-studio/'+scene.publicId,events=[];
 ws.addEventListener('message',e=>{const m=String(e.data);if(m.startsWith('0'))ws.send(`40${ns},${JSON.stringify({clientId:crypto.randomUUID()})}`);else if(m==='2')ws.send('3');else if(m.startsWith(`42${ns},`))events.push(JSON.parse(m.slice(m.indexOf(',')+1)));});
 async function until(fn){for(let i=0;i<200;i++){const v=await fn();if(v)return v;await new Promise(r=>setTimeout(r,25));}throw Error('socket timeout');}

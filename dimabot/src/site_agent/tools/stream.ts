@@ -3,7 +3,7 @@ import { createPoll } from '../../functions/polls/index.js';
 import { createPrediction } from '../../functions/predictions/index.js';
 import { searchCategories } from '../../functions/search/index.js';
 import { sampleEvent } from '../../overlays/ast.js';
-import { bitsRuleFor, publishStudioAlert } from '../../overlays/live.js';
+import { bitsRuleFor, publishStudioAlert } from '../../overlays/live/index.js';
 import { ALERT_EVENTS, type AlertEvent } from '../../overlays/model.js';
 import { requireOverlayAccount } from '../../overlays/store.js';
 import { RedemptionRewardSchema } from '../../schemas/redemption_reward.schema.js';

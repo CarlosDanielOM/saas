@@ -1,6 +1,6 @@
 import { registerWidgetOverlay } from './services/widgets-overlay.service.js';
 import { registerDuelOverlay } from './services/duel-overlay.service.js';
-import { registerStudio, studioHasSource } from '../overlays/live.js';
+import { registerStudio, studioHasSource } from '../overlays/live/index.js';
 import { registerRouletteOverlay } from './services/roulette-overlay.service.js';
 import { Server as SocketIOServer } from "socket.io";
 import http, { type Server as HttpServer } from "http";

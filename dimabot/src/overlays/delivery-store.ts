@@ -4,7 +4,7 @@ import { pipeline } from 'node:stream/promises';
 import { mongo } from 'mongoose';
 const { GridFSBucket, ObjectId } = mongo;
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
-import type { LiveEvent } from './live.js';
+import type { LiveEvent } from './live/index.js';
 import type { QueueCommand } from './controls.js';
 
 export const DELIVERY_TTL_MS = 30 * 60 * 1000;

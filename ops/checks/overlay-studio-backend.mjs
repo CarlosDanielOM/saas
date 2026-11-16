@@ -8,7 +8,7 @@ const mongo = await getMongoDBConnection('overlay-test'), redis = await getDrago
 const { default: Users } = await import('/app/dist/schemas/users.schema.js');
 const store = await import('/app/dist/overlays/store.js');
 const ast = await import('/app/dist/overlays/ast.js');
-const live = await import('/app/dist/overlays/live.js');
+const live = await import('/app/dist/overlays/live/index.js');
 let channel = '990091'; const ownerToken = 'overlay-owner-fixture';
 await store.Studio.init();
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'free' });

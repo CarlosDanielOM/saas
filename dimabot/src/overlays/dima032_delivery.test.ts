@@ -22,7 +22,7 @@ const collection = (rows: Map<string, any>) => ({ find: () => ({ toArray: async 
 mock.module('./delivery-store.js', { namedExports: { deliveries: async () => collection(saved), leases: async () => collection(new Map()),
     retainFile: async (file: string) => { if (retainBarrier) { const barrier = retainBarrier; retainBarrier = undefined; await barrier(); } files.set('retained', file); return { mediaId: 'retained', bytes: 8 }; }, releaseFile: async () => { released++; }, sweepFiles: async () => {},
     DELIVERY_TTL_MS: 1800000, LEASE_MS: 120000, MAX_PENDING: 200, MAX_CHANNEL_BYTES: 10000000 } });
-const { registerStudio, publishStudioReadTts, eventFor, fileFor, endStudioReadTts } = await import('./live.js');
+const { registerStudio, publishStudioReadTts, eventFor, fileFor, endStudioReadTts } = await import('./live/index.js');
 class FakeSocket {
     connected = true; id: string; handshake: any; data: any; nsp: any; handlers = new Map<string, (...args: any[]) => any>(); events: any[] = [];
     conn = { close: () => this.disconnect() };

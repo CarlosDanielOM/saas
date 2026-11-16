@@ -6,7 +6,7 @@ import { WidgetStateRegistry } from '/app/dist/overlays/widget-state.js';
 import { validateState } from '/app/dist/overlays/store.js';
 import { makeDesign, makeScene } from '/app/dist/overlays/model.js';
 import { widgetStateRegistry } from '/app/dist/overlays/widget-state-providers.js';
-import { publicWidgetStateFor, interactionsFor } from '/app/dist/overlays/live.js';
+import { publicWidgetStateFor, interactionsFor } from '/app/dist/overlays/live/index.js';
 
 assert.deepEqual(WIDGET_DEFINITIONS.map(d => d.kind).sort(), ['alert', 'animation', 'clip', 'custom', 'image', 'poll', 'prediction', 'shape', 'text', 'trigger', 'tts', 'video']);
 assert.equal(new Set(WIDGET_DEFINITIONS.map(d => d.kind)).size, WIDGET_DEFINITIONS.length);

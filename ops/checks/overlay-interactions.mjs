@@ -12,7 +12,7 @@ import { applyInteractionEvent, Interaction, interactionSnapshot, resyncInteract
 import { activateInteraction, interactionReadiness } from '/app/dist/overlays/interaction-subscriptions.js';
 import { createTwitchEventsubApp } from '/app/dist/bot/eventsub.twitch.js';
 import { publicState, load, change, validateState, Studio } from '/app/dist/overlays/store.js';
-import { registerStudio } from '/app/dist/overlays/live.js';
+import { registerStudio } from '/app/dist/overlays/live/index.js';
 import { createServer } from 'node:http';
 import { Server } from '/app/node_modules/socket.io/dist/index.js';
 const target=process.env.SAAS_INTERACTION_TARGET,channel='990702',other='990703',dir='/tmp/saas-fixtures';
