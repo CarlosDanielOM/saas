@@ -247,7 +247,7 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         if (result.error || result.outputPath !== audioPath || !result.mimeType) throw new PetError('synthesis_failed');
         // Usage is recorded even when cancellation arrives after a known successful provider result.
         await trackTtsUsage({ channelID: request.channelId, streamer, requireDurableUsage: true, provider: tts.provider, text: tts.text, characters: tts.text.length,
-            usage: { entryId: `${request._id}:tts`, requestId: `${request._id}:tts`, source: 'pet', resourceType: 'speech', resourceId: request._id,
+            providerCost: result.providerCost, usage: { entryId: `${request._id}:tts`, requestId: `${request._id}:tts`, source: 'pet', resourceType: 'speech', resourceId: request._id,
                 receipt: { actor: { id: request.actor.userId, login: request.actor.chat?.login, name: request.actor.displayName }, voice: tts.voice } } });
         signal.throwIfAborted();
         if ((await stat(audioPath)).size > MAX_PET_AUDIO_BYTES) throw new PetError('audio_too_large');

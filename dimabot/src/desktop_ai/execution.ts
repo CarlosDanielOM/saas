@@ -174,7 +174,7 @@ export async function speakBot(turn: DesktopTurn, streamer: { user_id: string; n
                 // A known paid result is accounted before the provider receipt is
                 // completed, even if cancellation or lease loss raced the result.
                 await operation(turn._id, 'tts:billing', 'billing', () => trackTtsUsage({ channelID: turn.channelId, streamer, requireDurableUsage: true,
-                    provider: request.provider, text: request.text, characters: request.text.length,
+                    provider: request.provider, text: request.text, characters: request.text.length, providerCost: result.providerCost,
                     usage: { entryId: `${turn._id}:tts`, requestId: `${turn._id}:tts`, source: 'oauth_desktop', resourceType: 'speech', resourceId: turn._id,
                         // The streamer asked from the desktop app; the stored account name is all the turn knows of them.
                         receipt: { actor: { id: streamer.user_id, login: streamer.name, name: streamer.name }, voice: request.voice } } }));

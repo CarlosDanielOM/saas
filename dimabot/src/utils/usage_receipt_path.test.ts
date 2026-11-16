@@ -57,5 +57,6 @@ test('a reward voice request keeps the Polar and PostHog events as they were and
   assert.equal(reward.receipt.actorLogin, 'viewer');
   assert.equal(reward.receipt.voice, 'fish-voice');
   assert.equal(reward.receipt.credits, before.receipt.credits);
-  assert.equal(reward.receipt.costUsd, null);
+  // No synthesis report here: 10 bytes at Fish's list price, in USD.
+  assert.equal(reward.receipt.costUsd, 0.00015);
 });

@@ -50,9 +50,10 @@ test('receipt metadata leaves generic, LLM, and TTS Polar accounting values unch
       usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
     },
   });
+  // A Drama 3 line: OpenRouter charged $0.00041 (41 bytes); the streamer pays the fixed 48 credits.
   await ingestPolarSHEvent({
     customerId: 'customer', channelID: 'channel', externalId: 'tts',
-    cost: 0.0015, _cost: 0.15, characters: 100,
+    cost: 0.00041, credits: 48, characters: 32,
     reason: 'tts_fish', mode: 'immediate',
   });
 
@@ -75,9 +76,9 @@ test('receipt metadata leaves generic, LLM, and TTS Polar accounting values unch
   assert.deepEqual(
     pickAccounting(ingestedEvents[2].metadata),
     {
-      _cost: { amount: 0.15, currency: 'usd' },
-      cost: 0.0015, credits: 150, currency: 'usd',
-      reason: 'tts_fish', characters: 100,
+      _cost: { amount: 0.041, currency: 'usd' },
+      cost: 0.041, credits: 48, currency: 'usd',
+      reason: 'tts_fish', characters: 32,
     },
   );
 });
@@ -103,12 +104,12 @@ test('credit grants accept a stable external ID without changing credit math', a
   assert.equal(ingestedEvents[0].metadata.usage_source, 'free_credit_reset_worker');
 });
 
-test('receipt cost is USD: LLM events carry cents, voice events carry only the credit price', () => {
+test('receipt cost is USD: LLM events carry cents, other events need the caller to pass it', () => {
   // LLM branch: `cost` is cents (0.1234 cents for a $0.001234 call).
   assert.equal(receiptCostUsd({ cost: 0.1234, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 1, totalTokens: 2 } }), 0.001234);
   assert.equal(receiptCostUsd({ cost: 0.00000001, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 0, totalTokens: 1 } }), 1e-10);
-  // Voice branch: `cost` is USD, but it is credits / 100,000, not what the provider charged.
-  assert.equal(receiptCostUsd({ cost: 0.0015 }), null);
+  // Voice events carry the provider cost in cents too, but the caller passes it in USD explicitly.
+  assert.equal(receiptCostUsd({ cost: 0.041 }), null);
   // Generic branch: a price in cents (clip recommendations).
   assert.equal(receiptCostUsd({ cost: 12.5 }), null);
   // A caller that knows the real cost wins; null means it is unknown.
@@ -124,8 +125,8 @@ test('receipt details reach the receipt and leave the Polar event byte for byte 
   for (const [plain, detailed] of [
     [{ ...base, externalId: 'llm-a', cost: 0.001234, reason: 'messages', llm },
       { ...base, externalId: 'llm-a', cost: 0.001234, reason: 'messages', llm, usage: { receipt } }],
-    [{ ...base, externalId: 'tts-a', cost: 0.0015, _cost: 0.15, characters: 100, reason: 'tts_fish' },
-      { ...base, externalId: 'tts-a', cost: 0.0015, _cost: 0.15, characters: 100, reason: 'tts_fish', usage: { receipt } }],
+    [{ ...base, externalId: 'tts-a', cost: 0.00041, credits: 48, characters: 32, reason: 'tts_fish' },
+      { ...base, externalId: 'tts-a', cost: 0.00041, credits: 48, characters: 32, reason: 'tts_fish', usage: { receipt } }],
   ]) {
     ingestedEvents.length = 0;
     receiptInputs.length = 0;
@@ -135,11 +136,11 @@ test('receipt details reach the receipt and leave the Polar event byte for byte 
     assert.deepEqual(receiptInputs[1].context.receipt, receipt);
     assert.equal(receiptInputs[1].credits, receiptInputs[0].credits);
   }
-  // The LLM call's cost reaches the receipt in USD; the voice price does not.
+  // The LLM call's cost reaches the receipt in USD; a voice line's only when passed (sendTtsUsageEvent does).
   ingestedEvents.length = 0;
   receiptInputs.length = 0;
   await ingestPolarSHEvent({ ...base, externalId: 'llm-b', cost: 0.001234, reason: 'messages', llm });
-  await ingestPolarSHEvent({ ...base, externalId: 'tts-b', cost: 0.0015, _cost: 0.15, characters: 100, reason: 'tts_fish' });
+  await ingestPolarSHEvent({ ...base, externalId: 'tts-b', cost: 0.00041, credits: 48, characters: 32, reason: 'tts_fish' });
   await ingestPolarSHEvent({ ...base, externalId: 'mod-b', cost: 0.002, reason: 'contextual_moderation', llm,
     usage: { receipt: { costUsd: 0.0007 } } });
   assert.deepEqual(receiptInputs.map(input => input.costUsd), [0.001234, null, 0.0007]);

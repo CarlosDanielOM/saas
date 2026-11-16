@@ -7,7 +7,7 @@ import { OPENROUTER_APP_HEADERS } from '../../../utils/ai/openrouter/app_attribu
 import { reinforceFishTtsTags } from '../../../utils/tts/expressive_tts_tags.util.js';
 import { readAudioStream } from '../../../utils/tts/tts_deadline.util.js';
 import { PIPER_PUBLIC_SPEECH_DIR, buildPublicPath } from './piper_tts.service.js';
-import type { TtsProvider, TtsSynthesisRequest, TtsSynthesisResult } from './tts_provider.interface.js';
+import type { TtsProvider, TtsProviderCost, TtsSynthesisRequest, TtsSynthesisResult } from './tts_provider.interface.js';
 
 export const FISH_VOICES: Record<string, string> = {
     gojo: '7b5626abdaa044babfc3829ec15acf31',
@@ -33,6 +33,10 @@ async function ensureSpeechOutputDir(channelID: string): Promise<string> {
     return outputDir;
 }
 
+function backendText(text: string, backend: string): string {
+    return backend.startsWith('s2.1-') ? reinforceFishTtsTags(text) : text;
+}
+
 async function convertWithBackend(
     fishAudio: FishAudioClient,
     text: string,
@@ -42,7 +46,7 @@ async function convertWithBackend(
 ) {
     return await fishAudio.textToSpeech.convert(
         {
-            text: backend.startsWith('s2.1-') ? reinforceFishTtsTags(text) : text,
+            text: backendText(text, backend),
             reference_id: referenceId,
             format: 'mp3'
         },
@@ -60,13 +64,15 @@ async function readBackendAudio(
     backend: string,
     channelID: string,
     request: TtsSynthesisRequest
-): Promise<Buffer> {
+): Promise<{ buffer: Buffer; cost: TtsProviderCost }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FISH_ATTEMPT_TIMEOUT_MS);
     try {
         const signal = request.signal ? AbortSignal.any([request.signal, controller.signal]) : controller.signal;
         signal.throwIfAborted();
         let audio: ReadableStream<Uint8Array>;
+        // Both routes bill the UTF-8 bytes of the text they receive.
+        const cost: TtsProviderCost = { backend, bytes: Buffer.byteLength(backendText(text, backend), 'utf8') };
         if (backend === FISH_OPENROUTER_MODEL) {
             const apiKey = process.env.OPENROUTER_API_KEY?.trim();
             if (!apiKey) throw new Error('OpenRouter API key is not configured');
@@ -86,6 +92,8 @@ async function readBackendAudio(
                 throw new Error('OpenRouter Fish returned an unexpected audio format');
             }
             audio = response.body;
+            const generationId = response.headers.get('x-generation-id')?.trim();
+            if (generationId) cost.generationId = generationId;
         } else {
             const apiKey = process.env.FISH_AUDIO_API_KEY?.trim();
             if (!apiKey) throw new Error('Fish Audio API key is not configured');
@@ -96,7 +104,7 @@ async function readBackendAudio(
         if (buffer.length === 0) {
             throw new Error(`Fish Audio TTS returned empty audio from '${backend}'`);
         }
-        return buffer;
+        return { buffer, cost };
     } finally {
         clearTimeout(timer);
     }
@@ -114,11 +122,12 @@ class FishTtsService implements TtsProvider {
             const referenceId = String(request.voice).trim();
 
             let audio: Buffer | undefined;
+            let providerCost: TtsProviderCost | undefined;
             let usedBackend: string | undefined;
             const failures: string[] = [];
             for (const backend of request.singleAttempt ? FISH_TTS_BACKENDS.slice(0, 1) : FISH_TTS_BACKENDS) {
                 try {
-                    audio = await readBackendAudio(request.text, referenceId, backend, request.channelID, request);
+                    ({ buffer: audio, cost: providerCost } = await readBackendAudio(request.text, referenceId, backend, request.channelID, request));
                     usedBackend = backend;
                     break;
                 } catch (backendError) {
@@ -141,7 +150,8 @@ class FishTtsService implements TtsProvider {
                 message: `Speech synthesized with Fish Audio (${usedBackend})`,
                 outputPath,
                 publicPath: request.privateOutput ? undefined : buildPublicPath(request.channelID, request.speechID),
-                mimeType: 'audio/mpeg'
+                mimeType: 'audio/mpeg',
+                providerCost
             };
         } catch (error) {
             return {

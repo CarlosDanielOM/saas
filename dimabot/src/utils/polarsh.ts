@@ -55,11 +55,18 @@ interface IngestPolarSHEventOptions {
   channelID?: string;
   /** Stable caller-provided ID used by Polar to deduplicate retries. */
   externalId?: string;
+  /**
+   * LLM and TTS (`llm` or `credits` set): what the provider charged us in USD, as OpenRouter reports it;
+   * the event stores it ×100 as cents in `_cost` and `cost`. Otherwise a price in cents (credits = cost × 1000).
+   */
   cost: number;
   reason: string;
   llm?: LLMMetadata;
-  /** For TTS/audio services - Polar.sh _cost field (1 = 1 cent) */
-  _cost?: number;
+  /**
+   * Fixed-price usage (TTS): the credits charged, which do not follow the provider cost. Without it,
+   * credits are the cost: cents × 1000.
+   */
+  credits?: number;
   /** For TTS/audio services - number of characters processed */
   characters?: number;
   mode?: "immediate" | "batch" | "cache";
@@ -169,8 +176,8 @@ export function providerReportedCostUsd(usage: unknown): number | null {
  * The provider cost stored on the usage receipt, in USD. Callers that hold the provider's usage pass it
  * as `explicit` (see `providerReportedCostUsd`); null there means unknown. Otherwise this is the only
  * place that reads the units of the Polar `cost` field: LLM events carry cents (a provider cost), voice
- * events carry USD but only the credit price (credits / 100,000), and the generic branch a price in
- * cents. A zero LLM cost there is how a missing provider figure looks, so it is stored as unknown.
+ * events carry cents too but pass their USD cost explicitly (`sendTtsUsageEvent`), and the generic branch
+ * a price in cents. A zero LLM cost there is how a missing provider figure looks, so it is stored as unknown.
  */
 export function receiptCostUsd(metadata: Pick<AccountingMetadata, "cost" | "_llm">, explicit?: number | null): number | null {
   if (explicit !== undefined) {
@@ -275,6 +282,88 @@ async function queueEvent(cache: DragonflyClient, cacheKey: string, eventData: E
   await cache.rPush(cacheKey, JSON.stringify(eventData));
 }
 
+/**
+ * Sends everything in a channel's durable queue in one ingest. The caller holds the channel's ingest lock.
+ * HTTP failures throw; an incomplete ingest leaves the queue intact so a later flush re-sends it.
+ */
+async function flushQueuedEvents(
+  cacheClient: DragonflyClient,
+  cacheKey: string,
+  channelID: string | undefined,
+): Promise<IngestPolarSHEventResponse> {
+  const pendingRaw = await cacheClient.lRange(cacheKey, 0, -1);
+  if (pendingRaw.length === 0) {
+    return { error: false };
+  }
+
+  const events: EventData[] = [];
+  for (const raw of pendingRaw) {
+    try {
+      events.push(JSON.parse(raw) as EventData);
+    } catch {
+      // Skip malformed queue entries; they are removed by the trim below.
+    }
+  }
+
+  if (events.length === 0) {
+    await cacheClient.del(cacheKey);
+    return { error: false };
+  }
+
+  const polarshClientInstance = await getPolarShClient(
+    "ingestPolarSHEvent batch/cache mode",
+  );
+
+  const ingestResult = (await polarshClientInstance.events.ingest({
+    events,
+  })) as any;
+
+  if (!isIngestComplete(ingestResult, events.length)) {
+    // Queue is left intact so a later event re-sends everything.
+    await error(
+      {
+        function: "ingestPolarSHEvent",
+        error: "PolarSH ingest incomplete",
+        expected: events.length,
+        ingestResult,
+      },
+      { channelId: channelID, destination: "both" },
+    );
+    return {
+      error: true,
+      message: "PolarSH ingest incomplete",
+      details: ingestResult,
+    };
+  }
+
+  // Remove exactly the events we sent; events queued during the ingest survive.
+  await cacheClient.lTrim(cacheKey, pendingRaw.length, -1);
+  return { error: false };
+}
+
+/**
+ * Sends a channel's durably queued events now. Normally the channel's next usage event flushes them; a
+ * caller that must not wait for one (the `tts-usage` worker after a Polar outage) calls this. `error: false`
+ * means every event that was queued when it started is in Polar.
+ */
+export async function flushPolarSHEventQueue(channelID: string): Promise<IngestPolarSHEventResponse> {
+  try {
+    const cacheClient = await getDragonflyClient("PolarSH");
+    const lockKey = `${INGEST_LOCK_PREFIX}${channelID}`;
+    const lockValue = await acquireIngestLock(cacheClient, lockKey);
+    if (!lockValue) return { error: true, message: "Polar flush already in progress" };
+    try {
+      const cacheKey = `twitch:${channelID}:ai:polarshevent`;
+      await migrateLegacyQueueIfNeeded(cacheClient, cacheKey);
+      return await flushQueuedEvents(cacheClient, cacheKey, channelID);
+    } finally {
+      await releaseIngestLock(cacheClient, lockKey, lockValue);
+    }
+  } catch (err) {
+    return { error: true, message: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function ingestPolarSHEvent(
   options: IngestPolarSHEventOptions,
 ): Promise<IngestPolarSHEventResponse> {
@@ -285,7 +374,7 @@ export async function ingestPolarSHEvent(
     cost,
     reason,
     llm,
-    _cost,
+    credits: fixedCredits,
     characters,
     mode = "batch",
     chargeCredits = true,
@@ -374,15 +463,17 @@ export async function ingestPolarSHEvent(
         currency: "usd",
         reason: reason,
       };
-    } else if (_cost !== undefined) {
-      // For TTS/audio services that don't use LLM
+    } else if (fixedCredits !== undefined) {
+      // TTS: `_cost` and `cost` are the real provider charge in cents (what Polar's cost dashboards
+      // read); the credits are our fixed price per character.
+      const cents = Math.round(cost * 100 * 1e8) / 1e8;
       accountingMetadata = {
         _cost: {
-          amount: _cost,
+          amount: cents,
           currency: "usd",
         },
-        cost: cost,
-        credits: Math.ceil(_cost * 1000),
+        cost: cents,
+        credits: Math.max(0, Math.ceil(fixedCredits)),
         currency: "usd",
         reason: reason,
         characters: characters,
@@ -449,55 +540,8 @@ export async function ingestPolarSHEvent(
         return { error: false };
       }
 
-      const pendingRaw = await cacheClient.lRange(cacheKey, 0, -1);
-      if (pendingRaw.length === 0) {
-        return { error: false };
-      }
-
-      const events: EventData[] = [];
-      for (const raw of pendingRaw) {
-        try {
-          events.push(JSON.parse(raw) as EventData);
-        } catch {
-          // Skip malformed queue entries; they are removed by the trim below.
-        }
-      }
-
-      if (events.length === 0) {
-        await cacheClient.del(cacheKey);
-        return { error: false };
-      }
-
-      const polarshClientInstance = await getPolarShClient(
-        "ingestPolarSHEvent batch/cache mode",
-      );
-
-      const ingestResult = (await polarshClientInstance.events.ingest({
-        events,
-      })) as any;
-
-      if (!isIngestComplete(ingestResult, events.length)) {
-        // Queue is left intact so a later event re-sends everything.
-        await error(
-          {
-            function: "ingestPolarSHEvent",
-            error: "PolarSH ingest incomplete",
-            expected: events.length,
-            ingestResult,
-          },
-          { channelId: channelID, destination: "both" },
-        );
-        return {
-          error: true,
-          message: "PolarSH ingest incomplete",
-          details: ingestResult,
-          queued,
-        };
-      }
-
-      // Remove exactly the events we sent; events queued during the ingest survive.
-      await cacheClient.lTrim(cacheKey, pendingRaw.length, -1);
-      return { error: false };
+      const flushed = await flushQueuedEvents(cacheClient, cacheKey, channelID);
+      return flushed.error ? { ...flushed, queued } : flushed;
     } finally {
       await releaseIngestLock(cacheClient, lockKey, lockValue);
     }

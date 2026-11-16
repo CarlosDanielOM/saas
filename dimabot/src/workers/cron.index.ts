@@ -54,6 +54,7 @@ export const WORKERS: WorkerDefinition[] = [
     { name: 'free-credit-reset', sourceEntry: 'src/workers/free_credit_reset.worker.ts', distEntry: 'dist/workers/free_credit_reset.worker.js', enabledEnv: 'FREE_CREDIT_RESET_ENABLED' },
     { name: 'ai-usage-receipts', sourceEntry: 'src/workers/ai_usage_receipts.worker.ts', distEntry: 'dist/workers/ai_usage_receipts.worker.js', enabledEnv: 'AI_USAGE_RECEIPTS_ENABLED' },
     { name: 'ai-usage-backfill', sourceEntry: 'src/workers/ai_usage_backfill.worker.ts', distEntry: 'dist/workers/ai_usage_backfill.worker.js', enabledEnv: 'AI_USAGE_BACKFILL_ENABLED' },
+    { name: 'tts-usage', sourceEntry: 'src/workers/tts_usage.worker.ts', distEntry: 'dist/workers/tts_usage.worker.js' },
     { name: 'stream-memory', sourceEntry: 'src/workers/stream_memory.worker.ts', distEntry: 'dist/workers/stream_memory.worker.js' },
     { name: 'temporary-roles', sourceEntry: 'src/workers/temporary_roles.worker.ts', distEntry: 'dist/workers/temporary_roles.worker.js' },
     { name: 'timer', sourceEntry: 'src/workers/timer.worker.ts', distEntry: 'dist/workers/timer.worker.js' },

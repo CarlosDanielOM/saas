@@ -169,7 +169,7 @@ dimabot/src/workers/cron.index.ts  →  dist/workers/cron.index.js
 
 ### How It Works
 
-- `cron.index.ts` is a lightweight Node supervisor with 26 TypeScript worker definitions.
+- `cron.index.ts` is a lightweight Node supervisor with 27 TypeScript worker definitions.
 - It starts all registered workers, monitors them, and **self-heals** by restarting only the failed worker (not the entire process).
 - Workers run in the **background**, outside the main Twitch message loop.
 
@@ -250,6 +250,20 @@ The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/`
    - If a single component stylesheet exceeds ~800–1000 lines, consider extracting shared pieces into a global partial or a dedicated `shared/` stylesheet.
 
 4. **Migration note**: Large existing component stylesheets (triggers, dimafx, follow-defense, etc.) may remain in place. New work should prefer component-scoped files unless the styles are genuinely global.
+
+## Polar Usage Events (Billing) – Read Before Touching Costs or Credits
+
+Every AI and voice charge reaches Polar as one `ai_usage` event. Its metadata units are easy to mix up, so follow them exactly:
+
+- `_cost.amount`: what the **provider really charged us**, in **cents** (`100` = $1, `0.041` = $0.00041). Polar's cost and profit dashboards read it. Never put our price here.
+- `cost`: the same cents number, kept readable in the JSON. The Polar "AI Usage" meter sums it.
+- `credits`: what the **streamer pays** (1 credit = $0.00001). The "AI Credits" meter sums it; plans and credit packs grant it.
+  - LLM calls: OpenRouter's `usage.cost` (USD) × 100 = cents for `_cost`/`cost`; credits = cents × 1000, so credits follow the real cost 1:1.
+  - Voice (TTS): credits are a fixed price per character (`dimabot/src/utils/tts_usage.ts`) that does **not** follow the provider's price or promotions; `_cost`/`cost` still carry the real charge.
+- OpenRouter speech (Fish Drama 3, Kokoro) returns only audio plus an `x-generation-id` header; the charge appears at `GET /api/v1/generation?id=…` some 20–60 s later. Those lines wait in MongoDB (`tts_usage_pending`) with their credits already taken locally, and the `tts-usage` cron worker sends the event once the charge is known. Fish's own API reports no charge (list price per UTF-8 byte); Piper runs on our host (cost 0).
+- Polar events cannot be edited or deleted: a wrong event stays wrong, so get it right before shipping.
+
+Code: `dimabot/src/utils/polarsh.ts` (`ingestPolarSHEvent`), `dimabot/src/utils/tts_usage.ts`, `dimabot/src/utils/tts/tts_provider_cost.ts`.
 
 ## API Contracts – How to Stay Current
 

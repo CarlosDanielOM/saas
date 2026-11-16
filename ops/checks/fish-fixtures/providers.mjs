@@ -7,6 +7,8 @@ import { createRequire } from 'node:module';
 const require = createRequire('/app/package.json');
 const { decode } = require('@msgpack/msgpack');
 const originalFetch = globalThis.fetch;
+let generations = 0;
+const generationId = () => `gen-tts-fixture-${process.pid}-${++generations}`;
 const logPath = '/tmp/saas-fixtures/provider-calls.jsonl';
 const statePath = '/tmp/saas-fixtures/state.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
@@ -65,12 +67,13 @@ globalThis.fetch = async (input, options = {}) => {
         model: payload.model, route: 'openrouter', request: payload }) + '\n');
       if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
       if (state.fail || state.failModel === payload.model) return json({ error: 'Provider unavailable' }, 503);
-      return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });
+      // Like production: the cost is not in the response, only the generation id to look it up later.
+      return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId() } });
     }
     fs.appendFileSync(logPath, JSON.stringify({ kokoro: JSON.parse(options.body) }) + '\n');
     if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
     if (state.fail) return json({ error: 'Provider unavailable' }, 503);
-    return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });
+    return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId() } });
   }
   if (url.hostname === 'piper.test') {
     fs.appendFileSync(logPath, JSON.stringify({ piper: JSON.parse(options.body) }) + '\n');

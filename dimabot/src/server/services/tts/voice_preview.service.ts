@@ -129,6 +129,7 @@ export function registerVoicePreview(io: Server) {
                     provider,
                     characters: provider === 'fish' ? text.length : Array.from(text).length,
                     text,
+                    providerCost: result.providerCost,
                     usage: {
                         entryId: randomUUID(),
                         requestId: usageRequestID,

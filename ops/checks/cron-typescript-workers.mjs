@@ -75,7 +75,7 @@ await group('supervisor runs exactly the seven workers as Node processes and not
         assert(!existsSync(`${app}/dist/${stale}`), `${stale} must not ship`);
     }
     const { WORKERS: registered } = await load('workers/cron.index.js');
-    assert.equal(registered.length, 26);
+    assert.equal(registered.length, 27);
     for (const [name, file] of Object.entries(WORKERS)) {
         assert.equal(registered.find(worker => worker.name === name)?.distEntry, `dist/workers/${file}.worker.js`);
         assert(existsSync(`${app}/dist/workers/${file}.worker.js`));

@@ -711,6 +711,7 @@ class TtsQueueHandler {
             provider: queueItem.provider,
             characters: ttsCharacters(queueItem),
             text: queueItem.text,
+            providerCost: synthesisResult.providerCost,
             usage: {
               entryId: usageEntryID,
               requestId: usageRequestID,

@@ -47,8 +47,10 @@ class KokoroTtsService implements TtsProvider {
             await fs.mkdir(outputDir, { recursive: true });
             const outputPath = request.privateOutput ? request.outputPath : path.join(outputDir, `${request.speechID}.mp3`);
             await fs.writeFile(outputPath, audio);
+            const generationId = response.headers.get('x-generation-id')?.trim();
             return { error: false, message: 'Speech synthesized with Kokoro (DeepInfra)',
-                outputPath, publicPath: request.privateOutput ? undefined : buildPublicPath(request.channelID, request.speechID), mimeType: 'audio/mpeg' };
+                outputPath, publicPath: request.privateOutput ? undefined : buildPublicPath(request.channelID, request.speechID), mimeType: 'audio/mpeg',
+                providerCost: { backend: KOKORO_MODEL, bytes: Buffer.byteLength(request.text, 'utf8'), ...(generationId ? { generationId } : {}) } };
         } catch (error) {
             return { error: true, message: error instanceof Error ? error.message : String(error) };
         } finally {

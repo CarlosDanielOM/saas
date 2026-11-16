@@ -88,6 +88,14 @@ Page version tracking and compatibility removal are documented in [Overlay Studi
 
 See [ADMIN_CONSOLE.md](./ADMIN_CONSOLE.md) for the owner console, activity trail and checks. Record activity through `recordActivity` and its guarded wrappers only; row construction and recording must never throw into the caller. Register new owner-only routes with the wrappers in `src/server/routes/admin_site/shared.ts`. Usage receipt enrichment is receipt-only: keep Polar and PostHog billing events unchanged.
 
+## Polar Usage Events
+
+Units on every `ai_usage` event (see the root guide for the full rule): `_cost.amount` and `cost` = the provider's real charge in **cents**; `credits` = what the streamer pays (1 credit = $0.00001). LLM credits follow the real cost (cents × 1000); voice credits are a fixed price per character and never follow the provider's price.
+
+- `ingestPolarSHEvent` (`src/utils/polarsh.ts`): pass `cost` in USD as the provider reports it plus `llm` (credits derived) or `credits` (fixed price, voice). It stores the cents in `_cost`/`cost`, debits the local balance once per entry, writes the receipt, and queues the event durably.
+- Voice lines go through `trackTtsUsage` → `sendTtsUsageEvent` (`src/utils/tts_usage.ts`). OpenRouter lines (Drama 3, Kokoro) carry an `x-generation-id`; they are parked in `tts_usage_pending` with their credits already taken locally, and the `tts-usage` worker looks up `GET /api/v1/generation?id=` (ready ~20–60 s after the call), then sends the event. After 15 minutes without an answer it uses the list price in `src/utils/tts/tts_provider_cost.ts`; Fish's own API always uses it. Keep those list prices current.
+- Polar events are immutable. Test event shapes in `src/utils/polarsh_accounting.test.ts` and `src/utils/tts_usage.test.ts` before shipping.
+
 ## API Contracts
 
 All contracts are defined in the `.route.ts` files. Read the source for the latest shapes. The common envelope is `{ error, message, status, data }`.
