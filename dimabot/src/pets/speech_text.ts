@@ -2,7 +2,7 @@ import type { ChannelTtsSettingsData, TtsProvider } from '../schemas/channel_tts
 import { filterExpressiveTtsTags, normalizeTtsMessage } from '../utils/tts/normalize_tts_message.util.js';
 
 export function filterPetTalkText(text: string, provider: TtsProvider, filters: ChannelTtsSettingsData['filters'], emoteNames: string[]) {
-    const filtered = filterExpressiveTtsTags(text, { provider, enabledTags: filters.expressiveTags });
+    const filtered = filterExpressiveTtsTags(text, { provider, enabledTags: filters.expressiveTags, freeformTags: filters.freeformTags });
     return normalizeTtsMessage(filtered, { ...filters, emoteNames });
 }
 

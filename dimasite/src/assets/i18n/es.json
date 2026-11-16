@@ -1103,7 +1103,13 @@
         "offList": "Apagadas: {{tags}}",
         "allOn": "Todas activas",
         "turnAllOn": "Activar todas",
-        "turnAllOff": "Desactivar todas"
+        "turnAllOff": "Desactivar todas",
+        "freeform": {
+          "label": "Permitir cualquier etiqueta",
+          "badge": "Experimental",
+          "hint": "Fish también sigue etiquetas que no están en la lista, escritas como quieras, por ejemplo [triste con voz nerviosa].",
+          "warning": "Los espectadores podrían usar etiquetas libres para hacer ruidos no deseados (gemidos, eructos, gritos). Todavía no hay filtro para ellas, y apagar una etiqueta de arriba no evita que pidan el mismo sonido con otras palabras."
+        }
       },
       "footer": {
         "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso tts:manage para cambiarla."

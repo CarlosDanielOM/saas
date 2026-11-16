@@ -304,6 +304,33 @@
               }
             </div>
             <p class="lf-note">{{ t('modules.tts.expressive.toggleHint') }}</p>
+
+            <div class="lf-freeform">
+              <div class="lf-toggle-row lf-freeform__row">
+                <div class="lf-toggle-row__copy">
+                  <span class="lf-freeform__label" id="tts-freeform-label">
+                    {{ t('modules.tts.expressive.freeform.label') }}
+                    <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('modules.tts.expressive.freeform.badge') }}</span>
+                  </span>
+                  <p class="lf-toggle-row__hint" id="tts-freeform-hint">{{ t('modules.tts.expressive.freeform.hint') }}</p>
+                </div>
+                <label class="lf-switch">
+                  <input
+                    type="checkbox"
+                    aria-labelledby="tts-freeform-label"
+                    aria-describedby="tts-freeform-hint tts-freeform-warning"
+                    [checked]="tts.filters.freeformTags"
+                    [disabled]="ttsReadOnly() || ttsSaving()"
+                    (change)="updateFreeformTags($any($event.target).checked)"
+                  />
+                  <span class="lf-switch__track"></span>
+                </label>
+              </div>
+              <p class="lf-note lf-note--warn" id="tts-freeform-warning">
+                <app-lf-icon name="alert" [size]="15"></app-lf-icon>
+                <span>{{ t('modules.tts.expressive.freeform.warning') }}</span>
+              </p>
+            </div>
           </section>
         </div>
 

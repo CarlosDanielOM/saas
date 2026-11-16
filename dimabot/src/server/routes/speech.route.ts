@@ -452,7 +452,8 @@ router.post('/:channelID', async (req: Request, res: Response) => {
 
         const filteredText = filterExpressiveTtsTags(String(body.text || ''), {
             provider,
-            enabledTags: settings.filters.expressiveTags
+            enabledTags: settings.filters.expressiveTags,
+            freeformTags: settings.filters.freeformTags
         });
 
         const normalizedText = normalizeTtsMessage(filteredText, {

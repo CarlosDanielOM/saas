@@ -230,7 +230,7 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
             // strip cues without settings; a late Fish lookup preserves ask text.
             const settings = moodCueSettings?.();
             if (tts.provider !== 'fish' || settings) tts.text = safelyFilterMoodCues(tts.text,
-                () => filterExpressiveTtsTags(tts.text, { provider: tts.provider, enabledTags: settings?.filters.expressiveTags }), request.channelId);
+                () => filterExpressiveTtsTags(tts.text, { provider: tts.provider, enabledTags: settings?.filters.expressiveTags, freeformTags: settings?.filters.freeformTags }), request.channelId);
             else warnPetMood('cue_lookup', request.channelId);
         }
         signal.throwIfAborted();

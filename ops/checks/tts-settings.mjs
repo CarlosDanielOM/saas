@@ -24,7 +24,7 @@ globalThis.fetch = async (input, options) => {
         const global = url.pathname.endsWith('/global');
         return new Response(JSON.stringify(global ? { data: [{ name: 'Kappa' }] }
             : channelUnavailable ? { error: 'Unavailable' }
-            : { data: [...Array.from({ length: 50 }, (_, i) => ({ name: `fixture${i}` })), { name: 'ethand14Gojoseggs' }] }), {
+            : { data: [...Array.from({ length: 50 }, (_, i) => ({ id: `fixture${i}`, name: `fixture${i}` })), { id: 'emotesv2_gojo', name: 'ethand14Gojoseggs' }] }), {
             status: !global && channelUnavailable ? 503 : 200, headers: { 'Content-Type': 'application/json' }
         });
     }
@@ -60,7 +60,17 @@ for (const name of ['tts', 'tts.speak', 'tts.ai', 'tts.clone', 'tts.fish']) {
     await run(name, '[angry] Hello Kappa ethand14Gojoseggs [happy]');
     assert.equal(speech().at(-1).speech.text, name === 'tts.speak' ? 'Hello' : 'Hello [happy]', name);
     await run(name, '[happy] Hello <whisper>secret<whisper> <angry>word</angry>.');
-    assert.equal(speech().at(-1).speech.text, name === 'tts.speak' ? 'Hello secret word .' : '[happy] Hello <whisper> secret <whisper> word .', `${name} angle and square cues`);
+    assert.equal(speech().at(-1).speech.text, name === 'tts.speak' ? 'Hello secret word.' : '[happy] Hello <whisper>secret<whisper> word.', `${name} angle and square cues`);
+    // "Allow any tag": free cues reach Fish as written; disabled listed tags (any spacing) and Piper still strip them.
+    const freeInput = '[angry] [sad in a nervous voice] Hello [clear  throat] [Angry]';
+    await run(name, freeInput);
+    assert.equal(speech().at(-1).speech.text, name === 'tts.speak' ? 'Hello' : 'Hello [clear throat]', `${name} free tags off by default`);
+    settings.filters.freeformTags = true;
+    await upsertChannelTtsSettings(channelID, settings);
+    await run(name, freeInput);
+    assert.equal(speech().at(-1).speech.text, name === 'tts.speak' ? 'Hello' : '[sad in a nervous voice] Hello [clear throat]', `${name} free tags on`);
+    settings.filters.freeformTags = false;
+    await upsertChannelTtsSettings(channelID, settings);
     before = speech().length;
     await run(name, 'Kappa ethand14Gojoseggs');
     assert.equal(speech().length, before, 'emote-only redemption never queues speech');
@@ -78,8 +88,9 @@ for (const name of ['tts', 'tts.speak', 'tts.ai', 'tts.clone', 'tts.fish']) {
 assert.equal(catalogCalls.length, 2, 'one global and one complete channel lookup, cached across redemptions');
 assert.ok((await getTtsEmoteNames(channelID)).includes('ethand14Gojoseggs'), 'catalog is not capped at 40 names');
 channelUnavailable = true;
-assert.deepEqual(await getTtsEmoteNames('unavailable'), ['Kappa'], 'global catalog survives channel provider failure');
-await getTtsEmoteNames('unavailable');
+// The shared channel catalog (twitch_emotes.ts) needs numeric channel IDs and emote IDs.
+assert.deepEqual(await getTtsEmoteNames('99118809'), ['Kappa'], 'global catalog survives channel provider failure');
+await getTtsEmoteNames('99118809');
 assert.equal(catalogCalls.length, 3, 'failed provider is cached briefly');
 
 // Confirm existing chat fragment filtering still works without a catalog request.

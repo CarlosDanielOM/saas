@@ -923,6 +923,44 @@
   border-top: 1px solid var(--line);
 }
 
+.lf-freeform {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.lf-freeform__row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.lf-freeform__label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.lf-note--warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: 0.85rem;
+  color: var(--fg);
+  background: var(--warn-soft);
+}
+
+.lf-note--warn app-lf-icon {
+  flex: none;
+  margin-top: 0.1rem;
+  color: var(--warn);
+}
+
 .lf-outputs__mode-label {
   color: var(--fg);
   font-size: 0.9rem;

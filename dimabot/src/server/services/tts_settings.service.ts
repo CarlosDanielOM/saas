@@ -37,7 +37,13 @@ export async function saveChannelTtsSettings(channelID: string, channelName: str
     }
     const previous = await getChannelTtsSettings(channelID, channelName);
     // A page loaded before a setting existed sends a body without it: keep the stored value.
-    const complete = body && typeof body === 'object' && body.playback === undefined ? { ...body, playback: previous.playback } : body;
+    let complete = body;
+    if (body && typeof body === 'object') {
+        if (body.playback === undefined) complete = { ...complete, playback: previous.playback };
+        if (body.filters && typeof body.filters === 'object' && body.filters.freeformTags === undefined) {
+            complete = { ...complete, filters: { ...body.filters, freeformTags: previous.filters.freeformTags } };
+        }
+    }
     const nextSettings = normalizeChannelTtsSettings(complete, channelID, channelName);
     const voiceProblem = await checkFishVoice(nextSettings.voices.cloneDefault!, previous.voices.cloneDefault);
     if (voiceProblem) return voiceProblem;

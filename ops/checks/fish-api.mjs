@@ -166,6 +166,46 @@ assert.equal(taggedSpeech.status, 200);
 await finishSpeech('b'.repeat(32));
 assert.equal(calls().filter(c => c.synthesis).at(-1).synthesis.text,
   '[happy] Hello <whisper>secret<whisper> and <emphasis>this</emphasis>.');
+// "Allow any tag" (filters.freeformTags): off by default, so unlisted cues are removed.
+const lastSpokenText = () => calls().filter(c => c.synthesis).at(-1).synthesis.text;
+const freeText = '[happy] [sad in a nervous voice] Hola [laugh   softly] chat <made up>x</made up>';
+assert.equal((await request(settingsUrl)).body.data.settings.filters.freeformTags, false, 'free tags are off by default');
+assert.equal((await request('/speech/' + channel, 'POST', { mode: 'clone', text: freeText, language: 'en' })).status, 200);
+await finishSpeech('b'.repeat(32));
+assert.equal(lastSpokenText(), '[happy] Hola chat x');
+// On: unlisted square cues reach Drama 3 as written; listed tags still follow their own switch.
+const freeSettings = (await request(settingsUrl)).body.data.settings;
+freeSettings.filters.freeformTags = true; freeSettings.filters.expressiveTags.happy = false;
+let saved = await request(settingsUrl, 'PUT', freeSettings);
+assert.equal(saved.status, 200); assert.equal(saved.body.data.settings.filters.freeformTags, true);
+// A page loaded before the setting existed sends no freeformTags: the stored value stays.
+const { freeformTags: _omitted, ...oldPageFilters } = freeSettings.filters;
+saved = await request(settingsUrl, 'PUT', { ...freeSettings, filters: oldPageFilters });
+assert.equal(saved.status, 200); assert.equal(saved.body.data.settings.filters.freeformTags, true, 'old page body keeps free tags');
+assert.equal((await request('/speech/' + channel, 'POST', { mode: 'clone', text: freeText, language: 'en' })).status, 200);
+await finishSpeech('b'.repeat(32));
+assert.equal(lastSpokenText(), '[sad in a nervous voice] Hola [laugh softly] chat x');
+// Piper never receives free cues, even with the option on.
+const piperBefore = calls().filter(c => c.piper).length;
+assert.equal((await request('/speech/' + channel, 'POST', { mode: 'speak', provider: 'piper', text: freeText, language: 'en' })).status, 200);
+const finishAny = async () => {
+  const event = await overlay.wait(`42/speech/${channel},["speech",`);
+  const [, payload] = JSON.parse(event.slice(`42/speech/${channel},`.length));
+  overlay.ws.send(`42/speech/${channel},${JSON.stringify(['speech-ended', { speechID: payload.speechID }])}`);
+  const deadline = Date.now() + 5000;
+  while (await redis.exists(`twitch:${channel}:tts:processing`)) {
+    assert.ok(Date.now() < deadline, 'Speech completion timed out');
+    await new Promise(r => setTimeout(r, 10));
+  }
+};
+await finishAny();
+const piperCalls = calls().filter(c => c.piper).slice(piperBefore);
+assert.equal(piperCalls.length, 1, 'one Piper synthesis');
+assert.ok(!JSON.stringify(piperCalls[0].piper).includes('nervous') && JSON.stringify(piperCalls[0].piper).includes('Hola chat x'), 'Piper reads the words without free cues');
+// Turn it back off for the rest of the check.
+freeSettings.filters.freeformTags = false; freeSettings.filters.expressiveTags.happy = true;
+saved = await request(settingsUrl, 'PUT', freeSettings);
+assert.equal(saved.status, 200); assert.equal(saved.body.data.settings.filters.freeformTags, false);
 fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ failModel: 'fish-audio/drama-3' }));
 const fallbackStart = synthCount();
 assert.equal((await request('/speech/' + channel, 'POST', {

@@ -50,6 +50,8 @@ export interface TtsSettings {
     normalizeWhitespace: boolean;
     maxLength: number;
     expressiveTags: Record<ExpressiveTtsTag, boolean>;
+    /** "Allow any tag": Fish also reads cues outside the list, like [sad in a nervous voice]. Off by default. */
+    freeformTags: boolean;
   };
   queue: {
     maxItems: number;

@@ -150,6 +150,7 @@ test('settings normalization defaults new tags on and preserves explicit choices
       stripLinks: true,
       normalizeWhitespace: true,
       maxLength: 280,
+      freeformTags: false,
       expressiveTags: {
         ...DEFAULT_TTS_SETTINGS.filters.expressiveTags,
         angry: false,
@@ -159,4 +160,36 @@ test('settings normalization defaults new tags on and preserves explicit choices
 
   assert.equal(settings.filters.expressiveTags.angry, false);
   assert.equal(settings.filters.expressiveTags.happy, true);
+});
+
+test('"Allow any tag" keeps free Fish cues as written while listed tags follow their own switch', () => {
+  const enabledTags = normalizeExpressiveTtsTags({ laugh: false });
+  const input = '[sad in a nervous voice] Hola [laugh] [triste  y\ncansado] <made up>ok</made up> [ ] [whisper] bye';
+  assert.equal(
+    filterExpressiveTtsTags(input, { provider: 'fish', enabledTags, freeformTags: true }),
+    '[sad in a nervous voice] Hola [triste y cansado] ok [whisper] bye',
+  );
+  // Off (the default) and non-Fish voices keep removing every unlisted cue.
+  assert.equal(filterExpressiveTtsTags(input, { provider: 'fish', enabledTags }), 'Hola ok [whisper] bye');
+  for (const provider of ['piper', 'kokoro'] as const) {
+    assert.equal(filterExpressiveTtsTags(input, { provider, enabledTags, freeformTags: true }), 'Hola ok bye');
+  }
+  // Spacing or case variants of a listed tag are that tag, so its switch still applies.
+  const off = normalizeExpressiveTtsTags({ 'clear throat': false, 'audience laughing': false });
+  assert.equal(
+    filterExpressiveTtsTags('[clear  throat] [Clear\tThroat] [audience\tlaughing] [crowd  laughing] [ Laugh ] hi', { provider: 'fish', enabledTags: off, freeformTags: true }),
+    '[laugh] hi',
+  );
+  // The fallback Fish model doubles listed cues only.
+  assert.equal(reinforceFishTtsTags('[sad in a nervous voice] [happy] Hi'), '[sad in a nervous voice] [happy] [happy] Hi');
+});
+
+test('"Allow any tag" is off by default and persists through the schema', () => {
+  assert.equal(DEFAULT_TTS_SETTINGS.filters.freeformTags, false);
+  assert.equal(normalizeChannelTtsSettings({}, 'test').filters.freeformTags, false);
+  assert.equal(normalizeChannelTtsSettings({ filters: { freeformTags: 'yes' } } as never, 'test').filters.freeformTags, false);
+  const document = new ChannelTtsSettingsSchema({ channelID: 'test', filters: { freeformTags: true } });
+  assert.equal(document.validateSync(), undefined);
+  assert.equal(normalizeChannelTtsSettings(document.toObject(), 'test').filters.freeformTags, true);
+  assert.equal(new ChannelTtsSettingsSchema({ channelID: 'test' }).toObject().filters.freeformTags, false);
 });

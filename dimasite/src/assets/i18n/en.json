@@ -1103,7 +1103,13 @@
         "offList": "Off: {{tags}}",
         "allOn": "All on",
         "turnAllOn": "Turn all on",
-        "turnAllOff": "Turn all off"
+        "turnAllOff": "Turn all off",
+        "freeform": {
+          "label": "Allow any tag",
+          "badge": "Experimental",
+          "hint": "Fish also follows tags that aren't in the list, written any way, like [sad in a nervous voice].",
+          "warning": "Viewers may use free tags to make unwanted noises (moaning, burping, screaming). Nothing filters them yet, and turning off a tag above won't stop the same sound asked for in other words."
+        }
       },
       "footer": {
         "readOnly": "You can view the live TTS setup, but need tts:manage to change it."

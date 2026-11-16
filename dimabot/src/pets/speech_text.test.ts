@@ -5,9 +5,10 @@ import { filterPetTalkText, refilterDesktopPetText } from './speech_text.js';
 import { resolveTtsForCreditStatus } from '../utils/tts/tts_credit_fallback.util.js';
 
 const filters = { skipEmotes: true, stripLinks: true, normalizeWhitespace: true, maxLength: 30,
-    expressiveTags: normalizeExpressiveTtsTags({ happy: true, sad: false }) };
+    expressiveTags: normalizeExpressiveTtsTags({ happy: true, sad: false }), freeformTags: false };
 test('pet talk applies emote, link, whitespace, length and tag filters in order', () => {
     assert.equal(filterPetTalkText(' Kappa  [happy] Hi example.com [sad]  there ', 'fish', filters, ['Kappa']).text, '[happy] Hi [link] there');
+    assert.equal(filterPetTalkText('[happy] Hi [shy whisper] [sad] there', 'fish', { ...filters, freeformTags: true }, []).text, '[happy] Hi [shy whisper] there');
     assert.equal(filterPetTalkText('Kappa example.com [happy]', 'piper', filters, ['Kappa']).text, '[link]');
     assert.equal(filterPetTalkText('abcdefghijklmnopqrstuvwxyz 123456789', 'piper', filters, []).text, 'abcdefghijklmnopqrstuvwxyz 123');
 });

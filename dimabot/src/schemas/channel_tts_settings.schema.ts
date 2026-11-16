@@ -25,6 +25,8 @@ export interface ChannelTtsSettingsData {
         normalizeWhitespace: boolean;
         maxLength: number;
         expressiveTags: ExpressiveTtsTagSettings;
+        /** "Allow any tag": Fish also reads square-bracket cues outside the tag list (off by default). */
+        freeformTags: boolean;
     };
     queue: {
         maxItems: number;
@@ -58,7 +60,8 @@ export const DEFAULT_TTS_SETTINGS: Omit<ChannelTtsSettingsData, 'channelID' | 'c
         stripLinks: true,
         normalizeWhitespace: true,
         maxLength: 280,
-        expressiveTags: normalizeExpressiveTtsTags()
+        expressiveTags: normalizeExpressiveTtsTags(),
+        freeformTags: false
     },
     queue: {
         maxItems: 5
@@ -139,7 +142,8 @@ export function normalizeChannelTtsSettings(
             stripLinks: input?.filters?.stripLinks ?? defaults.filters.stripLinks,
             normalizeWhitespace: input?.filters?.normalizeWhitespace ?? defaults.filters.normalizeWhitespace,
             maxLength: sanitizeMaxLength(input?.filters?.maxLength, defaults.filters.maxLength),
-            expressiveTags: normalizeExpressiveTtsTags(input?.filters?.expressiveTags)
+            expressiveTags: normalizeExpressiveTtsTags(input?.filters?.expressiveTags),
+            freeformTags: input?.filters?.freeformTags === true
         },
         queue: {
             maxItems: sanitizeMaxItems(input?.queue?.maxItems, defaults.queue.maxItems)
@@ -167,7 +171,8 @@ const channelTtsSettingsSchema = new Schema<IChannelTtsSettings>({
         stripLinks: { type: Boolean, default: DEFAULT_TTS_SETTINGS.filters.stripLinks },
         normalizeWhitespace: { type: Boolean, default: DEFAULT_TTS_SETTINGS.filters.normalizeWhitespace },
         maxLength: { type: Number, default: DEFAULT_TTS_SETTINGS.filters.maxLength },
-        expressiveTags: Object.fromEntries(EXPRESSIVE_TTS_TAGS.map(tag => [tag, { type: Boolean, default: true }]))
+        expressiveTags: Object.fromEntries(EXPRESSIVE_TTS_TAGS.map(tag => [tag, { type: Boolean, default: true }])),
+        freeformTags: { type: Boolean, default: false }
     },
     queue: {
         maxItems: { type: Number, default: DEFAULT_TTS_SETTINGS.queue.maxItems }

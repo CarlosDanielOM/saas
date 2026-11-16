@@ -63,18 +63,26 @@ export function reinforceFishTtsTags(text: string): string {
   });
 }
 
+/**
+ * Keeps the Fish cues a channel allows and removes the rest (every cue for Piper/Kokoro).
+ * `freeformTags` (TTS setting "Allow any tag") also keeps square-bracket cues outside the list,
+ * e.g. `[sad in a nervous voice]`, as written; listed tags still follow their own switch.
+ */
 export function filterExpressiveTtsTags(
   rawText: string,
-  options: { provider: 'piper' | 'fish' | 'kokoro'; enabledTags?: ExpressiveTtsTagSettings } = { provider: 'piper' },
+  options: { provider: 'piper' | 'fish' | 'kokoro'; enabledTags?: ExpressiveTtsTagSettings; freeformTags?: boolean } = { provider: 'piper' },
 ): string {
   return String(rawText || '')
     .replace(/<\s*(\/?)\s*([a-z][a-z -]*?)\s*>|\[([^\[\]]*)\]/gi, (_match, closing: string | undefined, angleTag: string | undefined, squareTag: string | undefined) => {
       const rawTag = angleTag ?? squareTag!;
-      const name = (angleTag !== undefined ? rawTag.replace(/\s*-\s*/g, '-') : rawTag).trim().toLowerCase();
+      // Collapse inner whitespace first so `[clear  throat]` is the listed tag, not a free cue that skips its switch.
+      const name = (angleTag !== undefined ? rawTag.replace(/\s*-\s*/g, '-') : rawTag).replace(/\s+/g, ' ').trim().toLowerCase();
       const tag = normalizeExpressiveTtsTag(name) as ExpressiveTtsTag;
-      if (options.provider === 'fish' && EXPRESSIVE_TTS_TAGS.includes(tag)
-        && options.enabledTags?.[tag] === true) {
-        return angleTag !== undefined ? `<${closing}${tag}>` : `[${tag}]`;
+      if (options.provider === 'fish' && EXPRESSIVE_TTS_TAGS.includes(tag)) {
+        if (options.enabledTags?.[tag] === true) return angleTag !== undefined ? `<${closing}${tag}>` : `[${tag}]`;
+      } else if (options.provider === 'fish' && options.freeformTags === true && squareTag !== undefined) {
+        const cue = squareTag.replace(/\s+/g, ' ').trim();
+        if (cue) return `[${cue}]`;
       }
       return angleTag !== undefined ? '' : ' ';
     })

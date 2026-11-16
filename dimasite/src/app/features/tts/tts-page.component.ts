@@ -576,6 +576,10 @@ export class TtsPageComponent {
     }));
   }
 
+  updateFreeformTags(enabled: boolean): void {
+    this.patchTtsSettings(settings => ({ ...settings, filters: { ...settings.filters, freeformTags: enabled } }));
+  }
+
   private normalizeExpressiveTags(input?: Partial<Record<ExpressiveTtsTag, boolean>>): Record<ExpressiveTtsTag, boolean> {
     return Object.fromEntries(this.expressiveTags.map(tag => [tag, input?.[tag] !== false])) as Record<ExpressiveTtsTag, boolean>;
   }
@@ -741,7 +745,8 @@ export class TtsPageComponent {
         stripLinks: settings.filters.stripLinks ?? defaults.filters.stripLinks,
         normalizeWhitespace: settings.filters.normalizeWhitespace ?? defaults.filters.normalizeWhitespace,
         maxLength: Number.isFinite(settings.filters.maxLength) ? Math.max(30, Math.min(500, settings.filters.maxLength)) : 280,
-        expressiveTags: this.normalizeExpressiveTags(settings.filters.expressiveTags)
+        expressiveTags: this.normalizeExpressiveTags(settings.filters.expressiveTags),
+        freeformTags: settings.filters.freeformTags === true
       },
       queue: {
         maxItems: Number.isFinite(settings.queue.maxItems) ? Math.max(1, Math.min(20, settings.queue.maxItems)) : 5
@@ -770,7 +775,8 @@ export class TtsPageComponent {
         stripLinks: true,
         normalizeWhitespace: true,
         maxLength: 280,
-        expressiveTags: this.normalizeExpressiveTags()
+        expressiveTags: this.normalizeExpressiveTags(),
+        freeformTags: false
       },
       queue: {
         maxItems: 5

@@ -116,7 +116,8 @@ async function queueDefaultTtsRequest(input: QueueDefaultTtsInput, onProvider: (
     // Remove disabled cues before truncation so a partial tag cannot be spoken.
     const filteredMessage = filterExpressiveTtsTags(rawMessage, {
         provider: resolvedMode.provider,
-        enabledTags: settings.filters.expressiveTags
+        enabledTags: settings.filters.expressiveTags,
+        freeformTags: settings.filters.freeformTags
     });
     const normalized = normalizeTtsMessage(filteredMessage, {
         skipEmotes: settings.filters.skipEmotes,

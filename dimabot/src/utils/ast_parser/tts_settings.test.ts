@@ -28,6 +28,20 @@ async function run(name: string, message: string, fragments = [{ type: 'emote', 
     return String((await evaluate(ast.ast, context)).value);
 }
 
+test('"Allow any tag" reaches chat/AST speech on Fish only', async () => {
+    for (const name of ['tts', 'tts.speak', 'tts.clone', 'tts.fish']) {
+        settings = createDefaultChannelTtsSettings('fixture');
+        settings.provider = 'fish';
+        settings.filters.expressiveTags.happy = false;
+        requests.length = 0;
+        await run(name, '[happy] [sad in a nervous voice] Hello', []);
+        assert.equal(requests.at(-1)!.text, 'Hello', `${name} off by default`);
+        settings.filters.freeformTags = true;
+        await run(name, '[happy] [sad in a nervous voice] Hello', []);
+        assert.equal(requests.at(-1)!.text, name === 'tts.speak' ? 'Hello' : '[sad in a nervous voice] Hello', `${name} on`);
+    }
+});
+
 for (const name of ['tts', 'tts.speak', 'tts.ai', 'tts.clone', 'tts.fish']) {
     test(`${name} respects emote, link, whitespace and emotion settings`, async () => {
         settings = createDefaultChannelTtsSettings('fixture');
