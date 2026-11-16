@@ -14,10 +14,12 @@ schema.index({ lastSeenAt: 1 }, { expireAfterSeconds: 180 * 86_400 });
 export const ClientVersion = model<ClientVersionRow>('ClientVersion', schema);
 
 export interface ClientVersionInfo { protocol: number; build: string }
-const BUILD = /^[A-Za-z0-9._-]{1,64}$/;
+/** The builds our pages send (site/shared/site-build.ts): the main bundle hash, or `dev`. Anything else is `unknown`. */
+const BUILD = /^(main-[A-Za-z0-9]{6,32}|dev)$/;
+export const MAX_PROTOCOL = 1000;
 /** What a page reported. Pages from before protocols send nothing: protocol 0, build `before-protocol`. */
 export function clientVersion(raw: { protocol?: unknown; build?: unknown } | null | undefined): ClientVersionInfo {
-  const protocol = typeof raw?.protocol === 'number' && Number.isSafeInteger(raw.protocol) && raw.protocol >= 1 && raw.protocol <= 100_000 ? raw.protocol : 0;
+  const protocol = typeof raw?.protocol === 'number' && Number.isSafeInteger(raw.protocol) && raw.protocol >= 1 && raw.protocol <= MAX_PROTOCOL ? raw.protocol : 0;
   const build = typeof raw?.build === 'string' && BUILD.test(raw.build) ? raw.build : protocol ? 'unknown' : 'before-protocol';
   return { protocol, build };
 }
@@ -25,15 +27,29 @@ export const currentProtocol = (client: ClientKind): number => client === 'overl
 
 /** A connected page refreshes its row at most this often (per API server), so a page open for weeks stays "seen". */
 export const SEEN_REFRESH_MS = 10 * 60_000;
+/**
+ * Builds are reported by the page, so anyone with an overlay link could invent new ones. Each API server records at most
+ * this many new versions per hour; past that, versions share one `overflow` row per client and protocol. The protocol is
+ * still recorded, so the limit can never make compatibility code look removable.
+ */
+export const MAX_NEW_VERSIONS_PER_HOUR = 30;
+const MAX_RECENT = 2000;
 const recent = new Map<string, number>();
+let newVersions = { since: 0, ids: new Set<string>() };
 /** Records that a page of this version is in use. Never throws and never waits on the database. */
 export function sawClient(client: ClientKind, version: ClientVersionInfo, now = Date.now()): void {
-  const id = `${client}|${version.protocol}|${version.build}`;
+  let id = `${client}|${version.protocol}|${version.build}`, build = version.build;
+  if (now - newVersions.since >= 3_600_000) newVersions = { since: now, ids: new Set() };
+  if (!recent.has(id) && !newVersions.ids.has(id)) {
+    if (newVersions.ids.size >= MAX_NEW_VERSIONS_PER_HOUR) { build = 'overflow'; id = `${client}|${version.protocol}|overflow`; }
+    else newVersions.ids.add(id);
+  }
   if (now - (recent.get(id) ?? 0) < SEEN_REFRESH_MS) return;
-  recent.set(id, now);
-  if (recent.size > 2000) for (const [key, at] of recent) if (now - at >= SEEN_REFRESH_MS) recent.delete(key);
+  recent.delete(id); recent.set(id, now);
+  // Hard bound: the oldest entries go first (insertion order), whatever their age.
+  for (const key of recent.keys()) { if (recent.size <= MAX_RECENT) break; recent.delete(key); }
   void ClientVersion.updateOne({ _id: id },
-    { $setOnInsert: { client, protocol: version.protocol, build: version.build, firstSeenAt: new Date(now) }, $max: { lastSeenAt: new Date(now) } },
+    { $setOnInsert: { client, protocol: version.protocol, build, firstSeenAt: new Date(now) }, $max: { lastSeenAt: new Date(now) } },
     { upsert: true }).catch(() => { recent.delete(id); });
 }
 

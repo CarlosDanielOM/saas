@@ -418,7 +418,8 @@ class OpsTests(unittest.TestCase):
             (self.root / "scripts").mkdir(exist_ok=True)
             (self.root / mod.SHARED_FILE_CHECK).write_text("")
             self.ops.check_shared_files()
-        self.assertEqual(checked, [["node", str(self.root / mod.SHARED_FILE_CHECK), "--check"]])
+        # The helper's own checkout supplies the script; the source is only passed as data.
+        self.assertEqual(checked, [["node", str(self.root / mod.SHARED_FILE_CHECK), "--check", "--root", str(self.root)]])
         self.assertEqual(mod.SHARED_FILE_TARGETS, {"api", "bot", "cron", "site"})
 
     def test_build_refuses_stale_shared_overlay_files(self):

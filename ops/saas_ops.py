@@ -330,13 +330,16 @@ class Ops:
         require(any(destination.iterdir()), "Empty build context")
 
     def check_shared_files(self, source_dir=None):
-        """dimabot's shared overlay files and their dimasite copies must match before either side is built."""
+        """dimabot's shared overlay files and their dimasite copies must match before either side is built.
+
+        Runs this checkout's own copy of the check (as trusted as this helper) with the source as data: a worktree's
+        scripts never run on the host."""
         root = self.source_root(source_dir)
-        script = root / SHARED_FILE_CHECK
+        script = self.root / SHARED_FILE_CHECK
         if not script.is_file():
-            return  # a source from before shared files
+            return  # a checkout from before shared files
         try:
-            run(["node", script, "--check"], cwd=root, timeout=120)
+            run(["node", script, "--check", "--root", root], cwd=self.root, timeout=120)
         except OpsError as exc:
             raise OpsError("Shared overlay files are out of sync: run node " + SHARED_FILE_CHECK + " in the source, then build again") from exc
 

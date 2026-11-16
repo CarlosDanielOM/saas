@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 // Portable files shared by the API (canonical, dimabot) and the site (generated copies, dimasite). Edit only the API
-// file, then run `node scripts/sync-overlay-widget-contract.mjs`. `--check` fails when a copy is stale (saas-ops runs it
-// before building api, bot, cron and site). A shared file may only import other shared files: the copy's imports are
-// rewritten to the generated names, and any other relative import is refused (it would not exist on the site).
+// file, then run `node scripts/sync-overlay-widget-contract.mjs`. `--check` fails when a copy is stale. A shared file may
+// only import other shared files: the copy's imports are rewritten to the generated names, and any other relative import
+// is refused (it would not exist on the site).
+// `--check --root <dir>` checks another worktree as data: saas-ops runs its own trusted copy of this script that way
+// before building api, bot, cron and site, so a worktree's code never runs on the host. A pair whose canonical file or
+// copy is missing there (a source from before that file was shared) is skipped; a deleted copy fails the site build.
 import { readFile, writeFile } from 'node:fs/promises';
 import { posix } from 'node:path';
 
-const root = new URL('..', import.meta.url);
+const at = process.argv.indexOf('--root');
+const root = at > 0 && process.argv[at + 1] ? new URL(process.argv[at + 1].replace(/\/?$/, '/'), 'file:///') : new URL('..', import.meta.url);
 const SITE = 'dimasite/src/app/features/overlays';
 const FILES = [
   ['dimabot/src/overlays/widget-contract.ts', `${SITE}/overlay-widget-contract.generated.ts`],
@@ -32,13 +36,17 @@ function generated(from, to, source) {
   });
 }
 
-let stale = 0;
+let stale = 0, checked = 0;
 for (const [from, to] of FILES) {
-  const expected = generated(from, to, await readFile(new URL(from, root), 'utf8'));
+  const source = await readFile(new URL(from, root), 'utf8').catch(error => { if (error.code === 'ENOENT' && process.argv.includes('--check')) return null; throw error; });
+  if (source === null) continue;
+  const expected = generated(from, to, source);
   if (process.argv.includes('--check')) {
-    const current = await readFile(new URL(to, root), 'utf8').catch(() => '');
+    const current = await readFile(new URL(to, root), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+    if (current === null) continue;
+    checked++;
     if (current !== expected) { stale++; console.error(`${to} is stale; run node scripts/sync-overlay-widget-contract.mjs`); }
   } else await writeFile(new URL(to, root), expected);
 }
 if (stale) process.exitCode = 1;
-else if (process.argv.includes('--check')) console.log(`Shared overlay files are in sync (${FILES.length}).`);
+else if (process.argv.includes('--check')) console.log(`Shared overlay files are in sync (${checked} of ${FILES.length}).`);
