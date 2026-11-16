@@ -105,7 +105,8 @@ try {
         const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
         if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
         const raw = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(body) });
-        const json = (data, status = 200, message = 'ok') => raw({ error: status >= 400, message, status, data });
+        // Errors use the real HTTP status, like the API (ensureSuperAdmin answers 403).
+        const json = (data, status = 200, message = 'ok') => raw({ error: status >= 400, message, status, data }, status);
         const method = request.method();
         const path = url.pathname;
         if (path.startsWith('/observability/api/')) {
