@@ -357,8 +357,7 @@ test('settle charges exactly the price for 1, 2, 5 and 2007 credits through the 
                 category: 'ai_agent', operation: 'create_command', usage_source: 'mcp', provider: 'dima', channel_id: CH,
             },
         });
-        assert.equal(Math.ceil(Number(cost) * 1000), credits, 'cost is the price in cents');
-        assert.ok(Math.abs(Number(cost) - credits / 1000) <= 4 * Number.EPSILON * (credits / 1000));
+        assert.ok(Math.abs(Number(cost) - credits / 100_000) < 1e-12, 'cost is the price in USD (1 credit = $0.00001)');
         // The local projection runs once, inside the Polar path, with exactly the price.
         assert.deepEqual(recordAiCreditUsage.mock.calls.map((call) => call.arguments.slice(0, 3)), [[CH, credits, `mcp_tool:${operationId}`]]);
         assert.equal(receipts.length, 1);

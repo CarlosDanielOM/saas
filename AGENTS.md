@@ -246,10 +246,11 @@ The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/`
 Every AI and voice charge reaches Polar as one `ai_usage` event. Its metadata units are easy to mix up, so follow them exactly:
 
 - `_cost.amount`: what the **provider really charged us**, in **cents** (`100` = $1, `0.041` = $0.00041). Polar's cost and profit dashboards read it. Never put our price here.
-- `cost`: the same cents number, kept readable in the JSON. The Polar "AI Usage" meter sums it.
+- `cost`: the same charge in **USD**, exactly as the provider reports it (`0.00041`), so the JSON reads in dollars. The Polar "AI Usage" meter sums it. (Until 2026-11-16 LLM events put cents here; older history mixes units.)
 - `credits`: what the **streamer pays** (1 credit = $0.00001). The "AI Credits" meter sums it; plans and credit packs grant it.
-  - LLM calls: OpenRouter's `usage.cost` (USD) × 100 = cents for `_cost`/`cost`; credits = cents × 1000, so credits follow the real cost 1:1.
+  - LLM calls: OpenRouter's `usage.cost` (USD) goes in `cost` as is; × 100 = cents for `_cost`; credits = cents × 1000, so credits follow the real cost 1:1.
   - Voice (TTS): credits are a fixed price per character (`dimabot/src/utils/tts_usage.ts`) that does **not** follow the provider's price or promotions; `_cost`/`cost` still carry the real charge.
+  - Fixed-price charges with no provider cost (MCP tools, clip picks, credit grants): no `_cost`; `cost` is our price in USD.
 - OpenRouter speech (Fish Drama 3, Kokoro) returns only audio plus an `x-generation-id` header; the charge appears at `GET /api/v1/generation?id=…` some 20–60 s later. Those lines wait in MongoDB (`tts_usage_pending`) with their credits already taken locally, and the `tts-usage` cron worker sends the event once the charge is known. Fish's own API reports no charge (list price per UTF-8 byte); Piper runs on our host (cost 0).
 - Polar events cannot be edited or deleted: a wrong event stays wrong, so get it right before shipping.
 

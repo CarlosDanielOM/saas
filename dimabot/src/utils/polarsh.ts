@@ -41,6 +41,12 @@ export async function getPolarShClient(caller: string): Promise<Polar> {
   return polarshClient;
 }
 
+/**
+ * The readable `cost` metadata field is USD. A provider cost is stored exactly as the provider reported it;
+ * a price that arrives in cents (generic branch) is converted, rounded to 1e-10 against float noise.
+ */
+const centsToUsd = (cents: number) => Math.round(cents * 1e8) / 1e10;
+
 interface LLMMetadata {
   model: string;
   usage: {
@@ -57,7 +63,8 @@ interface IngestPolarSHEventOptions {
   externalId?: string;
   /**
    * LLM and TTS (`llm` or `credits` set): what the provider charged us in USD, as OpenRouter reports it;
-   * the event stores it ×100 as cents in `_cost` and `cost`. Otherwise a price in cents (credits = cost × 1000).
+   * the event stores it as is in `cost` (USD) and ×100 as cents in `_cost`. Otherwise a price in cents
+   * (credits = cost × 1000), stored in `cost` as USD.
    */
   cost: number;
   reason: string;
@@ -174,19 +181,18 @@ export function providerReportedCostUsd(usage: unknown): number | null {
 
 /**
  * The provider cost stored on the usage receipt, in USD. Callers that hold the provider's usage pass it
- * as `explicit` (see `providerReportedCostUsd`); null there means unknown. Otherwise this is the only
- * place that reads the units of the Polar `cost` field: LLM events carry cents (a provider cost), voice
- * events carry cents too but pass their USD cost explicitly (`sendTtsUsageEvent`), and the generic branch
- * a price in cents. A zero LLM cost there is how a missing provider figure looks, so it is stored as unknown.
+ * as `explicit` (see `providerReportedCostUsd`); null there means unknown. Otherwise the Polar `cost`
+ * field (USD) of an LLM event is the provider cost; voice events pass theirs explicitly
+ * (`sendTtsUsageEvent`), and on the generic branch `cost` is our price, not a provider cost. A zero LLM
+ * cost is how a missing provider figure looks, so it is stored as unknown.
  */
 export function receiptCostUsd(metadata: Pick<AccountingMetadata, "cost" | "_llm">, explicit?: number | null): number | null {
   if (explicit !== undefined) {
     return typeof explicit === "number" && Number.isFinite(explicit) && explicit >= 0 ? explicit : null;
   }
   if (!metadata._llm) return null;
-  const cents = Number(metadata.cost);
-  // The cents value is rounded to 1e-8 before it is stored, so this keeps every digit Polar has.
-  return Number.isFinite(cents) && cents > 0 ? Math.round(cents * 1e8) / 1e10 : null;
+  const usd = Number(metadata.cost);
+  return Number.isFinite(usd) && usd > 0 ? usd : null;
 }
 
 async function projectAcceptedUsage(
@@ -408,8 +414,9 @@ export async function ingestPolarSHEvent(
     });
     const resolvedExternalId = usageContext.entryId;
 
+    // Generic branch: `cost` arrives as a price in cents; the event's readable `cost` is USD.
     let accountingMetadata: AccountingMetadata = {
-      cost: cost,
+      cost: centsToUsd(cost),
       currency: "usd",
       credits: Math.ceil(cost * 1000),
       reason: reason,
@@ -430,11 +437,12 @@ export async function ingestPolarSHEvent(
         amountValue = parseFloat(amountStr);
       }
 
-      let costValue = Math.round(cost * 100 * 1e8) / 1e8;
-      let costStr = costValue.toString();
-      if (costStr.length > 12) {
-        costStr = costStr.substring(0, 12);
-        costValue = parseFloat(costStr);
+      // Credits = cents × 1000, from the same rounded cents as always.
+      let creditCents = Math.round(cost * 100 * 1e8) / 1e8;
+      let creditCentsStr = creditCents.toString();
+      if (creditCentsStr.length > 12) {
+        creditCentsStr = creditCentsStr.substring(0, 12);
+        creditCents = parseFloat(creditCentsStr);
       }
 
       let vendor = "unknown";
@@ -458,21 +466,21 @@ export async function ingestPolarSHEvent(
           outputTokens: llm.usage?.completion_tokens || 0,
           totalTokens: llm.usage?.total_tokens || 0,
         },
-        cost: costValue,
-        credits: Math.ceil(costValue * 1000),
+        cost: cost,
+        credits: Math.ceil(creditCents * 1000),
         currency: "usd",
         reason: reason,
       };
     } else if (fixedCredits !== undefined) {
-      // TTS: `_cost` and `cost` are the real provider charge in cents (what Polar's cost dashboards
-      // read); the credits are our fixed price per character.
+      // TTS: `_cost` is the real provider charge in cents (what Polar's cost dashboards read), `cost`
+      // the same charge in USD; the credits are our fixed price per character.
       const cents = Math.round(cost * 100 * 1e8) / 1e8;
       accountingMetadata = {
         _cost: {
           amount: cents,
           currency: "usd",
         },
-        cost: cents,
+        cost: cost,
         credits: Math.max(0, Math.ceil(fixedCredits)),
         currency: "usd",
         reason: reason,

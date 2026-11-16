@@ -8,7 +8,7 @@
 // (audio plus `x-generation-id`, like production), Fish and Polar; nothing leaves the candidate.
 // - an OpenRouter line (Drama 3, Kokoro) waits in `tts_usage_pending` with its credits taken locally
 //   and no Polar event or receipt yet: the cron `tts-usage` worker sends it once the cost is known;
-// - a Fish direct (S2.1 Pro) line is sent at once with `_cost`/`cost` = list price in cents;
+// - a Fish direct (S2.1 Pro) line is sent at once with `_cost` = list price in cents, `cost` = the same in USD;
 // - a Piper line is sent at once with `_cost`/`cost` 0; credits stay the fixed price throughout.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -128,7 +128,7 @@ assert.ok(directEvent, 'Fish direct usage reaches Polar at once');
 const expected = cents(Buffer.byteLength(sentText, 'utf8'), 15);
 assert.equal(Number(directEvent.metadata._cost.amount), expected, '_cost is the real cost in cents');
 assert.equal(directEvent.metadata._cost.currency, 'usd');
-assert.equal(directEvent.metadata.cost, expected, 'cost is the same cents number');
+assert.equal(directEvent.metadata.cost, Math.round(Buffer.byteLength(sentText, 'utf8') * 15 / 1e6 * 1e10) / 1e10, 'cost is the same charge in USD');
 assert.equal(directEvent.metadata.credits, result.data.credits, 'credits stay the fixed price');
 assert.equal(directEvent.metadata.usage_source, 'voice_preview');
 assert.equal(await balance(), before - result.data.credits, 'charged once');
@@ -160,4 +160,4 @@ assert.equal(await pending.countDocuments({ channelID: channel, provider: 'piper
 for (const ws of sockets) ws.close();
 await mongoose.disconnect();
 await redis.quit();
-console.log('PASS voice provider cost: OpenRouter lines wait in tts_usage_pending with credits taken locally; Fish direct and Piper send real cost in cents at once; credits unchanged.');
+console.log('PASS voice provider cost: OpenRouter lines wait in tts_usage_pending with credits taken locally; Fish direct and Piper send real cost at once (_cost cents, cost USD); credits unchanged.');

@@ -19,7 +19,7 @@ const uri = new URL(process.env.MONGO_URI || '');
 assert.equal(decodeURIComponent(uri.pathname.slice(1)), 'cron_ts_workers_fixture_tts_usage', 'disposable fixture database only');
 assert(uri.hostname === 'mongo' && process.env.DRAGONFLY_HOST === 'redis', 'disposable dependencies only');
 
-execFileSync(process.execPath, ['--experimental-test-module-mocks', '--test', `${app}/dist/utils/tts/tts_provider_cost.test.js`,
+execFileSync(process.execPath, ['--experimental-test-module-mocks', '--test', `${app}/dist/utils/tts/tts_provider_cost.test.js`, `${app}/dist/utils/polarsh_accounting.test.js`,
     `${app}/dist/utils/tts_usage.test.js`], { env: { ...process.env, NODE_OPTIONS: '' }, stdio: 'inherit' });
 
 let passed = 0;
@@ -89,7 +89,7 @@ await group('a parked line is sent with OpenRouter\'s real charge, fixed credits
     assert.equal(event.name, 'ai_usage');
     assert.equal(event.customer_id ?? event.customerId, customerId);
     assert.deepEqual(event.metadata._cost, { amount: 0.008, currency: 'usd' }, '_cost is the real charge in cents');
-    assert.equal(event.metadata.cost, 0.008, 'cost is the same cents number');
+    assert.equal(event.metadata.cost, 0.00008, 'cost is the same charge in USD, as OpenRouter reports it');
     assert.equal(event.metadata.credits, 48, 'credits stay the fixed price despite the promotion');
     assert.equal(event.metadata.reason, 'tts_fish');
     assert.equal(event.metadata.characters, 32);
@@ -123,7 +123,7 @@ await group('after 15 minutes without an answer the list price is used', async (
     const event = polarEvent('entry-old');
     // 41 bytes of Drama 3 at $10 per million = $0.00041 = 0.041 cents.
     assert.deepEqual(event.metadata._cost, { amount: 0.041, currency: 'usd' });
-    assert.equal(event.metadata.cost, 0.041);
+    assert.equal(event.metadata.cost, 0.00041);
     assert.equal(event.metadata.credits, 48);
 });
 

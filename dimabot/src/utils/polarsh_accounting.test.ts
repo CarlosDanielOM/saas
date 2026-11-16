@@ -60,7 +60,8 @@ test('receipt metadata leaves generic, LLM, and TTS Polar accounting values unch
   assert.equal(ingestedEvents.length, 3);
   assert.deepEqual(
     pickAccounting(ingestedEvents[0].metadata),
-    { cost: 0.123, currency: 'usd', credits: 123, reason: 'custom_usage' },
+    // A generic price arrives in cents (0.123 = $0.00123); `cost` is shown in USD.
+    { cost: 0.00123, currency: 'usd', credits: 123, reason: 'custom_usage' },
   );
   assert.deepEqual(
     pickAccounting(ingestedEvents[1].metadata),
@@ -70,17 +71,39 @@ test('receipt metadata leaves generic, LLM, and TTS Polar accounting values unch
         vendor: 'openai', model: 'test', inputTokens: 10,
         outputTokens: 5, totalTokens: 15,
       },
-      cost: 0.1234, credits: 124, currency: 'usd', reason: 'messages',
+      // `_cost` in cents, `cost` in USD as OpenRouter reported it, credits = cents × 1000.
+      cost: 0.001234, credits: 124, currency: 'usd', reason: 'messages',
     },
   );
   assert.deepEqual(
     pickAccounting(ingestedEvents[2].metadata),
     {
       _cost: { amount: 0.041, currency: 'usd' },
-      cost: 0.041, credits: 48, currency: 'usd',
+      cost: 0.00041, credits: 48, currency: 'usd',
       reason: 'tts_fish', characters: 32,
     },
   );
+});
+
+test('cost keeps every digit the provider reported; generic prices and grants convert from cents', async () => {
+  ingestedEvents.length = 0;
+  const llm = { model: 'openai/test', usage: { prompt_tokens: 1, completion_tokens: 0, total_tokens: 1 } };
+  await ingestPolarSHEvent({ customerId: 'customer', externalId: 'precise', cost: 0.000000123456, reason: 'messages', mode: 'immediate', llm });
+  await ingestPolarSHEvent({ customerId: 'customer', externalId: 'tiny', cost: 4e-11, reason: 'messages', mode: 'immediate', llm });
+  await ingestPolarSHEvent({ customerId: 'customer', externalId: 'tts-precise', cost: 0.0004123456789, credits: 48, characters: 32, reason: 'tts_fish', mode: 'immediate' });
+  await ingestPolarSHEvent({ customerId: 'customer', externalId: 'grant', cost: -25, reason: 'Free benefits', mode: 'immediate' });
+  const [precise, tiny, tts, grant] = ingestedEvents.map(event => event.metadata);
+  assert.equal(precise.cost, 0.000000123456);
+  assert.equal(precise._cost.amount, 0.0000123456);
+  assert.equal(precise.credits, 1);
+  assert.equal(tiny.cost, 4e-11);
+  assert.equal(tiny._cost.amount, 4e-9);
+  assert.equal(tts.cost, 0.0004123456789);
+  assert.equal(tts._cost.amount, 0.04123457);
+  assert.equal(tts.credits, 48);
+  assert.equal(grant.cost, -0.25);
+  assert.equal(grant.credits, -25_000);
+  assert.equal(grant._cost, undefined);
 });
 
 test('credit grants accept a stable external ID without changing credit math', async () => {
@@ -104,14 +127,15 @@ test('credit grants accept a stable external ID without changing credit math', a
   assert.equal(ingestedEvents[0].metadata.usage_source, 'free_credit_reset_worker');
 });
 
-test('receipt cost is USD: LLM events carry cents, other events need the caller to pass it', () => {
-  // LLM branch: `cost` is cents (0.1234 cents for a $0.001234 call).
-  assert.equal(receiptCostUsd({ cost: 0.1234, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 1, totalTokens: 2 } }), 0.001234);
-  assert.equal(receiptCostUsd({ cost: 0.00000001, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 0, totalTokens: 1 } }), 1e-10);
-  // Voice events carry the provider cost in cents too, but the caller passes it in USD explicitly.
-  assert.equal(receiptCostUsd({ cost: 0.041 }), null);
-  // Generic branch: a price in cents (clip recommendations).
-  assert.equal(receiptCostUsd({ cost: 12.5 }), null);
+test('receipt cost is USD: LLM events carry it in `cost`, other events need the caller to pass it', () => {
+  // LLM branch: `cost` is USD as OpenRouter reported it.
+  assert.equal(receiptCostUsd({ cost: 0.001234, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 1, totalTokens: 2 } }), 0.001234);
+  assert.equal(receiptCostUsd({ cost: 1e-10, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 0, totalTokens: 1 } }), 1e-10);
+  assert.equal(receiptCostUsd({ cost: 0, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 0, totalTokens: 1 } }), null);
+  // Voice events carry the provider cost too, but the caller passes it explicitly.
+  assert.equal(receiptCostUsd({ cost: 0.00041 }), null);
+  // Generic branch: our price, not a provider cost (clip recommendations).
+  assert.equal(receiptCostUsd({ cost: 0.125 }), null);
   // A caller that knows the real cost wins; null means it is unknown.
   assert.equal(receiptCostUsd({ cost: 0.5, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 1, totalTokens: 2 } }, 0.0003), 0.0003);
   assert.equal(receiptCostUsd({ cost: 0.5, _llm: { vendor: 'v', model: 'm', inputTokens: 1, outputTokens: 1, totalTokens: 2 } }, null), null);
@@ -144,8 +168,10 @@ test('receipt details reach the receipt and leave the Polar event byte for byte 
   await ingestPolarSHEvent({ ...base, externalId: 'mod-b', cost: 0.002, reason: 'contextual_moderation', llm,
     usage: { receipt: { costUsd: 0.0007 } } });
   assert.deepEqual(receiptInputs.map(input => input.costUsd), [0.001234, null, 0.0007]);
-  // A charged review still bills its price to Polar.
-  assert.equal(ingestedEvents[2].metadata.cost, 0.2);
+  // A charged review still bills its price to Polar ($0.002 = 0.2 cents = 200 credits).
+  assert.equal(ingestedEvents[2].metadata.cost, 0.002);
+  assert.equal(ingestedEvents[2].metadata._cost.amount, 0.2);
+  assert.equal(ingestedEvents[2].metadata.credits, 200);
 });
 
 test('the receipt cost is what the provider reported, and unknown when it reported nothing', () => {
