@@ -108,6 +108,26 @@ test('PATCH validates the id, protects stream online/offline and raids, then upd
     assert.deepEqual(state.updates[0], { filter: { _id: ID, channelID: '1' }, update: { message: 'new', enabled: false }, options: { new: true } });
 });
 
+test('raid saves accept the catalog clip key enableClip and store it as clipEnabled', async () => {
+    // The dashboard sends every control by its catalog key; the raid template names the clip checkbox `enableClip`.
+    state.doc = { _id: ID, channelID: '1', type: 'channel.raid', condition: { from_broadcaster_user_id: '', to_broadcaster_user_id: '1' } };
+    let res = await harness.request('PATCH', `/1/${ID}`, { message: 'Welcome $(raid.channel)!', enableClip: false, minViewers: 5 });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.deepEqual(state.updates[0].update, { message: 'Welcome $(raid.channel)!', clipEnabled: false, minViewers: 5 });
+    // When both keys arrive, the stored field's own value wins.
+    res = await harness.request('PATCH', `/1/${ID}`, { enableClip: true, clipEnabled: false });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.deepEqual(state.updates[1].update, { clipEnabled: false });
+    // Fields outside the raid list are still refused.
+    res = await harness.request('PATCH', `/1/${ID}`, { enableClip: true, endMessage: 'x' });
+    assert.deepEqual(res, { status: 400, body: { error: true, message: 'Invalid raid event settings' } });
+    // Turning the event on from the page sends the catalog defaults in `config`.
+    results.subscribe = { id: 'twitch-raid', type: 'channel.raid' };
+    res = await harness.request('POST', '/1', { type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: '1' }, config: { message: 'm', enableClip: true, minViewers: 2 } });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    assert.deepEqual(calls.subscribe[0].slice(0, 5), ['1', 'channel.raid', '1', { to_broadcaster_user_id: '1' }, { message: 'm', clipEnabled: true, minViewers: 2 }]);
+});
+
 test('DELETE protects stream online/offline, unsubscribes and rolls back the raid preference on error', async () => {
     let res = await harness.request('DELETE', `/1/${ID}`);
     assert.deepEqual(res, { status: 404, body: { error: 'Not Found', message: 'Eventsub not found', status: 404 } });

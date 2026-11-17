@@ -292,3 +292,35 @@ test('Bits rules: validation from the shared model, custom message effects, CAS 
     await undoChange(deleteBitsRule, removed.change!, ctx);
     assert.equal(bits.rules[0].id, id, 'undo keeps the id so Overlay Studio looks reconnect');
 });
+
+test('raid clip setting: the assistant reads, writes, guards and undoes clipEnabled though the catalog control says enableClip', async () => {
+    const label = { EN: 'Enable Clip', ES: 'Habilitar Clip' };
+    const raid = { name: 'Raids', type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: 'user' }, plan_tier: 'free', releaseStage: 'stable',
+        config: [
+            { id: 'raidMessage', dbId: 'message', label: { EN: 'Raid Message', ES: 'Mensaje de Raide' }, type: 'text', value: 'm' },
+            { id: 'enableClip', dbId: 'enableClip', label, type: 'checkbox', value: false },
+            { id: 'minViewers', dbId: 'minViewers', label: { EN: 'Minimum viewers', ES: 'Mínimo de viewers' }, type: 'number', value: 2 }
+        ] };
+    const { eventFields } = await import('./chat_events.js');
+    assert.deepEqual(eventFields(raid as never).map((field) => field.key), ['message', 'clipEnabled', 'minViewers']);
+    for (const key of ['toString', 'constructor', '__proto__']) assert.equal(realEventsubService.canonicalEventsubField(key), key);
+    catalog.push(raid as never);
+    try {
+        // A row written before the clip setting ever saved: no clipEnabled field at all.
+        events.subs = [{ _id: 'r1', channelID: '100', type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: '100' }, enabled: true, message: 'Raid!' }];
+        const ctx = makeCtx({ lang: 'en' });
+        const proposal = await propose(updateChatEvent, { type: 'channel.raid', fields: { clipEnabled: true } }, ctx);
+        assert.deepEqual(proposal.after, { 'Enable Clip': true });
+        events.subs[0].clipEnabled = false; // the streamer saves the page meanwhile
+        await assert.rejects(applyProposal(updateChatEvent, proposal, ctx), ToolConflictError);
+        delete events.subs[0].clipEnabled;
+        const { change } = await applyProposal(updateChatEvent, proposal, ctx);
+        assert.equal(events.subs[0].clipEnabled, true);
+        assert.equal('enableClip' in events.subs[0], false);
+        await undoChange(updateChatEvent, change!, ctx);
+        assert.equal('clipEnabled' in events.subs[0], false, 'undo removes the field it added');
+        assert.equal(events.subs[0].message, 'Raid!');
+    } finally {
+        catalog.pop();
+    }
+});

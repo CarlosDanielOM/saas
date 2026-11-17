@@ -28,6 +28,21 @@ export const NON_DISABLEABLE_EVENT_TYPES = new Set(['stream.online', 'stream.off
 export const isRetainedEventsubType = (type: string): boolean => Object.hasOwn(INTERACTION_EVENT_TYPES, type);
 /** Settings a raid chat event can change (both directions). */
 export const RAID_EVENT_FIELDS = new Set(['enabled', 'message', 'clipEnabled', 'minViewers', 'delay']);
+/**
+ * Control keys from the events catalog that differ from the stored field. The raid template's
+ * "Enable Clip" checkbox has `dbId: 'enableClip'`, but rows and the raid handler use `clipEnabled`.
+ */
+const EVENTSUB_FIELD_ALIASES: Readonly<Record<string, string>> = { enableClip: 'clipEnabled' };
+export const canonicalEventsubField = (key: string): string => Object.hasOwn(EVENTSUB_FIELD_ALIASES, key) ? EVENTSUB_FIELD_ALIASES[key] : key;
+
+/** Renames aliased keys to their stored field; when both are sent, the stored field's value wins. */
+function renameEventsubFieldAliases(fields: Record<string, unknown>): void {
+    for (const [alias, field] of Object.entries(EVENTSUB_FIELD_ALIASES)) {
+        if (!Object.hasOwn(fields, alias)) continue;
+        if (!Object.hasOwn(fields, field)) fields[field] = fields[alias];
+        delete fields[alias];
+    }
+}
 
 export interface EventsubResult {
     status: number;
@@ -145,6 +160,7 @@ function normalizeCheerTiers(value: unknown): ICheerTiers[] | undefined {
 
 export function normalizeEventsubPayload<T extends Record<string, unknown>>(payload: T): T {
     const normalizedPayload: Record<string, unknown> = { ...payload };
+    renameEventsubFieldAliases(normalizedPayload);
 
     if (typeof normalizedPayload.type === 'string') {
         normalizedPayload.type = canonicalizeEventsubType(normalizedPayload.type);
@@ -158,6 +174,7 @@ export function normalizeEventsubPayload<T extends Record<string, unknown>>(payl
     const config = normalizedPayload.config;
     if (config && typeof config === 'object' && !Array.isArray(config)) {
         const normalizedConfig: Record<string, unknown> = { ...(config as Record<string, unknown>) };
+        renameEventsubFieldAliases(normalizedConfig);
         const configCheerTiers = normalizeCheerTiers(normalizedConfig.cheerTiers);
 
         if (configCheerTiers) {

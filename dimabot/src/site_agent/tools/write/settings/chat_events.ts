@@ -1,6 +1,7 @@
 import EventsubSchema from '../../../../schemas/eventsub.schema.js';
 import { EventSchema, type IEvent } from '../../../../schemas/event.schema.js';
 import {
+    canonicalEventsubField,
     createChannelEventsub,
     dedupeNormalizedEventsubs,
     deleteChannelEventsub,
@@ -31,8 +32,9 @@ const CONTROL_KEY_FALLBACKS: Record<string, string> = { adBeginMessage: 'message
 const UNAVAILABLE_STAGES = new Set(['coming_soon', 'unavailable', 'deprecated', 'maintenance']);
 const MAX_MESSAGE = 500;
 
-/** Same key the page writes for a catalog control. */
-export const persistenceKey = (control: { id: string; dbId?: string }): string => control.dbId?.trim() || CONTROL_KEY_FALLBACKS[control.id] || control.id;
+/** Stored field for a catalog control: the key the page writes, after the API's alias renaming. */
+export const persistenceKey = (control: { id: string; dbId?: string }): string =>
+    canonicalEventsubField(control.dbId?.trim() || CONTROL_KEY_FALLBACKS[control.id] || control.id);
 
 /** Catalog events (DB + built-ins), one per canonical type, like GET /site/events. */
 export async function chatEventCatalog(): Promise<CatalogEvent[]> {
