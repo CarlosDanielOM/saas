@@ -106,7 +106,9 @@ function widgets(value: unknown, nested: boolean, mode: LayoutMode = 'design'): 
     if (w.italic !== undefined) item.italic = boolean(w.italic);
     for (const [key, max] of [['borderWidth', 40], ['radius', 500], ['opacity', 1]] as const) if (w[key] !== undefined) item[key] = number(w[key], 0, max);
     if (w.borderColor !== undefined) item.borderColor = color(w.borderColor);
-    if (w.volume !== undefined || w.loop !== undefined) {
+    // A clip layer's own volume (scenes only: clip layers never sit in a layout). Clips never loop.
+    if (kind === 'clip' && !nested && w.volume !== undefined && w.loop === undefined) item.volume = number(w.volume, 0, 1);
+    else if (w.volume !== undefined || w.loop !== undefined) {
       if (!nested) throw new OverlayError('Video sound and looping require an alert layout');
       if (kind !== 'video') throw new OverlayError('Only videos have sound and looping settings');
       if (w.volume !== undefined) item.volume = number(w.volume, 0, 1);

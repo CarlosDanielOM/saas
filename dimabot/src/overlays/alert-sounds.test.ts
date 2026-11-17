@@ -110,6 +110,28 @@ test('A2: bad values, other kinds and scene-level videos are rejected', () => {
   rejects(looping, 'Video sound and looping require an alert layout');
 });
 
+/** A save body whose scene clip layer gets `extra`. */
+function clipScene(extra: Record<string, unknown>) {
+  const draft = body(() => {}, 2); Object.assign(draft.scenes[0].widgets.find((w: { kind: string }) => w.kind === 'clip'), extra); return draft;
+}
+const savedClip = (extra: Record<string, unknown>) => save(clipScene(extra)).scenes[0].widgets.find(w => w.kind === 'clip')!;
+test('clip layers keep their own volume (0–1); absent stays absent', () => {
+  for (const volume of [0, 0.35, 1]) assert.equal(savedClip({ volume }).volume, volume);
+  assert.equal(Object.hasOwn(savedClip({}), 'volume'), false, 'old clip layers stay at full volume without a migration');
+  const published = buildPublished(save(clipScene({ volume: 0.4 })).scenes[0], [], new Map());
+  assert.equal(published.widgets.find(w => w.kind === 'clip')!.volume, 0.4, 'OBS gets the volume with the published layer');
+});
+
+test('clip volume: bad values and looping are rejected; other scene layers still have no volume', () => {
+  for (const volume of [1.5, -0.1, '1', null, Number.NaN]) rejects(clipScene({ volume }), 'Invalid dimension or duration');
+  rejects(clipScene({ volume: 0.5, loop: false }), 'Video sound and looping require an alert layout');
+  rejects(clipScene({ loop: false }), 'Video sound and looping require an alert layout');
+  for (const kind of ['tts', 'trigger', 'alert']) {
+    const draft = body(() => {}, 2); draft.scenes[0].widgets.find((w: { kind: string }) => w.kind === kind).volume = 0.5;
+    rejects(draft, 'Video sound and looping require an alert layout');
+  }
+});
+
 test('alert designs drop a mediaId (trigger looks only) and keep assetId sounds required', () => {
   const layout = follow(body(f => { f.widgets.push(video({ mediaId: A })); }, 2));
   assert.equal(Object.hasOwn(layout.widgets.find(w => w.id === 'clip')!, 'mediaId'), false);

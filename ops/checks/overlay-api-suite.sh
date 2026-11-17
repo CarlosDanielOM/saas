@@ -27,6 +27,7 @@ SUITE=(
   "trigger-look-api|overlay-fixtures/test-env.json|$HERE/overlay-fixtures"
   "default-alerts-api|overlay-fixtures/test-env.json|$HERE/overlay-fixtures"
   "client-versions-api|overlay-fixtures/test-env.json|$HERE/overlay-fixtures"
+  "overlay-clip-volume-api|overlay-fixtures/test-env.json|$HERE/overlay-fixtures"
   "overlay-widget-modules-api|overlay-interactions-fixtures/api-env.json|$STAGE/widget-modules"
   "custom-widgets-engine-api|custom-widget-fixtures/test-env.json|$STAGE/custom-widget"
   "twitch-goals|twitch-goals-fixtures/api-env.json|$HERE/twitch-goals-fixtures"

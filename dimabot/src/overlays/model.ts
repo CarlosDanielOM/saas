@@ -36,7 +36,10 @@ export interface OverlayWidget {
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
   triggerPlacement?: { mode: 'fixed' | 'random'; margin: number };
-  /** Videos in alert layouts only. Present = the video plays its own sound at this volume (0–1, 0 = silent but timed). */
+  /**
+   * Videos in alert layouts: present = the video plays its own sound at this volume (0–1, 0 = silent but timed).
+   * Clip layers in scenes: how loud clips play there (0–1); absent = full volume.
+   */
   volume?: number;
   /** Videos in alert layouts only. Absent = loops (as before); `false` = plays once from its start time and holds its last frame. */
   loop?: boolean;
