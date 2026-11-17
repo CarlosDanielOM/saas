@@ -101,10 +101,10 @@ Before implementing data-dependent features or functions that may duplicate exis
 - For a broad docs refresh, delegate source-backed audits to separate agents when the harness permits it. Give each agent a non-overlapping set of files and feature sources, stay within the actual concurrency limit, and have one integrator reconcile terminology and English/Spanish parity.
 - Delegation does not replace verification. Repository guidance changes need a reviewed diff and `git diff --check`; published `dimadocs` content still needs the docs preview, candidate build, behavior check, deployment, and production verification described above.
 
-## Teammate for Claude agents: GPT-6.1 Sol
+## Teammate for Claude agents: GPT-6.2 Sol
 
-Claude agents (Claude Code) work with **GPT-6.1 Sol in high reasoning mode** as a teammate whenever the harness provides
-it (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.1-sol`, `reasoningEffort: high`). Ping it without
+Claude agents (Claude Code) work with **GPT-6.2 Sol in high reasoning mode** as a teammate whenever the harness provides
+it (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.2-sol`, `reasoningEffort: high`). Ping it without
 asking the user first, as often as it helps:
 
 - **Second view** on a plan or design before building something non-trivial.
