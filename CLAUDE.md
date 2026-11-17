@@ -104,8 +104,9 @@ Before implementing data-dependent features or functions that may duplicate exis
 ## Teammate for Claude agents: GPT-6.2 Sol
 
 Claude agents (Claude Code) work with **GPT-6.2 Sol in high reasoning mode** as a teammate whenever the harness provides
-it (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.2-sol`, `reasoningEffort: high`). Ping it without
-asking the user first, as often as it helps:
+it (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.2-sol`, `reasoningEffort: high`). Always use the
+newest version of a named model that the harness offers: when a newer version of a model named in this guide appears,
+use it and update the guide. Ping the teammate without asking the user first, as often as it helps:
 
 - **Second view** on a plan or design before building something non-trivial.
 - **Review** of a finished diff before deploying: correctness, security, edge cases, missed tests.
