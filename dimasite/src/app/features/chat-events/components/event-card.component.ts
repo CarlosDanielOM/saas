@@ -5,6 +5,7 @@ import {
   Check,
   Circle,
   Clock,
+  Coins,
   Crown,
   Flame,
   FlaskConical,
@@ -25,6 +26,7 @@ import {
   UserPlus,
   Users,
   VolumeX,
+  Vote,
   Wrench,
   X,
   Zap,
@@ -100,7 +102,9 @@ export class EventCardComponent {
   private readonly typeIcons: Record<string, LucideIconData> = {
     'stream.online': Radio,
     'stream.offline': Square,
-    'channel.ad_break.begin': Tv
+    'channel.ad_break.begin': Tv,
+    'channel.poll.end': Vote,
+    'channel.prediction.end': Coins
   };
 
 

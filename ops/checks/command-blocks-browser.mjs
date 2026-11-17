@@ -189,6 +189,13 @@ try {
     if (shots) await page.screenshot({ path: `${shots}/blocks-desktop-light.png` });
     await setTheme(page, 'dark');
 
+    // Poll / prediction reads and the roulette changes are in the library with their descriptions.
+    for (const name of ['poll.tied', 'poll.votes', 'poll.options', 'prediction.result', 'roulette.create', 'roulette.clear', 'roulette.fill', 'roulette.delete']) {
+      await editor(page).locator('.bx-search input').fill(name);
+      await editor(page).locator(`.bx-item[data-item="fn:${name}"]`).waitFor();
+    }
+    assert.match(await editor(page).locator('.bx-item[data-item="fn:roulette.delete"] .bx-item__hint').textContent(), /Deletes a roulette with all its prizes/);
+
     // Function levels only matter for the AI: in a command, anyone allowed to use it triggers it.
     await editor(page).locator('.bx-search input').fill('tts.refresh');
     await editor(page).locator('.bx-item[data-item="fn:tts.refresh"]').click();

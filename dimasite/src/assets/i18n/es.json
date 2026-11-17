@@ -5300,7 +5300,9 @@
       "channel_subscribe": "Nuevas suscripciones",
       "channel_subscription_gift": "Suscripciones regaladas",
       "channel_subscription_message": "Mensajes de resuscripción",
-      "channel_subscription_end": "Suscripciones finalizadas"
+      "channel_subscription_end": "Suscripciones finalizadas",
+      "channel_poll_end": "Fin de la encuesta",
+      "channel_prediction_end": "Fin de la predicción"
     },
     "descriptionUnavailable": "Descripción no disponible",
     "title": "Eventos de chat",
@@ -5310,7 +5312,7 @@
       "community": "Momentos de la comunidad",
       "communityHint": "Agradece y celebra a la gente de tu chat.",
       "stream": "Tu stream",
-      "streamHint": "Mensajes al iniciar o terminar tu transmisión y en pausas publicitarias."
+      "streamHint": "Mensajes al iniciar o terminar tu transmisión, en pausas publicitarias y al terminar encuestas y predicciones."
     },
     "permission": {
       "readOnly": "Puedes ver los eventos del chat, pero necesitas permiso de Administración de eventos para cambiarlos."
@@ -10723,7 +10725,12 @@
       "ad_time": "12 minutos",
       "bot_mode": "en línea",
       "get_poll": "¿Mejor mapa? · Nuke va ganando",
-      "get_prediction": "¿Vamos a ganar? · 64% sí"
+      "get_prediction": "¿Vamos a ganar? · 64% sí",
+      "poll_title": "¿Mejor mapa?",
+      "prediction_title": "¿Vamos a ganar?",
+      "prediction_options": "[\"Sí\",\"No\"]",
+      "prediction_result": "Sí",
+      "roulette_result": "Premio sorpresa"
     },
     "label": "Bloques AST",
     "announce": {

@@ -40,7 +40,7 @@ const NOTICE_FIELDS: Readonly<Record<ChatNotice, { flag: string; message: string
 
 type EventGroupId = 'community' | 'stream';
 
-const STREAM_EVENT_TYPES: readonly string[] = ['stream.online', 'stream.offline', 'channel.ad_break.begin'];
+const STREAM_EVENT_TYPES: readonly string[] = ['stream.online', 'stream.offline', 'channel.ad_break.begin', 'channel.poll.end', 'channel.prediction.end'];
 const EVENT_ORDER: readonly string[] = [
   'channel.follow',
   'channel.raid',
@@ -55,7 +55,9 @@ const EVENT_ORDER: readonly string[] = [
   `${CHAT_NOTIFICATION_TYPE}:modiversary`,
   'stream.online',
   'stream.offline',
-  'channel.ad_break.begin'
+  'channel.ad_break.begin',
+  'channel.poll.end',
+  'channel.prediction.end'
 ];
 
 interface EventGroup {

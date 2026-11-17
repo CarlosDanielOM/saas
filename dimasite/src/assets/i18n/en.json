@@ -5300,7 +5300,9 @@
       "channel_subscribe": "New subscriptions",
       "channel_subscription_gift": "Gifted subscriptions",
       "channel_subscription_message": "Resubscription messages",
-      "channel_subscription_end": "Subscription endings"
+      "channel_subscription_end": "Subscription endings",
+      "channel_poll_end": "Poll ended",
+      "channel_prediction_end": "Prediction ended"
     },
     "descriptionUnavailable": "Description unavailable",
     "title": "Chat Events",
@@ -5310,7 +5312,7 @@
       "community": "Community moments",
       "communityHint": "Thank and celebrate the people in your chat.",
       "stream": "Your stream",
-      "streamHint": "Messages tied to your broadcast starting, ending and ad breaks."
+      "streamHint": "Messages tied to your broadcast: starting, ending, ad breaks, polls and predictions."
     },
     "permission": {
       "readOnly": "You can view chat events, but need Manage permission for events to change them."
@@ -10723,7 +10725,12 @@
       "ad_time": "12 minutes",
       "bot_mode": "online",
       "get_poll": "Best map? · Nuke leads",
-      "get_prediction": "Will we win? · 64% yes"
+      "get_prediction": "Will we win? · 64% yes",
+      "poll_title": "Best map?",
+      "prediction_title": "Will we win?",
+      "prediction_options": "[\"Yes\",\"No\"]",
+      "prediction_result": "Yes",
+      "roulette_result": "Mystery prize"
     },
     "label": "AST Blocks",
     "announce": {

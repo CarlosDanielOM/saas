@@ -7,7 +7,8 @@ const EVENT_NAME_KEYS: Record<string, string> = {
   'channel.raid.outgoing': 'channel_raid_outgoing', 'channel.chat.notification': 'channel_chat_notification',
   'channel.shoutout.receive': 'channel_shoutout_receive', 'channel.subscribe': 'channel_subscribe',
   'channel.subscription.gift': 'channel_subscription_gift',
-  'channel.subscription.message': 'channel_subscription_message', 'channel.subscription.end': 'channel_subscription_end'
+  'channel.subscription.message': 'channel_subscription_message', 'channel.subscription.end': 'channel_subscription_end',
+  'channel.poll.end': 'channel_poll_end', 'channel.prediction.end': 'channel_prediction_end'
 };
 
 export function chatEventName(event: ChatEvent, translate: (key: string) => string): string {

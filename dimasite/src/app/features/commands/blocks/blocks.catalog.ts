@@ -103,7 +103,13 @@ const ACTION_CATEGORIES = new Set([
   'roulette'
 ]);
 
-const RETURNS_VALUE = new Set(['get.poll', 'get.prediction', 'ad.time', 'ai', 'bot.mode']);
+/** Reads that live in an action category: shown as values, not as actions. */
+const RETURNS_VALUE = new Set([
+  'get.poll', 'get.prediction', 'ad.time', 'ai', 'bot.mode',
+  'poll.title', 'poll.status', 'poll.options', 'poll.values', 'poll.votes', 'poll.total', 'poll.result', 'poll.tied',
+  'prediction.title', 'prediction.status', 'prediction.options', 'prediction.values', 'prediction.points', 'prediction.users',
+  'prediction.total', 'prediction.result', 'roulette.result'
+]);
 
 export const CATALOG: CatalogEntry[] = (catalogJson as { entries: CatalogEntry[] }).entries;
 
@@ -240,5 +246,23 @@ export const SAMPLE_VALUES: Record<string, string> = {
   'ad.time': '12 minutes',
   'bot.mode': 'online',
   'get.poll': 'Best map? · Nuke leads',
-  'get.prediction': 'Will we win? · 64% yes'
+  'get.prediction': 'Will we win? · 64% yes',
+  // A finished poll tied between two maps, and a resolved prediction (same samples as the bot's command tester).
+  'poll.title': 'Best map?',
+  'poll.status': 'ended',
+  'poll.options': '["Nuke","Mirage","Inferno"]',
+  'poll.values': '[5,5,2]',
+  'poll.votes': '5',
+  'poll.total': '12',
+  'poll.result': '',
+  'poll.tied': '["Nuke","Mirage"]',
+  'prediction.title': 'Will we win?',
+  'prediction.status': 'ended',
+  'prediction.options': '["Yes","No"]',
+  'prediction.values': '[6400,3600]',
+  'prediction.points': '6400',
+  'prediction.users': '18',
+  'prediction.total': '10000',
+  'prediction.result': 'Yes',
+  'roulette.result': 'Mystery prize'
 };
