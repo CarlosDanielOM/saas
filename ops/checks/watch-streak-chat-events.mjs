@@ -10,10 +10,9 @@ const templates = {
   en: '$(user) has a streak of $(twitch.streak) days!',
   es: '¡$(user) tiene una racha de $(twitch.streak) días!'
 };
-const labels = {
-  en: { name: 'Chat Notifications', configure: 'Configure', save: 'Save Changes', reset: 'Restore default message', disable: 'Disable', enable: 'Enable' },
-  es: { name: 'Notificaciones del chat', configure: 'Configurar', save: 'Guardar Cambios', reset: 'Restaurar mensaje predeterminado', disable: 'Deshabilitar', enable: 'Habilitar' }
-};
+// Names and button labels come from the bundle under test, so a wording change cannot make this check stale.
+const dictionary = async lang => (await (await fetch(`${base}/assets/i18n/${lang}.json`)).json()).chatEvents;
+const dictionaries = { en: await dictionary('en'), es: await dictionary('es') };
 const definition = {
   name: 'Chat Notifications', type, version: '1', condition: { broadcaster_user_id: 'user', user_id: 'moderator' },
   icon: 'Trophy', releaseStage: 'stable', enabled: false, plan_tier: 'free',
@@ -69,94 +68,119 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(`${base}/viewer/modules/chat-events`);
-    const card = page.locator('app-event-card').filter({ has: page.getByRole('heading', { name: labels[lang].name, exact: true }) });
-    try { await card.getByRole('button', { name: labels[lang].configure, exact: true }).click(); }
+    const T = dictionaries[lang];
+    // The shared "chat notifications" subscription shows as one card per notice, each with its own switch and message.
+    const cardOf = name => page.locator('app-event-card').filter({ has: page.getByRole('heading', { name, exact: true }) });
+    const streak = cardOf(T.watchStreak.name), mod = cardOf(T.modiversary.name);
+    const configure = card => card.getByRole('button', { name: T.configure, exact: true });
+    const save = card => card.getByRole('button', { name: T.saveChanges, exact: true });
+    const toggle = (card, name) => card.getByRole('switch', { name });
+    const checked = async (card, name, state) => page.waitForFunction(([label, wanted]) =>
+      [...document.querySelectorAll('app-event-card [role=switch]')].find(el => el.getAttribute('aria-label') === label)?.getAttribute('aria-checked') === wanted, [name, String(state)]);
+    try { await configure(streak).click(); }
     catch (error) { console.error({ url: page.url(), body: await page.locator('body').innerText(), errors }); throw error; }
-    const input = card.locator('#control-message');
-    const streakControl = card.locator('.lf-config__control').filter({ has: page.locator('#control-message') });
-    const modInput = card.locator('#control-modiversaryMessage');
-    const modControl = card.locator('.lf-config__control').filter({ has: page.locator('#control-modiversaryMessage') });
-    const expectValue = async value => {
-      await page.waitForFunction(expected => document.querySelector('#control-message')?.value === expected, value);
-      assert.equal(await input.inputValue(), value);
-    };
-    await expectValue('');
+    assert.equal(await page.locator('app-event-card').count(), 2, 'one card per notice, no combined card');
+    const input = streak.locator('#control-message');
+    const modInput = mod.locator('#control-modiversaryMessage');
+    const reset = card => card.getByRole('button', { name: T.watchStreak.restoreDefault, exact: true });
+    const expectValue = async (id, value) => page.waitForFunction(([field, expected]) => document.querySelector(`#control-${field}`)?.value === expected, [id, value]);
+    await expectValue('message', '');
     assert.equal(await input.getAttribute('placeholder'), templates[lang]);
-    assert.match(await card.locator('#notification-help-message').innerText(), /\$\(twitch\.streak\)/);
+    assert.equal(T.watchStreak.defaultMessage, templates[lang]);
+    assert.match(await streak.locator('#notification-help-message').innerText(), /\$\(twitch\.streak\)/);
+    // Each card edits only its own message and has no delete (the subscription is shared).
+    assert.equal(await streak.locator('#control-modiversaryMessage').count(), 0);
+    assert.equal(await streak.getByRole('button', { name: T.deleteEvent, exact: true }).count(), 0);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'no horizontal page overflow');
-    if (process.env.SAAS_SCREENSHOTS) await card.screenshot({ path: `${process.env.SAAS_SCREENSHOTS}/watch-streak-${lang}-${width}.png` });
+    if (process.env.SAAS_SCREENSHOTS) await streak.screenshot({ path: `${process.env.SAAS_SCREENSHOTS}/watch-streak-${lang}-${width}.png` });
 
     const custom = '$(user): $(twitch.streak) — keep watching!';
     await input.fill(custom);
-    await card.getByRole('button', { name: labels[lang].save, exact: true }).click();
-    await card.locator('app-config-panel').waitFor({ state: 'hidden' });
-    assert.deepEqual(writes.at(-1), { watchStreakEnabled: true, message: custom, modiversaryEnabled: true, modiversaryMessage: '' });
+    await save(streak).click();
+    await streak.locator('app-config-panel').waitFor({ state: 'hidden' });
+    assert.deepEqual(writes.at(-1), { message: custom }, 'the streak card saves only its own message');
     await page.reload();
-    await card.getByRole('button', { name: labels[lang].configure, exact: true }).waitFor();
+    await configure(streak).waitFor();
     await page.reload(); // The second reload hydrates the populated session cache.
-    await card.getByRole('button', { name: labels[lang].configure, exact: true }).click();
-    await expectValue(custom);
-    await streakControl.getByRole('button', { name: labels[lang].reset, exact: true }).click();
-    await expectValue('');
-    await card.getByRole('button', { name: labels[lang].save, exact: true }).click();
-    await card.locator('app-config-panel').waitFor({ state: 'hidden' });
-    assert.deepEqual(writes.at(-1), { watchStreakEnabled: true, message: '', modiversaryEnabled: true, modiversaryMessage: '' });
-    await card.getByRole('button', { name: labels[lang].disable, exact: true }).click();
-    await card.getByRole('button', { name: labels[lang].enable, exact: true }).waitFor();
-    assert.deepEqual(writes.at(-1), { enabled: false });
-    await card.getByRole('button', { name: labels[lang].enable, exact: true }).click();
-    await card.getByRole('button', { name: labels[lang].disable, exact: true }).waitFor();
-    assert.deepEqual(writes.at(-1), { enabled: true });
+    await configure(streak).click();
+    await expectValue('message', custom);
+    await reset(streak).click();
+    await expectValue('message', '');
+    await save(streak).click();
+    await streak.locator('app-config-panel').waitFor({ state: 'hidden' });
+    assert.deepEqual(writes.at(-1), { message: '' }, 'empty means the default in the channel language');
 
+    // Each switch flips only its own notice; the subscription stays on while the other notice is on.
+    await toggle(streak, T.watchStreak.name).click();
+    await checked(streak, T.watchStreak.name, false);
+    assert.deepEqual(writes.at(-1), { watchStreakEnabled: false });
+    await checked(mod, T.modiversary.name, true);
+    await toggle(streak, T.watchStreak.name).click();
+    await checked(streak, T.watchStreak.name, true);
+    assert.deepEqual(writes.at(-1), { watchStreakEnabled: true, modiversaryEnabled: true, enabled: true });
 
-    await card.getByRole('button', { name: labels[lang].configure, exact: true }).click();
-    assert.equal(await modInput.inputValue(), '');
-    assert.equal(await modInput.getAttribute('placeholder'), lang === 'en'
+    await configure(mod).click();
+    await expectValue('modiversaryMessage', '');
+    assert.equal(await modInput.getAttribute('placeholder'), T.modiversary.defaultMessage);
+    assert.equal(T.modiversary.defaultMessage, lang === 'en'
       ? 'Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!'
       : '¡Feliz aniversario de moderación, $(user)! ¡Gracias por tus $(twitch.modiversary) meses como moderador!');
-    assert.match(await card.locator('#notification-help-modiversaryMessage').innerText(), /\$\(twitch\.modiversary\)/);
+    assert.match(await mod.locator('#notification-help-modiversaryMessage').innerText(), /\$\(twitch\.modiversary\)/);
     const modCustom = 'Moderator $(user): $(twitch.modiversary) months!';
     await modInput.fill(modCustom);
-    await card.locator('#control-watchStreakEnabled').uncheck();
-    await card.getByRole('button', { name: labels[lang].save, exact: true }).click();
-    await card.locator('app-config-panel').waitFor({ state: 'hidden' });
-    assert.deepEqual(writes.at(-1), { watchStreakEnabled: false, message: '', modiversaryEnabled: true, modiversaryMessage: modCustom });
+    await save(mod).click();
+    await mod.locator('app-config-panel').waitFor({ state: 'hidden' });
+    assert.deepEqual(writes.at(-1), { modiversaryMessage: modCustom });
     await page.reload();
-    await card.getByRole('button', { name: labels[lang].configure, exact: true }).click();
-    await page.waitForFunction(value => document.querySelector('#control-modiversaryMessage')?.value === value, modCustom);
-    assert.equal(await card.locator('#control-watchStreakEnabled').isChecked(), false);
-    assert.equal(await card.locator('#control-modiversaryEnabled').isChecked(), true);
-    await modControl.getByRole('button', { name: labels[lang].reset, exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#control-modiversaryMessage')?.value === '');
-    await card.locator('#control-modiversaryEnabled').uncheck();
-    await card.getByRole('button', { name: labels[lang].save, exact: true }).click();
-    await card.locator('app-config-panel').waitFor({ state: 'hidden' });
-    assert.deepEqual(writes.at(-1), { watchStreakEnabled: false, message: '', modiversaryEnabled: false, modiversaryMessage: '' });
+    await configure(mod).click();
+    await expectValue('modiversaryMessage', modCustom);
+    await reset(mod).click();
+    await expectValue('modiversaryMessage', '');
+    await save(mod).click();
+    await mod.locator('app-config-panel').waitFor({ state: 'hidden' });
+    assert.deepEqual(writes.at(-1), { modiversaryMessage: '' });
+    // Turning the last notice off turns the shared subscription off too.
+    await toggle(streak, T.watchStreak.name).click();
+    await checked(streak, T.watchStreak.name, false);
+    assert.deepEqual(writes.at(-1), { watchStreakEnabled: false });
+    await toggle(mod, T.modiversary.name).click();
+    await checked(mod, T.modiversary.name, false);
+    assert.deepEqual(writes.at(-1), { modiversaryEnabled: false, enabled: false });
+    await toggle(streak, T.watchStreak.name).click();
+    await checked(streak, T.watchStreak.name, true);
+    assert.deepEqual(writes.at(-1), { watchStreakEnabled: true, modiversaryEnabled: false, enabled: true });
+    await checked(mod, T.modiversary.name, false);
     if (lang === 'en' && width === 1440) {
-      await card.getByRole('button', { name: labels[lang].configure, exact: true }).click();
+      await configure(streak).click();
       await input.fill('Unsaved fixture');
       rejectSave = true;
-      await card.getByRole('button', { name: labels[lang].save, exact: true }).click();
-      await card.getByRole('button', { name: labels[lang].save, exact: true }).waitFor({ state: 'visible' });
+      await save(streak).click();
+      await save(streak).waitFor({ state: 'visible' });
       await page.getByText('Fixture save failure', { exact: true }).waitFor();
       assert.equal(await input.inputValue(), 'Unsaved fixture', 'failed saves retain edits');
       rejectSave = false;
       canManage = false;
       await page.reload();
-      await card.getByRole('button', { name: labels[lang].configure, exact: true }).click();
+      await configure(streak).click();
       assert.equal(await input.isDisabled(), true);
-      assert.equal(await card.getByRole('button', { name: labels[lang].save, exact: true }).count(), 0);
-      assert.equal(await streakControl.getByRole('button', { name: labels[lang].reset, exact: true }).count(), 0);
+      assert.equal(await save(streak).count(), 0);
+      assert.equal(await reset(streak).count(), 0);
+      assert.equal(await streak.getByRole('switch').count(), 0, 'read-only: no switch');
       canManage = true;
       stored = null;
       await page.evaluate(() => sessionStorage.clear());
       await page.reload();
-      await card.getByRole('button', { name: labels[lang].enable, exact: true }).click();
-      await card.getByRole('button', { name: labels[lang].configure, exact: true }).waitFor();
-      assert.deepEqual(writes.at(-1), { type, version: '1', condition: { broadcaster_user_id: '999991', user_id: '698614112' }, config: { watchStreakEnabled: true, message: '', modiversaryEnabled: true, modiversaryMessage: '' } });
+      // No subscription yet: turning one notice on creates it with that notice on and the other off.
+      await toggle(mod, T.modiversary.name).click();
+      await configure(mod).waitFor();
+      const created = writes.at(-1);
+      assert.deepEqual([created.type, created.version, created.condition], [type, '1', { broadcaster_user_id: '999991', user_id: '698614112' }]);
+      assert.deepEqual([created.config.modiversaryEnabled, created.config.watchStreakEnabled], [true, false]);
+      assert.deepEqual([created.config.message, created.config.modiversaryMessage], ['', ''], 'default messages are stored as empty (channel language)');
+      await checked(streak, T.watchStreak.name, false);
     }
     assert.deepEqual(errors, [], 'no browser runtime errors');
-    console.log(`PASS ${lang} ${width}px: localized streak/modiversary defaults, custom save/reload, independent controls, reset, toggle${lang === 'en' && width === 1440 ? ', failures, read-only, subscription creation' : ''}`);
+    console.log(`PASS ${lang} ${width}px: one card per notice, localized defaults, custom save/reload, reset, independent switches${lang === 'en' && width === 1440 ? ', failures, read-only, subscription creation' : ''}`);
     await context.close();
   }
 } finally { await browser.close(); }
