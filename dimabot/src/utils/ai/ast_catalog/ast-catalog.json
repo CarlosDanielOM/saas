@@ -1,9 +1,9 @@
 {
-  "version": "71756e493836",
-  "generatedAt": "2026-11-05T21:23:20.021Z",
+  "version": "f5e4b014cd8b",
+  "generatedAt": "2026-11-17T20:12:44.401Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 121,
+  "functionCount": 142,
   "entries": [
     {
       "name": "overlay.skip",
@@ -394,6 +394,115 @@
         "temporary",
         "availability",
         "desactivar"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.create",
+      "description": "Creates an empty roulette with the default wheel design. The ID starts with a lowercase letter and uses letters, numbers, _ or -; the name defaults to the ID. Returns an error when a roulette with that ID already exists. Up to 20 roulettes per channel.",
+      "syntax": "roulette.create roulette_id [\"Name\"]",
+      "category": "roulette",
+      "examples": [
+        "roulette.create polls \"Poll tie-breaker\""
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo",
+        "create roulette",
+        "new wheel",
+        "crear ruleta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.delete",
+      "description": "Deletes a roulette with all its prizes and settings. This cannot be undone. Refused while a roulette is spinning.",
+      "syntax": "roulette.delete roulette_id",
+      "category": "roulette",
+      "examples": [
+        "roulette.delete polls"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo",
+        "delete roulette",
+        "remove wheel",
+        "eliminar ruleta",
+        "borrar ruleta"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.clear",
+      "description": "Removes every prize and keeps the roulette, its design and its settings. Refused while a roulette is spinning.",
+      "syntax": "roulette.clear roulette_id",
+      "category": "roulette",
+      "examples": [
+        "roulette.clear polls"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo",
+        "empty roulette",
+        "remove all prizes",
+        "vaciar ruleta",
+        "limpiar ruleta"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.fill",
+      "description": "Replaces every prize with the given list in one save: one slot of weight 1 per entry. The list is a list value such as $(poll.tied), %(names) or %[a, b], or several quoted labels. Refused while a roulette is spinning.",
+      "syntax": "roulette.fill roulette_id list",
+      "category": "roulette",
+      "examples": [
+        "roulette.fill polls $(poll.tied)",
+        "roulette.fill polls \"Pizza\" \"Tacos\""
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo",
+        "replace prizes",
+        "set prizes",
+        "tie breaker",
+        "llenar ruleta",
+        "desempate"
       ],
       "destructive": true,
       "surfaces": [
@@ -1482,7 +1591,7 @@
     },
     {
       "name": "end.poll",
-      "description": "Ends the current active poll and archives its results. Fetches the current poll from Twitch.",
+      "description": "Ends the current active poll now and archives it on Twitch. Its result stays readable with poll.result and poll.tied. Fetches the current poll from Twitch.",
       "syntax": "end.poll",
       "category": "channel",
       "examples": [
@@ -1504,7 +1613,7 @@
     },
     {
       "name": "cancel.poll",
-      "description": "Terminates the current active poll without archiving its results. Fetches the current poll from Twitch.",
+      "description": "Cancels the current active poll: it stops on Twitch and counts as canceled here, so poll.result stays empty and the \"Poll ended\" chat event does not run. Use end.poll to finish a poll and keep its result. Fetches the current poll from Twitch.",
       "syntax": "cancel.poll",
       "category": "channel",
       "examples": [
@@ -1561,6 +1670,380 @@
         "ask ai",
         "preguntar a la ia",
         "generar respuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.title",
+      "description": "Returns the question of the running poll, or of the latest poll when none is running.",
+      "syntax": "poll.title",
+      "category": "channel",
+      "examples": [
+        "poll.title"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "poll question",
+        "poll title",
+        "pregunta encuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.status",
+      "description": "Returns the state of the latest poll: active, ended, canceled, none (no poll yet) or unavailable (Twitch could not be read). A poll ended early on Twitch counts as ended; a poll stopped with cancel.poll or deleted on Twitch counts as canceled.",
+      "syntax": "poll.status",
+      "category": "channel",
+      "examples": [
+        "poll.status"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "poll status",
+        "poll running",
+        "poll ended",
+        "estado encuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.options",
+      "description": "Returns the options of the latest poll as a list, in Twitch order. Loop over it with *(for #o in $(poll.options) { ... }).",
+      "syntax": "poll.options",
+      "category": "channel",
+      "examples": [
+        "poll.options"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "poll options",
+        "poll choices",
+        "opciones encuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.values",
+      "description": "Returns the vote counts of the latest poll as a list, in the same order as poll.options. Counts include Channel Points votes.",
+      "syntax": "poll.values",
+      "category": "channel",
+      "examples": [
+        "poll.values"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "poll votes list",
+        "vote counts",
+        "votos encuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.total",
+      "description": "Returns the total number of votes of the latest poll (0 when nobody voted).",
+      "syntax": "poll.total",
+      "category": "channel",
+      "examples": [
+        "poll.total"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "total votes",
+        "votos totales"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.votes",
+      "description": "Returns the votes of one option of the latest poll, by its exact title or its number (starting at 1). Empty when no option is given or it does not exist.",
+      "syntax": "poll.votes option",
+      "category": "channel",
+      "examples": [
+        "poll.votes Pizza",
+        "poll.votes 1"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "option votes",
+        "votes for",
+        "votos de opcion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.result",
+      "description": "Returns the option in first place of the latest poll: the current leader while it runs, the winner once it ended. Empty on a tie, when nobody voted, and for a canceled poll.",
+      "syntax": "poll.result",
+      "category": "channel",
+      "examples": [
+        "poll.result"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "poll winner",
+        "poll leader",
+        "ganador encuesta",
+        "resultado encuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "poll.tied",
+      "description": "Returns the options tied for first place in the latest poll as a list, or empty text when one option leads. Works as a condition (empty is false) and as a loop list. With no votes every option is tied; check poll.total first to treat that differently.",
+      "syntax": "poll.tied",
+      "category": "channel",
+      "examples": [
+        "poll.tied",
+        "roulette.fill polls $(poll.tied)"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "poll tie",
+        "tied options",
+        "tie breaker",
+        "empate encuesta",
+        "desempate"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.title",
+      "description": "Returns the question of the running prediction, or of the latest prediction when none is running.",
+      "syntax": "prediction.title",
+      "category": "channel",
+      "examples": [
+        "prediction.title"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "prediction question",
+        "prediction title",
+        "pregunta prediccion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.status",
+      "description": "Returns the state of the latest prediction: active, locked (betting closed), ended (a winner was chosen), canceled (points refunded), none (no prediction yet) or unavailable (Twitch could not be read).",
+      "syntax": "prediction.status",
+      "category": "channel",
+      "examples": [
+        "prediction.status"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "prediction status",
+        "prediction locked",
+        "estado prediccion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.options",
+      "description": "Returns the outcomes of the latest prediction as a list, in Twitch order. Loop over it with *(for #o in $(prediction.options) { ... }).",
+      "syntax": "prediction.options",
+      "category": "channel",
+      "examples": [
+        "prediction.options"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "prediction options",
+        "prediction outcomes",
+        "opciones prediccion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.values",
+      "description": "Returns the Channel Points bet on each outcome of the latest prediction as a list, in the same order as prediction.options.",
+      "syntax": "prediction.values",
+      "category": "channel",
+      "examples": [
+        "prediction.values"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "prediction points list",
+        "puntos prediccion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.total",
+      "description": "Returns the total Channel Points bet in the latest prediction.",
+      "syntax": "prediction.total",
+      "category": "channel",
+      "examples": [
+        "prediction.total"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "total points",
+        "puntos totales"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.points",
+      "description": "Returns the Channel Points bet on one outcome of the latest prediction, by its exact title or its number (starting at 1). Empty when no outcome is given or it does not exist.",
+      "syntax": "prediction.points option",
+      "category": "channel",
+      "examples": [
+        "prediction.points Yes",
+        "prediction.points 1"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "outcome points",
+        "points bet",
+        "puntos apostados"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.users",
+      "description": "Returns how many viewers bet on one outcome of the latest prediction, by its exact title or its number (starting at 1). Empty when no outcome is given or it does not exist.",
+      "syntax": "prediction.users option",
+      "category": "channel",
+      "examples": [
+        "prediction.users Yes",
+        "prediction.users 2"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "outcome users",
+        "predictors",
+        "cuantos apostaron"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "prediction.result",
+      "description": "Returns the winning outcome of the latest prediction once the streamer has chosen it. Empty while it runs and when it was canceled.",
+      "syntax": "prediction.result",
+      "category": "channel",
+      "examples": [
+        "prediction.result"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "prediction winner",
+        "winning outcome",
+        "ganador prediccion",
+        "resultado prediccion"
       ],
       "destructive": false,
       "surfaces": [
@@ -1858,6 +2341,27 @@
         "gifted sub",
         "sub regalada",
         "quien recibio el gift"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "gift.count",
+      "description": "Number of subscriptions in one gift (a gift bomb of 5 subs is 5). 0 when the event is not a gift.",
+      "syntax": "gift.count",
+      "category": "event-data",
+      "examples": [
+        "gift.count"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "gift bomb",
+        "gifted subs",
+        "subs regaladas",
+        "cuantas subs regalo"
       ],
       "destructive": false,
       "surfaces": [

@@ -221,6 +221,11 @@ export interface AstSimulationCache {
 
 export interface ExecutionContext {
     randomUserState: { selected: Set<string>; blacklist?: Promise<string[]> };
+    /**
+     * Reads shared by every function in this run (same object in every copy of the context), so
+     * e.g. all `poll.*` functions of one command answer from one snapshot.
+     */
+    sharedReads?: Map<string, Promise<unknown>>;
     effectContext?: AstEffectContext;
     simulation?: AstSimulation;
     variables: Map<string, unknown>;

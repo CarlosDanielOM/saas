@@ -1,4 +1,4 @@
-import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
+import { forgetInteraction } from '../../utils/twitch_interactions.js';
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -34,8 +34,6 @@ export async function createPoll(channelID: string, title: string, choices: { ti
         if (!Number.isInteger(channelPointsPerVote) || channelPointsPerVote < 0 || channelPointsPerVote > 1000000) {
             return { error: true, message: 'Channel Points per vote must be a whole number from 0 to 1000000', status: 400, type: 'validation_error' };
         }
-        const cacheClient = await getDragonflyClient('createPoll');
-
         const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
 
         if (streamerHeaderResult.error || !streamerHeaderResult.header) {
@@ -92,9 +90,8 @@ export async function createPoll(channelID: string, title: string, choices: { ti
             channel: poll.broadcaster_login
         };
 
-        if (cache) {
-            await cacheClient.set(`twitch:${channelID}:polls`, JSON.stringify(pollData));
-        }
+        // A new poll replaces the shared snapshot; the next poll.* read asks Twitch.
+        await forgetInteraction(channelID, 'poll');
 
         return pollData;
     } catch (error) {

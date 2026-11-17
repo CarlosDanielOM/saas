@@ -1,4 +1,4 @@
-import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
+import { forgetInteraction } from '../../utils/twitch_interactions.js';
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -47,8 +47,6 @@ interface CreatePredictionResponse {
 
 export async function createPrediction(channelID: string, title: string, outcomes: { title: string }[], duration: string | number, cache: boolean = false): Promise<CreatePredictionResponse> {
     try {
-        const cacheClient = await getDragonflyClient('createPrediction');
-
         const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
 
         if (streamerHeaderResult.error || !streamerHeaderResult.header) {
@@ -114,9 +112,8 @@ export async function createPrediction(channelID: string, title: string, outcome
             predictionData.winning_outcome = winning_outcome;
         }
 
-        if (cache) {
-            await cacheClient.set(`twitch:${channelID}:predictions`, JSON.stringify(predictionData));
-        }
+        // A new prediction replaces the shared snapshot; the next prediction.* read asks Twitch.
+        await forgetInteraction(channelID, 'prediction');
 
         return {
             error: false,

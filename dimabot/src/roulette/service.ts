@@ -17,7 +17,7 @@ const schema = new Schema<Stored>({
 schema.index({ dueAt: 1 });
 schema.index({ actionDueAt: 1 });
 export const RouletteChannel = model<Stored>('RouletteChannel', schema);
-export type Operation = 'create' | 'configure' | 'delete' | 'add' | 'import' | 'update' | 'remove' | 'shuffle' | 'switch' | 'show' | 'hide' | 'start';
+export type Operation = 'create' | 'configure' | 'delete' | 'clear' | 'add' | 'import' | 'update' | 'remove' | 'shuffle' | 'switch' | 'show' | 'hide' | 'start';
 export interface Action { operation: Operation; roulette?: string; itemId?: string; data?: Record<string, unknown> }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export const actionDue = (actions: WinnerAction[]) => { const pending = actions.filter(a => a.status === 'pending'); return pending.length ? Math.min(...pending.map(a => a.dueAt)) : null; };
@@ -53,6 +53,11 @@ function apply(state: State, action: Action, now: number): string {
     case 'delete':
       domain.idle(state); state.roulettes = state.roulettes.filter(x => x.id !== r.id);
       if (state.activeId === r.id) { state.activeId = null; state.visible = false; state.draw = null; state.hideAt = null; }
+      return r.id;
+    case 'clear':
+      // Like a replacing import: never empty a roulette under a spin; the old winner card goes too.
+      domain.idle(state); r.items = []; r.order = [];
+      if (state.activeId === r.id) { state.draw = null; state.hideAt = null; }
       return r.id;
     case 'add': return domain.add(r, data).id;
     case 'import': {

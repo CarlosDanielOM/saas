@@ -7,6 +7,7 @@ import { registerModerationFunctions, startRestoreModeratorWorker } from './mode
 import { registerTwitchFunctions } from './twitch.functions.js';
 import { registerCountFunctions } from './count.functions.js';
 import { registerChannelFunctions } from './channel.functions.js';
+import { registerInteractionFunctions } from './interaction.functions.js';
 import { registerClipFunctions } from './clip.functions.js';
 import { registerFollowageFunctions } from './followage.functions.js';
 import { registerEventsubFunctions } from './eventsub.functions.js';
@@ -45,6 +46,7 @@ export function registerAllFunctions(options: { startWorkers?: boolean } = {}): 
     registerTwitchFunctions();
     registerCountFunctions();
     registerChannelFunctions();
+    registerInteractionFunctions();
     registerClipFunctions();
     registerFollowageFunctions();
     registerEventsubFunctions();

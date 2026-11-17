@@ -5,6 +5,7 @@ import {
     dedupeNormalizedEventsubs,
     deleteChannelEventsub,
     NON_DISABLEABLE_EVENT_TYPES,
+    isRetainedEventsubType,
     RAID_EVENT_FIELDS,
     updateChannelEventsub
 } from '../../../../server/services/eventsub_config.service.js';
@@ -384,7 +385,10 @@ export const deleteChatEvent: AgentTool<TypeInput> = {
             ...proposalBase(ctx, 'delete_chat_event', tr(ctx.lang, `Delete the chat event "${eventName(event, input.type)}"`, `Eliminar el evento de chat "${eventName(event, input.type)}"`), event, input.type, String(current._id)),
             before: display(before, labelsOf(fields), ctx.lang),
             after: null,
-            effects: [tr(ctx.lang, `Removes the Twitch EventSub subscription ${input.type}`, `Elimina la suscripción de Twitch EventSub ${input.type}`)],
+            effects: [isRetainedEventsubType(current.type)
+                ? tr(ctx.lang, `Turns this chat event off. Its Twitch subscription ${input.type} stays: overlay widgets and commands use it too`,
+                    `Apaga este evento de chat. Su suscripción de Twitch ${input.type} se conserva: los widgets del overlay y los comandos también la usan`)
+                : tr(ctx.lang, `Removes the Twitch EventSub subscription ${input.type}`, `Elimina la suscripción de Twitch EventSub ${input.type}`)],
             warnings: [tr(ctx.lang, 'The bot stops posting this message right away.', 'El bot deja de publicar este mensaje de inmediato.')],
             payload: {
                 id: String(current._id), type: input.type, expected: before,
@@ -408,7 +412,18 @@ export const deleteChatEvent: AgentTool<TypeInput> = {
     },
     async undo(change, ctx) {
         const data = change.undo as { type: string; recreate: Record<string, unknown> };
-        if (await channelEventsub(ctx.channelId, data.type)) conflict(ctx.lang, 'This chat event was set up again already.', 'Este evento de chat ya se volvió a configurar.');
+        const existing = await channelEventsub(ctx.channelId, data.type);
+        if (existing && isRetainedEventsubType(data.type)) {
+            // Poll / prediction events keep their row when deleted (only turned off). Undo puts the old
+            // on/off state back in one guarded write: an edit made since then is never overwritten.
+            const before = ((data.recreate.config ?? {}) as Record<string, unknown>);
+            const left = { ...before, enabled: false };
+            assertUnchanged(existing, left, ctx.lang, tr(ctx.lang, 'The chat event', 'El evento de chat'));
+            const result = await updateChannelEventsub(ctx.channelId, String(existing._id), { enabled: before.enabled ?? true }, { guard: left });
+            if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not turn the chat event back on'));
+            return;
+        }
+        if (existing) conflict(ctx.lang, 'This chat event was set up again already.', 'Este evento de chat ya se volvió a configurar.');
         if (!await hasFullAccess(ctx.channelId)) conflict(ctx.lang, 'Undo needs full access: activate the bot on Twitch first.', 'Deshacer necesita acceso completo: activa el bot en Twitch primero.');
         const result = await createChannelEventsub(ctx.channelId, data.recreate);
         if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not set the chat event up again'));

@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: 71756e493836
+# Catalog version: f5e4b014cd8b
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -62,11 +62,11 @@
 #   Example: $(enable.redemption "Hydrate" 300)
 #
 # --- channel ---
-# $(cancel.poll) - Terminates the current active poll without archiving its results. Fetches the current poll from Twitch.
+# $(cancel.poll) - Cancels the current active poll: it stops on Twitch and counts as canceled here, so poll.result stays empty and the "Poll ended" chat event does not run. Use end.poll to finish a poll and keep its result. Fetches the current poll from Twitch.
 #   Example: $(cancel.poll)
 # $(cancel.prediction) - Cancels the current active or locked channel points prediction without choosing a winner. Fetches the current prediction from Twitch.
 #   Example: $(cancel.prediction)
-# $(end.poll) - Ends the current active poll and archives its results. Fetches the current poll from Twitch.
+# $(end.poll) - Ends the current active poll now and archives it on Twitch. Its result stays readable with poll.result and poll.tied. Fetches the current poll from Twitch.
 #   Example: $(end.poll)
 # $(end.prediction "exact option title") - Resolves the current active or locked prediction with the exact winning option title or its number (starting at 1). Call get.prediction first to inspect the question and actual option order. The current prediction is fetched again before resolving.
 #   Example: $(end.prediction "No")
@@ -77,6 +77,42 @@
 #   Example: $(get.prediction)
 # $(lock.prediction) - Closes betting on the current prediction without choosing a winner. Already locked predictions are left unchanged.
 #   Example: $(lock.prediction)
+# $(poll.options) - Returns the options of the latest poll as a list, in Twitch order. Loop over it with *(for #o in $(poll.options) { ... }).
+#   Example: $(poll.options)
+# $(poll.result) - Returns the option in first place of the latest poll: the current leader while it runs, the winner once it ended. Empty on a tie, when nobody voted, and for a canceled poll.
+#   Example: $(poll.result)
+# $(poll.status) - Returns the state of the latest poll: active, ended, canceled, none (no poll yet) or unavailable (Twitch could not be read). A poll ended early on Twitch counts as ended; a poll stopped with cancel.poll or deleted on Twitch counts as canceled.
+#   Example: $(poll.status)
+# $(poll.tied) - Returns the options tied for first place in the latest poll as a list, or empty text when one option leads. Works as a condition (empty is false) and as a loop list. With no votes every option is tied; check poll.total first to treat that differently.
+#   Example: $(poll.tied)
+#   Example: $(roulette.fill polls $(poll.tied))
+# $(poll.title) - Returns the question of the running poll, or of the latest poll when none is running.
+#   Example: $(poll.title)
+# $(poll.total) - Returns the total number of votes of the latest poll (0 when nobody voted).
+#   Example: $(poll.total)
+# $(poll.values) - Returns the vote counts of the latest poll as a list, in the same order as poll.options. Counts include Channel Points votes.
+#   Example: $(poll.values)
+# $(poll.votes option) - Returns the votes of one option of the latest poll, by its exact title or its number (starting at 1). Empty when no option is given or it does not exist.
+#   Example: $(poll.votes Pizza)
+#   Example: $(poll.votes 1)
+# $(prediction.options) - Returns the outcomes of the latest prediction as a list, in Twitch order. Loop over it with *(for #o in $(prediction.options) { ... }).
+#   Example: $(prediction.options)
+# $(prediction.points option) - Returns the Channel Points bet on one outcome of the latest prediction, by its exact title or its number (starting at 1). Empty when no outcome is given or it does not exist.
+#   Example: $(prediction.points Yes)
+#   Example: $(prediction.points 1)
+# $(prediction.result) - Returns the winning outcome of the latest prediction once the streamer has chosen it. Empty while it runs and when it was canceled.
+#   Example: $(prediction.result)
+# $(prediction.status) - Returns the state of the latest prediction: active, locked (betting closed), ended (a winner was chosen), canceled (points refunded), none (no prediction yet) or unavailable (Twitch could not be read).
+#   Example: $(prediction.status)
+# $(prediction.title) - Returns the question of the running prediction, or of the latest prediction when none is running.
+#   Example: $(prediction.title)
+# $(prediction.total) - Returns the total Channel Points bet in the latest prediction.
+#   Example: $(prediction.total)
+# $(prediction.users option) - Returns how many viewers bet on one outcome of the latest prediction, by its exact title or its number (starting at 1). Empty when no outcome is given or it does not exist.
+#   Example: $(prediction.users Yes)
+#   Example: $(prediction.users 2)
+# $(prediction.values) - Returns the Channel Points bet on each outcome of the latest prediction as a list, in the same order as prediction.options.
+#   Example: $(prediction.values)
 # $(raid channel) - Starts a raid to another channel.
 #   Example: $(raid friendlystreamer)
 # $(set.game game name) - Changes the stream category. Searches Twitch categories by name and picks the best match.
@@ -130,6 +166,8 @@
 #   Example: $(cheer.amount)
 # $(cheer.message) - Text message attached to the current cheer event.
 #   Example: $(cheer.message)
+# $(gift.count) - Number of subscriptions in one gift (a gift bomb of 5 subs is 5). 0 when the event is not a gift.
+#   Example: $(gift.count)
 # $(gifted.user) - Recipient username of a gifted subscription event.
 #   Example: $(gifted.user)
 # $(hypetrain.end) - End time of the current hype train.
@@ -257,6 +295,15 @@
 # --- roulette ---
 # $(roulette.add roulette_id "item label" [multiplier] [weight]) - Adds an item; multiplier creates copies, weight sets chance per copy.
 #   Example: $(roulette.add giveaways "VIP for a day" 3 10)
+# $(roulette.clear roulette_id) - Removes every prize and keeps the roulette, its design and its settings. Refused while a roulette is spinning.
+#   Example: $(roulette.clear polls)
+# $(roulette.create roulette_id ["Name"]) - Creates an empty roulette with the default wheel design. The ID starts with a lowercase letter and uses letters, numbers, _ or -; the name defaults to the ID. Returns an error when a roulette with that ID already exists. Up to 20 roulettes per channel.
+#   Example: $(roulette.create polls "Poll tie-breaker")
+# $(roulette.delete roulette_id) - Deletes a roulette with all its prizes and settings. This cannot be undone. Refused while a roulette is spinning.
+#   Example: $(roulette.delete polls)
+# $(roulette.fill roulette_id list) - Replaces every prize with the given list in one save: one slot of weight 1 per entry. The list is a list value such as $(poll.tied), %(names) or %[a, b], or several quoted labels. Refused while a roulette is spinning.
+#   Example: $(roulette.fill polls $(poll.tied))
+#   Example: $(roulette.fill polls "Pizza" "Tacos")
 # $(roulette.hide) - Hides the roulette overlay without cancelling its draw.
 #   Example: $(roulette.hide)
 # $(roulette.remove roulette_id item_id) - Removes an item and all its copies.

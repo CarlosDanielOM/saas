@@ -30,6 +30,8 @@ import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 import { publishWidgetChatEvent } from '../widget_feed/publisher.js';
 import { REDEMPTION_EVENT_TYPE, chatSendDecision, recordAlert, recordRedemption, type AlertDecision } from '../utils/activity_events.js';
+import { eventSnapshot, noteInteractionEvent } from '../utils/twitch_interactions.js';
+import { claimInteraction } from '../utils/interaction_dispositions.js';
 //* TODO Redeem handler
 //* TODO Functions
 
@@ -47,7 +49,7 @@ interface EventsubHandlerOptions {
 const IMMEDIATE_ALERT_TYPES = new Set([
     'channel.hype_train.begin', 'channel.hype_train.progress', 'channel.hype_train.end', 'channel.shoutout.receive',
     'channel.poll.progress', 'channel.prediction.progress', 'channel.update', 'user.update', 'automod.message.hold',
-    'channel.ban', 'channel.ad_break.begin'
+    'channel.ban', 'channel.ad_break.begin', 'channel.poll.end', 'channel.prediction.end'
 ]);
 // Announced by the consumer in production; here only for manual event tests.
 const CONSUMER_ALERT_TYPES = new Set([
@@ -66,6 +68,13 @@ export const eventsubHandler = async (
         }
         return;
     }
+
+    // Poll and prediction notifications replace the snapshot the poll.* / prediction.* functions read,
+    // whatever the chat settings are. A late retry never puts old numbers back, and a manual event
+    // test (no Twitch message id) is never stored: its made-up poll must not look like the channel's.
+    const interaction = options.staleRetry || !/^channel\.(poll|prediction)\./.test(subscriptionData.type) ? null
+        : options.messageId ? await noteInteractionEvent(String(eventData?.broadcaster_user_id ?? ''), subscriptionData.type, eventData)
+        : eventSnapshot(subscriptionData.type, eventData, Date.now());
 
     // Feed-only events bypass announcement configuration and all command/history side effects.
     // Chat reaches custom widgets even when the bot's chat handling is turned off for this channel.
@@ -310,6 +319,20 @@ export const eventsubHandler = async (
         case 'channel.hype_train.end':
             if (!options.staleRetry) await handleMessageOnlyEvent();
             else noteAlert({ outcome: 'skipped', reason: 'stale' });
+            break;
+        case 'channel.poll.end':
+        case 'channel.prediction.end':
+            // "Poll ended" / "Prediction ended" run once per poll or prediction that has a result:
+            // a canceled one stays silent, and so does the second end notification Twitch sends
+            // when a finished poll is dismissed (archived).
+            if (options.staleRetry) { noteAlert({ outcome: 'skipped', reason: 'stale' }); break; }
+            if (interaction?.status !== 'ended') break;
+            // Never written (the overlay widgets create these subscriptions with an empty message): nothing to send or record.
+            if (!eventsubData.message?.trim()) break;
+            // Manual tests may run again and again; a real poll or prediction runs its script once, and
+            // never after it was canceled. If the claim cannot be saved this throws and nothing runs.
+            if (options.messageId && !await claimInteraction(STREAMER.id, interaction.kind, interaction.id, 'announced')) break;
+            await handleMessageOnlyEvent();
             break;
         case 'channel.shoutout.receive':
         case 'channel.poll.progress':

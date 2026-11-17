@@ -6,6 +6,8 @@ import * as UserFunctions from '../../../functions/users/index.js';
 import { searchCategories } from '../../../functions/search/index.js';
 import { createPrediction, getPrediction, endPrediction } from '../../../functions/predictions/index.js';
 import { createPoll, getPoll, endPoll } from '../../../functions/polls/index.js';
+import { markPollCanceled, unmarkPollCanceled } from '../../twitch_interactions.js';
+import { claimInteraction, releaseInteraction } from '../../interaction_dispositions.js';
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { executeAiCommand } from '../../../utils/ai/openrouter/command.ai.js';
 import { formatBadges, type IBadge } from '../../../utils/badges.js';
@@ -260,7 +262,19 @@ const cancelPollHandler: FunctionHandler = async (_args, ctx) => {
         return 'Error cancelling poll: there is no active poll.';
     }
 
+    // Twitch reports a canceled poll like one ended early by hand, and its end notification can arrive
+    // before Twitch answers here: remember first that this poll has no result.
+    await markPollCanceled(ctx.broadcasterId, current.data.id);
+    // Also remembered for good, so a late "archived" notification never announces it. Not the first
+    // to settle it (it just ended and was announced): cancel anyway, Twitch will refuse.
+    const claimed = await claimInteraction(ctx.broadcasterId, 'poll', current.data.id, 'canceled').catch(() => false);
     const result = await endPoll(ctx.broadcasterId, current.data.id, 'TERMINATED');
+    // Twitch refused the request (4xx): the poll goes on, or ended by itself, and keeps its result.
+    // A server error or no answer at all may still have canceled it: stay on the safe side.
+    if (result.error && typeof result.status === 'number' && result.status >= 400 && result.status < 500) {
+        await unmarkPollCanceled(ctx.broadcasterId, current.data.id);
+        if (claimed) await releaseInteraction(ctx.broadcasterId, 'poll', current.data.id, 'canceled').catch(() => undefined);
+    }
     return result.error ? `Error cancelling poll: ${result.message}` : '';
 };
 
@@ -394,7 +408,7 @@ export function registerChannelFunctions(): void {
         minUserLevel: 7, keywords: ['read poll', 'poll results', 'votes', 'resultados encuesta']
     });
     registerFunction('end.poll', endPollHandler, {
-        description: 'Ends the current active poll and archives its results. Fetches the current poll from Twitch.',
+        description: 'Ends the current active poll now and archives it on Twitch. Its result stays readable with poll.result and poll.tied. Fetches the current poll from Twitch.',
         syntax: 'end.poll',
         category: 'channel',
         examples: ['end.poll'],
@@ -403,7 +417,7 @@ export function registerChannelFunctions(): void {
         keywords: ['end poll', 'archive poll', 'terminar encuesta', 'archivar encuesta']
     });
     registerFunction('cancel.poll', cancelPollHandler, {
-        description: 'Terminates the current active poll without archiving its results. Fetches the current poll from Twitch.',
+        description: 'Cancels the current active poll: it stops on Twitch and counts as canceled here, so poll.result stays empty and the "Poll ended" chat event does not run. Use end.poll to finish a poll and keep its result. Fetches the current poll from Twitch.',
         syntax: 'cancel.poll',
         category: 'channel',
         examples: ['cancel.poll'],

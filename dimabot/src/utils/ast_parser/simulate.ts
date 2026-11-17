@@ -15,6 +15,7 @@ import { unescapeRenderedText } from './render.js';
 import { registerAllFunctions } from './functions/index.js';
 import { resolveArgumentPlaceholders } from '../../handlers/special_parser.handler.js';
 import { normalizeTarget } from './functions/shoutout_target.js';
+import { INTERACTION_READ_FUNCTIONS } from './functions/interaction.functions.js';
 import type { AstSimulationCache, ExecutionContext } from './types.js';
 
 /** Functions that only read the command's own context: safe to run for real. */
@@ -27,6 +28,7 @@ const PURE_FUNCTIONS = new Set([
 const READ_CATEGORIES = new Set(['twitch-data', 'event-data', 'ai']);
 const READ_FUNCTIONS = new Set([
     'get.poll', 'get.prediction', 'bot.mode', 'tts.status', 'tts.connected', 'tts.queue.length', 'roulette.result', 'randomuser',
+    ...INTERACTION_READ_FUNCTIONS,
 ]);
 
 /** Sample values for reads (the block editor's "Try it" values, plus a few more). */
@@ -59,6 +61,23 @@ const SAMPLE_VALUES: Record<string, string> = {
     'bot.mode': 'online',
     'get.poll': 'Best map? · Nuke leads',
     'get.prediction': 'Will we win? · 64% yes',
+    // A finished poll tied between two maps, and a resolved prediction.
+    'poll.title': 'Best map?',
+    'poll.status': 'ended',
+    'poll.options': '["Nuke","Mirage","Inferno"]',
+    'poll.values': '[5,5,2]',
+    'poll.votes': '5',
+    'poll.total': '12',
+    'poll.result': '',
+    'poll.tied': '["Nuke","Mirage"]',
+    'prediction.title': 'Will we win?',
+    'prediction.status': 'ended',
+    'prediction.options': '["Yes","No"]',
+    'prediction.values': '[6400,3600]',
+    'prediction.points': '6400',
+    'prediction.users': '18',
+    'prediction.total': '10000',
+    'prediction.result': 'Yes',
     'tts.status': 'Speech overlay connected · idle · 0 waiting',
     'tts.connected': 'true',
     'tts.queue.length': '0',

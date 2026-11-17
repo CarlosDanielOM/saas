@@ -141,7 +141,50 @@ export const INCOMING_RAID_CHAT_EVENT = {
         { id: 'minViewers', label: { EN: 'Minimum viewers for announcements', ES: 'Espectadores mínimos para anuncios' }, type: 'number', value: 2, canDisable: true }]
 } satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>;
 
-const BUILTIN_CHAT_EVENTS = [CHAT_NOTIFICATION_EVENT, SHOUTOUT_RECEIVED_EVENT, INCOMING_RAID_CHAT_EVENT, OUTGOING_RAID_CHAT_EVENT, ...SUBSCRIPTION_CHAT_EVENTS] as const;
+/**
+ * Run a message (usually a script) when a Twitch poll or prediction finishes with a result. The
+ * same Twitch notifications feed the overlay widgets and the poll.* / prediction.* functions, so
+ * deleting one of these only silences it (see deleteChannelEventsub).
+ */
+export const INTERACTION_ENDED_CHAT_EVENTS = [
+    {
+        name: 'Poll ended',
+        type: 'channel.poll.end',
+        description: {
+            EN: 'Runs when a Twitch poll finishes with a result. Use $(poll.result) and $(poll.tied) to announce the winner or break a tie. A canceled poll stays silent.',
+            ES: 'Se ejecuta cuando una encuesta de Twitch termina con resultado. Usa $(poll.result) y $(poll.tied) para anunciar la opción ganadora o desempatar. Una encuesta cancelada no envía nada.'
+        },
+        message: '*($(poll.tied) ? "The poll ended in a tie!" : "${$(poll.result)} won the poll!")'
+    },
+    {
+        name: 'Prediction ended',
+        type: 'channel.prediction.end',
+        description: {
+            EN: 'Runs when you choose the winning outcome of a Twitch prediction. Use $(prediction.result) to announce it. A canceled prediction stays silent.',
+            ES: 'Se ejecuta cuando eliges el resultado ganador de una predicción de Twitch. Usa $(prediction.result) para anunciarlo. Una predicción cancelada no envía nada.'
+        },
+        message: '$(prediction.result) won the prediction!'
+    }
+].map(({ message, ...event }) => ({
+    ...event,
+    version: '1',
+    condition: { broadcaster_user_id: 'user' },
+    icon: 'Trophy',
+    color: '#7c3aed',
+    textColor: '#ffffff',
+    releaseStage: 'stable',
+    enabled: false,
+    plan_tier: 'free',
+    config: [{
+        id: 'message',
+        label: { EN: 'Message', ES: 'Mensaje' },
+        type: 'text',
+        value: message,
+        canDisable: true
+    }]
+} satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>));
+
+const BUILTIN_CHAT_EVENTS = [CHAT_NOTIFICATION_EVENT, SHOUTOUT_RECEIVED_EVENT, INCOMING_RAID_CHAT_EVENT, OUTGOING_RAID_CHAT_EVENT, ...SUBSCRIPTION_CHAT_EVENTS, ...INTERACTION_ENDED_CHAT_EVENTS] as const;
 
 export function getBuiltinChatEvent(type: string) {
     return BUILTIN_CHAT_EVENTS.find(event => event.type === type);

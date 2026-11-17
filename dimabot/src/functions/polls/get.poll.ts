@@ -1,4 +1,3 @@
-import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -16,6 +15,9 @@ interface PollData {
     channelID: string;
     channel: string;
     status: string;
+    /** ISO time the poll started, and how long it runs in seconds (0 when Twitch gave none). */
+    startedAt: string;
+    duration: number;
 }
 
 interface GetPollResponse {
@@ -26,23 +28,12 @@ interface GetPollResponse {
     data?: PollData;
 }
 
+/**
+ * Always reads Twitch. `cache` is kept for callers and no longer does anything: the shared, expiring
+ * snapshot of the latest poll lives in `utils/twitch_interactions.ts` (`readInteraction`).
+ */
 export async function getPoll(channelID: string, pollID: string | null = null, cache: boolean = false): Promise<GetPollResponse> {
     try {
-        const cacheClient = cache ? await getDragonflyClient('getPoll') : null;
-        const cacheKey = `twitch:${channelID}:polls`;
-
-        if (cache) {
-            const cachedData = await cacheClient!.get(cacheKey);
-            if (cachedData) {
-                const parsedData = JSON.parse(cachedData);
-                return {
-                    error: false,
-                    message: 'Success (from cache)',
-                    data: parsedData
-                };
-            }
-        }
-
         const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
 
         if (streamerHeaderResult.error || !streamerHeaderResult.header) {
@@ -106,12 +97,10 @@ export async function getPoll(channelID: string, pollID: string | null = null, c
             choices: choices,
             channelID: poll.broadcaster_id,
             channel: poll.broadcaster_login,
-            status: poll.status
+            status: poll.status,
+            startedAt: typeof poll.started_at === 'string' ? poll.started_at : '',
+            duration: Number(poll.duration) || 0
         };
-
-        if (cache) {
-            await cacheClient!.set(cacheKey, JSON.stringify(pollData));
-        }
 
         return {
             error: false,

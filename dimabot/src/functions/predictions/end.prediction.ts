@@ -1,4 +1,4 @@
-import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
+import { forgetInteraction } from '../../utils/twitch_interactions.js';
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -119,9 +119,7 @@ export async function endPrediction(channelID: string, predictionID: string, sta
 
         // Twitch has committed the change; cache cleanup must not turn it into
         // a reported failure (or block the response) when Dragonfly is down.
-        void getDragonflyClient('endPrediction')
-            .then(client => client.del(`twitch:${channelID}:predictions`))
-            .catch(error => console.error('Prediction cache cleanup failed:', error));
+        void forgetInteraction(channelID, 'prediction');
 
         return {
             error: false,

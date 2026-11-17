@@ -21,6 +21,12 @@ mock.module('../../../../server/services/eventsub_config.service.js', {
         ...realEventsubService,
         createChannelEventsub: async (channelID: string, body: any) => {
             events.calls.push(`create:${body.type}`);
+            const kept = realEventsubService.isRetainedEventsubType(body.type) ? events.subs.find((item) => item.type === body.type) : null;
+            if (kept) {
+                Object.assign(kept, { enabled: true }, body.config);
+                landed(events);
+                return { status: 201, body: { error: false, data: { _id: kept._id, type: body.type } } };
+            }
             events.subs.push({ _id: `id-${events.subs.length + 1}`, channelID, type: body.type, version: body.version, condition: body.condition, enabled: true, ...body.config });
             const data = { _id: events.subs.at(-1)._id, type: body.type };
             landed(events);
@@ -38,9 +44,12 @@ mock.module('../../../../server/services/eventsub_config.service.js', {
             landed(events);
             return { status: 200, body: { error: false } };
         },
+        // Like the service: poll / prediction events are only turned off, and setting one up again revives its row.
         deleteChannelEventsub: async (_channelID: string, id: string) => {
             events.calls.push(`delete:${id}`);
-            events.subs = events.subs.filter((sub) => sub._id !== id);
+            const sub = events.subs.find((item) => item._id === id);
+            if (sub && realEventsubService.isRetainedEventsubType(sub.type)) sub.enabled = false;
+            else events.subs = events.subs.filter((item) => item._id !== id);
             return { status: 200, body: { error: false, message: 'Eventsub deleted', status: 200 } };
         }
     }
@@ -163,6 +172,27 @@ test('delete_chat_event: never for stream online/offline; undo subscribes again 
     assert.deepEqual(events.calls.at(-1), 'create:channel.follow');
     assert.equal(events.subs.at(-1).message, 'Hi');
     assert.equal(events.subs.at(-1).enabled, false);
+});
+
+test('delete_chat_event on Poll ended: only turned off (the subscription is shared), and undo turns the same row back on', async () => {
+    events.subs = [{ _id: 'p1', channelID: '100', type: 'channel.poll.end', version: '1', condition: { broadcaster_user_id: '100' }, enabled: true, message: '$(poll.result) won!' }];
+    const ctx = makeCtx();
+    const proposal = await propose(deleteChatEvent, { type: 'channel.poll.end' }, ctx);
+    assert.ok(proposal.effects[0].includes('Turns this chat event off') && !proposal.effects[0].includes('Removes'));
+    const { change } = await applyProposal(deleteChatEvent, proposal, ctx);
+    assert.deepEqual(events.subs.map((sub) => [sub._id, sub.enabled, sub.message]), [['p1', false, '$(poll.result) won!']]);
+    await undoChange(deleteChatEvent, change!, ctx);
+    assert.deepEqual(events.subs.map((sub) => [sub._id, sub.enabled, sub.message]), [['p1', true, '$(poll.result) won!']], 'the same row, on again, with its script');
+    assert.equal(events.calls.at(-1), 'update:p1', 'one guarded update, no new subscription');
+    // Turned on again by the streamer in the meantime: undo has nothing left to do and says so.
+    const again = await applyProposal(deleteChatEvent, await propose(deleteChatEvent, { type: 'channel.poll.end' }, ctx), ctx);
+    events.subs[0].enabled = true;
+    await assert.rejects(undoChange(deleteChatEvent, again.change!, ctx), ToolConflictError);
+    // Edited while it was off: undo must not put the old script back over the new one.
+    events.subs[0].enabled = false;
+    events.subs[0].message = 'A newer script';
+    await assert.rejects(undoChange(deleteChatEvent, again.change!, ctx), ToolConflictError);
+    assert.deepEqual(events.subs.map((sub) => [sub.enabled, sub.message]), [[false, 'A newer script']]);
 });
 
 test('create_chat_event: undo data comes from the write, so an edit landing right after it is never removed by undo', async () => {

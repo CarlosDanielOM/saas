@@ -1,4 +1,4 @@
-import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
+import { forgetInteraction } from '../../utils/twitch_interactions.js';
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -91,9 +91,7 @@ export async function endPoll(channelID: string, pollID: string, status: string)
 
         // Twitch has committed the change; cache cleanup must not turn it into
         // a reported failure (or block the response) when Dragonfly is down.
-        void getDragonflyClient('endPoll')
-            .then(client => client.del(`twitch:${channelID}:polls`))
-            .catch(error => console.error('Poll cache cleanup failed:', error));
+        void forgetInteraction(channelID, 'poll');
 
         return {
             error: false,

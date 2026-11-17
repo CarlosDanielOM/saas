@@ -1,3 +1,4 @@
+import { forgetInteractionFeed } from '../utils/twitch_interactions.js';
 import EventsubSchema from "../schemas/eventsub.schema.js";
 import type { ITwitchSubscriptionData } from "../interfaces/twitch/eventsub.interface.js";
 import type { IEventsub } from "../schemas/eventsub.schema.js";
@@ -98,6 +99,8 @@ export async function revocationHandler(
             type,
             version
         });
+        // poll.* / prediction.* functions must stop trusting notifications this channel no longer gets.
+        await forgetInteractionFeed(subscription.channelID || '', type);
 
         await logInfo({
             message: 'EventSub subscription deleted successfully',

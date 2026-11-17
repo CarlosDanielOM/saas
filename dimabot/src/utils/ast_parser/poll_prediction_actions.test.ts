@@ -30,6 +30,14 @@ mock.module('../../functions/polls/index.js', { namedExports: {
 } });
 mock.module('../../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: forbidden } });
 mock.module('../ai/openrouter/command.ai.js', { namedExports: { executeAiCommand: forbidden } });
+// The canceled marker lives in the cache; here only its order around the Twitch call matters.
+const marks: string[] = [];
+const realInteractions = await import('../twitch_interactions.js');
+mock.module('../twitch_interactions.js', { namedExports: {
+    ...realInteractions,
+    markPollCanceled: async (_channel: string, id: string) => { marks.push(`mark:${id}:after-${endPoll.mock.callCount()}-calls`); },
+    unmarkPollCanceled: async (_channel: string, id: string) => { marks.push(`unmark:${id}`); }
+} });
 
 const { registerChannelFunctions } = await import('./functions/channel.functions.js');
 registerChannelFunctions();
@@ -128,9 +136,22 @@ test('end.poll archives results and cancel.poll terminates without results', asy
     assert.equal(await run('end.poll'), '');
     assert.deepEqual(getPoll.mock.calls[0]?.arguments, ['channel-1']);
     assert.deepEqual(endPoll.mock.calls[0]?.arguments, ['channel-1', 'poll-1', 'ARCHIVED']);
+    assert.deepEqual(marks, [], 'ending a poll keeps its result');
     reset();
     assert.equal(await run('cancel.poll'), '');
     assert.deepEqual(endPoll.mock.calls[0]?.arguments, ['channel-1', 'poll-1', 'TERMINATED']);
+    // Marked before Twitch is asked: its end notification can arrive before its answer.
+    assert.deepEqual(marks, ['mark:poll-1:after-0-calls']);
+    // Twitch refused (a status came back): the poll keeps its result. No answer at all: it stays marked.
+    marks.length = 0; reset();
+    pollEnd = { error: true, message: 'Poll already ended', status: 400 };
+    assert.match(await run('cancel.poll'), /Poll already ended/);
+    assert.deepEqual(marks, ['mark:poll-1:after-0-calls', 'unmark:poll-1']);
+    marks.length = 0; reset();
+    pollEnd = { error: true, message: 'Internal server error' };
+    assert.match(await run('cancel.poll'), /Internal server error/);
+    assert.deepEqual(marks, ['mark:poll-1:after-0-calls']);
+    marks.length = 0;
 });
 
 test('poll actions report missing IDs, lookup errors, and Twitch errors', async () => {

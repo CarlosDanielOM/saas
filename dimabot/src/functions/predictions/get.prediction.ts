@@ -1,4 +1,3 @@
-import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -29,6 +28,9 @@ interface PredictionData {
     winning_outcome_id?: string;
     winning_outcome?: PredictionOutcome;
     status?: string;
+    /** ISO time the prediction started, and how long betting stays open in seconds (0 when Twitch gave none). */
+    createdAt: string;
+    predictionWindow: number;
 }
 
 interface GetPredictionResponse {
@@ -39,23 +41,12 @@ interface GetPredictionResponse {
     data?: PredictionData;
 }
 
+/**
+ * Always reads Twitch. `cache` is kept for callers and no longer does anything: the shared, expiring
+ * snapshot of the latest prediction lives in `utils/twitch_interactions.ts` (`readInteraction`).
+ */
 export async function getPrediction(channelID: string, predictionID: string | null = null, cache: boolean = false): Promise<GetPredictionResponse> {
     try {
-        const cacheClient = cache ? await getDragonflyClient('getPrediction') : null;
-        const cacheKey = `twitch:${channelID}:predictions`;
-
-        if (cache) {
-            const cachedData = await cacheClient!.get(cacheKey);
-            if (cachedData) {
-                const parsedData = JSON.parse(cachedData);
-                return {
-                    error: false,
-                    message: 'Success (from cache)',
-                    data: parsedData
-                };
-            }
-        }
-
         const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
 
         if (streamerHeaderResult.error || !streamerHeaderResult.header) {
@@ -122,17 +113,15 @@ export async function getPrediction(channelID: string, predictionID: string | nu
             channelID: prediction.broadcaster_id,
             channel: prediction.broadcaster_login,
             predictionStatus: prediction.status,
-            status: prediction.status
+            status: prediction.status,
+            createdAt: typeof prediction.created_at === 'string' ? prediction.created_at : '',
+            predictionWindow: Number(prediction.prediction_window) || 0
         };
 
         if (prediction.winning_outcome_id) {
             predictionData.winning_outcome_id = prediction.winning_outcome_id;
             const winning_outcome = outcomes.find((outcome: PredictionOutcome) => outcome.id === prediction.winning_outcome_id);
             predictionData.winning_outcome = winning_outcome;
-        }
-
-        if (cache) {
-            await cacheClient!.set(cacheKey, JSON.stringify(predictionData));
         }
 
         return {

@@ -14,6 +14,7 @@ import type { ICheerTiers, ICondition } from "../../schemas/eventsub.schema.js";
 import { OUTGOING_RAID_EVENT, isRaidEvent, raidConfigType, raidDirection, raidCondition } from '../../utils/raid_direction.js';
 import { RaidSubscriptionPreferenceSchema as RaidPreferences } from '../../schemas/raid_subscription_preference.schema.js';
 import { raidPreferenceID } from '../../utils/raid_subscriptions.js';
+import { INTERACTION_EVENT_TYPES } from '../../overlays/interaction-model.js';
 
 /**
  * Chat events (channel EventSub configs): the create/update/delete logic shared by
@@ -23,6 +24,8 @@ import { raidPreferenceID } from '../../utils/raid_subscriptions.js';
  */
 
 export const NON_DISABLEABLE_EVENT_TYPES = new Set(['stream.online', 'stream.offline']);
+/** Chat events whose Twitch subscription outlives "delete": it is shared with overlays and AST functions. */
+export const isRetainedEventsubType = (type: string): boolean => Object.hasOwn(INTERACTION_EVENT_TYPES, type);
 /** Settings a raid chat event can change (both directions). */
 export const RAID_EVENT_FIELDS = new Set(['enabled', 'message', 'clipEnabled', 'minViewers', 'delay']);
 
@@ -317,6 +320,22 @@ export async function createChannelEventsub(channelID: string, rawBody: Record<s
         }
     }
 
+    // A retained subscription (see deleteChannelEventsub) is set up again in place: on, with the given settings.
+    const retained = isRetainedEventsubType(normalizedType)
+        ? await EventsubSchema.findOne({ channelID, type: normalizedType }).select('_id').lean() : null;
+    if (retained) {
+        if (config !== undefined && (!config || typeof config !== 'object' || Array.isArray(config))
+            || config?.enabled !== undefined && typeof config.enabled !== 'boolean'
+            || config?.message !== undefined && typeof config.message !== 'string') {
+            return { status: 400, body: { error: true, message: 'Invalid chat event settings', status: 400 } };
+        }
+        const revived = await EventsubSchema.findOneAndUpdate({ _id: retained._id }, { $set: {
+            enabled: typeof config?.enabled === 'boolean' ? config.enabled : true,
+            ...(typeof config?.message === 'string' ? { message: config.message } : {})
+        } }, { new: true }).lean();
+        return { status: 201, body: { error: false, data: revived } };
+    }
+
     const eventsub = await subscribeTwitchEvent(channelID, requestedRaid ? 'channel.raid' : normalizedType, version,
         requestedRaid ? raidCondition(channelID, direction) : condition as ICondition, config);
 
@@ -354,6 +373,18 @@ export async function deleteChannelEventsub(channelID: string, id: string): Prom
             error: true,
             message: 'This event cannot be deleted. Clear its message to silence chat output.',
             status: 403
+        } };
+    }
+
+    // Poll and prediction notifications also feed the overlay widgets and the poll.* / prediction.*
+    // functions. Removing the chat event turns it off and keeps the Twitch subscription (and its
+    // message, so turning it back on from a page that still shows that message does what it shows).
+    if (isRetainedEventsubType(eventsub.type)) {
+        await EventsubSchema.updateOne({ _id: eventsub._id }, { $set: { enabled: false } });
+        return { status: 200, body: {
+            error: false,
+            message: 'Eventsub deleted',
+            status: 200
         } };
     }
 
