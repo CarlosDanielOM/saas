@@ -643,6 +643,30 @@
                     }
                   </ul>
                   <p class="lf-note">{{ t('astIdsHelp') }}</p>
+                  <details class="lf-more">
+                    <summary>{{ t('cmdMore') }}</summary>
+                    <div class="lf-more__body">
+                      <ul class="rl-cmds">
+                        @for (name of moreCommands; track name) {
+                          <li class="rl-cmd">
+                            <span class="rl-cmd__body">
+                              <span class="rl-cmd__label">{{ t('cmd.' + name) }}</span>
+                              <code>{{ ast(name) }}</code>
+                            </span>
+                            <button
+                              type="button"
+                              class="lf-icon-btn"
+                              (click)="copy(ast(name))"
+                              [attr.aria-label]="t('copyAria', { name: t('cmd.' + name) })"
+                            >
+                              <app-lf-icon name="copy" [size]="15"></app-lf-icon>
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                      <p class="lf-note rl-cmd-warn">{{ t('cmdDeleteWarn') }}</p>
+                    </div>
+                  </details>
                 </section>
               </div>
             </div>

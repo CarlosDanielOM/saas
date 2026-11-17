@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AutoGrowDirective } from '../../../shared/directives/auto-grow.directive';
 
 import { LanguageService } from '../../../services/language.service';
 import { ToastService } from '../../../services/toast.service';
@@ -13,7 +14,7 @@ import { BitsRulesPanelComponent } from '../../bits-rules/bits-rules-panel.compo
 
 @Component({
   selector: 'app-config-panel',
-  imports: [FormsModule, BitsRulesPanelComponent],
+  imports: [FormsModule, BitsRulesPanelComponent, AutoGrowDirective],
   styleUrl: './config-panel.component.css',
   templateUrl: './config-panel.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -64,6 +65,30 @@ export class ConfigPanelComponent {
     return this.isWatchStreakMessage(control) || this.isModiversaryMessage(control)
       ? this.t(this.getNotificationHelpKey(control) + '.defaultMessage')
       : control.placeholder || '';
+  }
+
+  /**
+   * A chat message is one line: every line break (a paste, the Enter key of a phone keyboard) becomes
+   * one space, in the box itself and in the saved value together, so what is shown is what is saved.
+   * Nothing else is touched (other spaces stay), and the caret stays where it was. Text still being
+   * composed by the keyboard is left alone until it is committed.
+   */
+  onTextInput(control: ConfigControl, event: Event): void {
+    const box = event.target as HTMLTextAreaElement;
+    if ((event as InputEvent).isComposing) return;
+    const breaks = /\r\n?|\n/g;
+    if (breaks.test(box.value)) {
+      const caret = box.value.slice(0, box.selectionStart ?? box.value.length).replace(breaks, ' ').length;
+      box.value = box.value.replace(breaks, ' ');
+      box.setSelectionRange(caret, caret);
+    }
+    control.value = box.value;
+  }
+
+  /** Enter never adds a line; while the keyboard is composing text, Enter is what commits it. */
+  onEnter(event: Event): void {
+    const key = event as KeyboardEvent;
+    if (!key.isComposing && key.keyCode !== 229) key.preventDefault();
   }
 
   restoreDefault(control: ConfigControl): void {

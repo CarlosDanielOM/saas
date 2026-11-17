@@ -11,15 +11,20 @@
 
           @switch (control.type) {
             @case ('text') {
-              <input
-                type="text"
+              <!-- A message can be a long script: it wraps and grows instead of being clipped on one line. -->
+              <textarea
+                rows="1"
                 [id]="'control-' + control.id"
-                [(ngModel)]="control.value"
+                [ngModel]="control.value"
+                (input)="onTextInput(control, $event)"
+                (compositionend)="onTextInput(control, $event)"
+                (keydown.enter)="onEnter($event)"
+                [appAutoGrow]="control.value"
                 [disabled]="isBusy() || !canManage()"
                 [placeholder]="getControlPlaceholder(control)"
                 [attr.aria-describedby]="isWatchStreakMessage(control) || isModiversaryMessage(control) ? 'notification-help-' + control.id : null"
-                class="lf-config__input"
-              />
+                class="lf-config__input lf-config__input--text"
+              ></textarea>
               @if (isWatchStreakMessage(control) || isModiversaryMessage(control)) {
                 <div [id]="'notification-help-' + control.id" class="lf-config__help">
                   <p>{{ t(getNotificationHelpKey(control) + '.variables') }}</p>

@@ -7517,8 +7517,8 @@
       "days": "{{count}} d ago"
     },
     "automation": "Run it from chat",
-    "astHelp": "Paste these into a command, keyword or trigger. Only you and mods can run the ones that change things.",
-    "astIdsHelp": "In add, 3 is the slots and 1 the weight (both optional). For update/remove, copy a prize ID from its editor.",
+    "astHelp": "Paste these into a command, keyword or trigger. They run for everyone allowed to use it, so set \"Who can use it\" to mods for the ones that change things.",
+    "astIdsHelp": "In add, 3 is the slots and 1 the weight (both optional). For update/remove, copy a prize ID from its editor. fill also takes a list, such as $(poll.tied).",
     "cmd": {
       "start": "Start a draw",
       "add": "Add a prize",
@@ -7528,8 +7528,15 @@
       "show": "Show the overlay",
       "hide": "Hide the overlay",
       "switch": "Put this roulette on stream",
-      "result": "Say the last winner"
+      "result": "Say the last winner",
+      "fill": "Replace all prizes with a list",
+      "clear": "Remove all prizes",
+      "create": "Create another roulette",
+      "delete": "Delete this roulette"
     },
+    "cmdMore": "Create or delete a roulette",
+    "cmdNewName": "New roulette",
+    "cmdDeleteWarn": "Deleting removes the roulette, its prizes and its settings, and can't be undone. Anyone allowed to use the command can run it, so keep it for you and your mods.",
     "copyAria": "Copy: {{name}}",
     "copied": "Copied to clipboard.",
     "copyError": "Clipboard unavailable. Select and copy the text manually.",

@@ -1217,6 +1217,7 @@
 .rl-cmd__body { display: grid; gap: 0.15rem; min-width: 0; }
 .rl-cmd__label { font-size: 0.86rem; font-weight: 750; }
 .rl-cmd code, .rl-id code { overflow-wrap: anywhere; color: var(--accent); font-family: var(--mono); font-size: 0.76rem; }
+.rl-cmd-warn { color: var(--warn); }
 
 /* Prize editor */
 .rl-stepper { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.4rem; }

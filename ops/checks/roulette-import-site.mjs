@@ -64,7 +64,8 @@ try {
       }
     };
 
-    const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme, acceptDownloads: true });
+    const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme, acceptDownloads: true,
+      permissions: ["clipboard-read", "clipboard-write"] });
     const user = { id: "999992", login: "adminviewer", display_name: "Viewer" };
     const app = {
       name: "Viewer", email: "test@example.invalid", language: lang, plan_tier: "free", actived: true, chat_enabled: true,
@@ -128,6 +129,35 @@ try {
     const module = page.locator("app-roulette-page");
     await module.getByRole("heading", { name: T.title, level: 1 }).waitFor();
     await until(async () => (await module.locator(".rl-prize").count()) === 2, "fixture prizes shown");
+    // "Run it from chat": the prize functions for this roulette, with create and delete tucked away.
+    const cmds = module.locator('section[aria-labelledby="rl-cmd-title"]');
+    assert.deepEqual((await cmds.locator(":scope > ul.rl-cmds code").allTextContents()).map((c) => c.trim()), [
+      '$(roulette.start "friday")', '$(roulette.add "friday" "VIP" 3 1)', '$(roulette.update "friday" item_id 3 1)', '$(roulette.remove "friday" item_id)',
+      '$(roulette.fill "friday" "Pizza" "Tacos")', '$(roulette.clear "friday")', '$(roulette.shuffle "friday")', "$(roulette.show)", "$(roulette.hide)",
+      '$(roulette.switch "friday")', '$(roulette.result "friday")',
+    ]);
+    for (const name of ["fill", "clear"]) assert.equal(await cmds.locator(":scope > ul.rl-cmds").getByText(T.cmd[name], { exact: true }).count(), 1, `${name} label`);
+    const moreCmds = cmds.locator("details.lf-more");
+    assert.equal(await moreCmds.evaluate((d) => d.open), false, "create and delete are tucked away");
+    await moreCmds.locator("summary").click();
+    assert.equal((await moreCmds.locator("summary").innerText()).trim(), T.cmdMore);
+    assert.deepEqual((await moreCmds.locator("code").allTextContents()).map((c) => c.trim()), [`$(roulette.create new_id "${T.cmdNewName}")`, '$(roulette.delete "friday")']);
+    await moreCmds.getByText(T.cmdDeleteWarn, { exact: true }).waitFor();
+    // The help says who can run these: whoever may use the command, not "only mods".
+    await cmds.getByText(T.astHelp, { exact: true }).waitFor();
+    assert(/Who can use it|Quién puede usarlo/.test(T.astHelp) && !/Only you and mods can run|Solo tú y tus mods pueden ejecutar/.test(T.astHelp));
+    // Copy really copies the text shown.
+    for (const [list, name, text] of [[cmds.locator(":scope > ul.rl-cmds"), "fill", '$(roulette.fill "friday" "Pizza" "Tacos")'], [moreCmds, "delete", '$(roulette.delete "friday")']]) {
+      await list.getByRole("button", { name: fill(T.copyAria, { name: T.cmd[name] }), exact: true }).click();
+      await until(async () => (await page.evaluate(() => navigator.clipboard.readText())) === text, `${name} copied`);
+    }
+    assert.equal(await moreCmds.getByRole("button", { name: fill(T.copyAria, { name: T.cmd.delete }), exact: true }).count(), 1);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal overflow with the function list open");
+    const cmdAxe = await new AxeBuilder({ page }).include('section[aria-labelledby="rl-cmd-title"]').withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    assert.deepEqual(cmdAxe.violations.map((v) => ({ id: v.id, nodes: v.nodes.slice(0, 3).map((n) => n.target) })), [], "axe function list");
+    if (shots) { await cmds.scrollIntoViewIfNeeded(); await page.screenshot({ path: `${shots}/roulette-functions-${width}-${scheme}-${lang}.png` }); }
+    await moreCmds.locator("summary").click();
+
     const openDialog = async () => {
       await module.getByRole("button", { name: T.import.button, exact: true }).click();
       const dialog = page.getByRole("dialog", { name: T.import.title });

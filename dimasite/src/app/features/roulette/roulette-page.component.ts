@@ -42,7 +42,9 @@ export const PALETTES: Record<string, string[]> = {
   sunset: ['#f97316', '#ef4444', '#ec4899', '#facc15'],
   mint: ['#34d399', '#0f766e', '#a7f3d0', '#059669'],
 };
-const COMMANDS = ['start', 'add', 'update', 'remove', 'shuffle', 'show', 'hide', 'switch', 'result'];
+const COMMANDS = ['start', 'add', 'update', 'remove', 'fill', 'clear', 'shuffle', 'show', 'hide', 'switch', 'result'];
+/** Rare, and one cannot be undone: shown under "Create or delete a roulette", not in the main list. */
+const MORE_COMMANDS = ['create', 'delete'];
 
 @Component({
   selector: 'app-roulette-page',
@@ -65,6 +67,7 @@ export class RoulettePageComponent {
   readonly winnerActions: WinnerAction[] = ['keep', 'remove-copy', 'remove-item'];
   readonly palettes = Object.entries(PALETTES).map(([id, colors]) => ({ id, colors }));
   readonly commands = COMMANDS;
+  readonly moreCommands = MORE_COMMANDS;
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
   readonly planTier = computed(() => this.auth.getPlanTierForStreamer(this.streamer));
   readonly state = signal<RouletteState | null>(null);
@@ -588,6 +591,8 @@ export class RoulettePageComponent {
     return this.t('ago.days', { count: Math.floor(seconds / 86400) });
   }
   ast(name: string): string {
-    return `$(roulette.${name}${['show', 'hide'].includes(name) ? '' : ' ' + JSON.stringify(this.selected()?.alias ?? '')}${name === 'add' ? ' "VIP" 3 1' : name === 'remove' ? ' item_id' : name === 'update' ? ' item_id 3 1' : ''})`;
+    // `create` makes another roulette, so it shows a placeholder ID instead of this roulette's.
+    if (name === 'create') return `$(roulette.create new_id ${JSON.stringify(this.t('cmdNewName'))})`;
+    return `$(roulette.${name}${['show', 'hide'].includes(name) ? '' : ' ' + JSON.stringify(this.selected()?.alias ?? '')}${name === 'add' ? ' "VIP" 3 1' : name === 'remove' ? ' item_id' : name === 'update' ? ' item_id 3 1' : name === 'fill' ? ' "Pizza" "Tacos"' : ''})`;
   }
 }

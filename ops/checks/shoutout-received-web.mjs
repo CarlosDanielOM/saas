@@ -21,7 +21,7 @@ fs.mkdirSync(artifacts, { recursive: true });
 const type = SHOUTOUT_RECEIVED_EVENT.type;
 const labels = {
   en: { name: 'Shoutout Received', configure: 'Configure', save: 'Save Changes', community: 'Community moments' },
-  es: { name: 'Shoutout recibido', configure: 'Configurar', save: 'Guardar Cambios', community: 'Momentos de la comunidad' }
+  es: { name: 'Shoutout recibido', configure: 'Configurar', save: 'Guardar cambios', community: 'Momentos de la comunidad' }
 };
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {

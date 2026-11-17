@@ -1,6 +1,8 @@
 // "Poll ended" and "Prediction ended" on the Chat events page (dimasite), in the real app with every
 // API call intercepted: both languages, both themes, 320 / 390 / 1280 px, accessibility, saving a
 // script, turning it off and on, removing it, and turning it on for a channel that never had it.
+// Also the message box itself: it wraps and grows so a long script shows in full (also as the
+// placeholder), and stays one line of chat (Enter and pasted line breaks never add a line).
 //   scripts/saas-ops verify site-<run-id> --check ops/checks/poll-ended-chat-events-web.mjs
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -126,17 +128,75 @@ try {
     const input = card(pollName).locator('#control-message');
     assert.equal(await input.inputValue(), '');
     assert.equal(await input.getAttribute('placeholder'), definitions[0][5]);
+    assert.equal(await input.evaluate(el => el.tagName), 'TEXTAREA', 'the message box wraps');
+    const lineHeight = await input.evaluate(el => parseFloat(getComputedStyle(el).lineHeight));
+    const lines = async () => Math.round(((await input.boundingBox()).height - (await input.evaluate(el => {
+      const style = getComputedStyle(el); return parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+    }))) / lineHeight);
+    // The default message is the placeholder: on a phone it needs several lines and gets them.
+    if (width <= 390) assert.ok(await lines() >= 2, `placeholder shows in full at ${width}px (${await lines()} lines)`);
+    assert.ok((await input.boundingBox()).height >= 44, 'touch target');
+    assert.ok(parseFloat(await input.evaluate(el => getComputedStyle(el).fontSize)) >= 16, 'no zoom on iOS');
     const axe = await new AxeBuilder({ page }).include('app-chat-events-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     assert.deepEqual(axe.violations.map(violation => `${violation.id}: ${violation.nodes.map(node => node.target).join(' ')}`), [], 'chat events accessibility');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'no horizontal overflow with the editor open');
     await page.screenshot({ path: `${artifacts}/poll-ended-${lang}-${theme}-${width}.png`, fullPage: true });
     await input.fill(TIE_BREAK);
+    // The whole script is visible: wrapped onto more lines, nothing clipped or scrolled away.
+    const before = await lines();
+    assert.ok(before >= 2, `a long script wraps at ${width}px (${before} lines)`);
+    assert.equal(await input.evaluate(el => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1), true, 'nothing is clipped');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'no horizontal overflow with a long script');
+    await page.screenshot({ path: `${artifacts}/poll-ended-script-${lang}-${theme}-${width}.png`, fullPage: true });
+    // A chat message is one line: Enter adds nothing, and a pasted line break becomes a space.
+    await input.press('End');
+    await input.press('Enter');
+    assert.equal(await input.inputValue(), TIE_BREAK);
+    await input.fill('First line\nsecond line');
+    assert.equal(await input.inputValue(), 'First line second line');
+    assert.equal(await lines(), 1, 'the box shrinks back with short text');
+    // Only the break changes: the spaces around it stay, and Windows line ends count once.
+    await input.fill('A  \r\n  B');
+    assert.equal(await input.inputValue(), 'A     B');
+    // Pasting "A<break>B" over "A B" gives the same saved text as before: the box must still show
+    // what is saved, and Save must send exactly that.
+    await input.fill('A B');
+    await input.fill('A\nB');
+    assert.equal(await input.inputValue(), 'A B', 'the box shows what will be saved');
+    await card(pollName).getByRole('button', { name: labels[lang].save, exact: true }).click();
+    await card(pollName).locator('app-config-panel').waitFor({ state: 'hidden' });
+    assert.deepEqual(writes.at(-1), { method: 'PATCH', id: 'fixture-poll', payload: { message: 'A B' } });
+    await card(pollName).getByRole('button', { name: labels[lang].configure, exact: true }).click();
+    assert.equal(await input.inputValue(), 'A B');
+    // Emptied again: the placeholder is sized on a hidden copy, so the box itself stays empty and undo still works.
+    await input.fill('');
+    await input.pressSequentially('abc');
+    await input.press('ControlOrMeta+a');
+    await input.press('Backspace');
+    assert.equal(await input.inputValue(), '');
+    if (width <= 390) assert.ok(await lines() >= 2, 'the placeholder shows in full again');
+    assert.equal(await page.locator('textarea[aria-hidden="true"]').count(), 0, 'no measuring copy is left behind');
+    await input.press('ControlOrMeta+z');
+    assert.equal(await input.inputValue(), 'abc', 'undo brings the text back');
+    await input.fill(TIE_BREAK);
+    if (full) {
+      // Rotating the phone / resizing with the editor open: the box follows the new width.
+      const wide = await lines();
+      await page.setViewportSize({ width: 360, height: 1000 });
+      await page.waitForFunction(() => [...document.querySelectorAll('#control-message')].every(el => el.scrollHeight <= el.clientHeight + 1));
+      assert.ok(await lines() > wide, `more lines after narrowing (${wide} -> ${await lines()})`);
+      await page.setViewportSize({ width, height: 1000 });
+      await page.waitForFunction(() => [...document.querySelectorAll('#control-message')].every(el => el.scrollHeight <= el.clientHeight + 1));
+      assert.equal(await lines(), wide, 'and back');
+    }
     await card(pollName).getByRole('button', { name: labels[lang].save, exact: true }).click();
     await card(pollName).locator('app-config-panel').waitFor({ state: 'hidden' });
     assert.deepEqual(writes.at(-1), { method: 'PATCH', id: 'fixture-poll', payload: { message: TIE_BREAK } });
     await page.reload();
     await card(pollName).getByRole('button', { name: labels[lang].configure, exact: true }).click().catch(error => fail(error, 'configure after reload'));
     assert.equal(await input.inputValue(), TIE_BREAK, 'the script survives a reload');
+    await page.waitForFunction(() => [...document.querySelectorAll('#control-message')].every(el => el.scrollHeight <= el.clientHeight + 1));
+    assert.ok(await lines() >= 2, 'a loaded script is shown in full too');
 
     if (full) {
       // Off and on again.

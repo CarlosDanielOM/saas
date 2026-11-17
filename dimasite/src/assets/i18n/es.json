@@ -7517,8 +7517,8 @@
       "days": "hace {{count}} d"
     },
     "automation": "Úsala desde el chat",
-    "astHelp": "Pega esto en un comando, palabra clave o trigger. Solo tú y tus mods pueden ejecutar los que cambian cosas.",
-    "astIdsHelp": "En add, 3 son los espacios y 1 el peso (ambos opcionales). Para update/remove, copia el ID del premio desde su editor.",
+    "astHelp": "Pega esto en un comando, palabra clave o trigger. Se ejecutan para quien pueda usarlo, así que en \"Quién puede usarlo\" elige mods para los que cambian cosas.",
+    "astIdsHelp": "En add, 3 son los espacios y 1 el peso (ambos opcionales). Para update/remove, copia el ID del premio desde su editor. fill también acepta una lista, como $(poll.tied).",
     "cmd": {
       "start": "Iniciar un sorteo",
       "add": "Agregar un premio",
@@ -7528,8 +7528,15 @@
       "show": "Mostrar el overlay",
       "hide": "Ocultar el overlay",
       "switch": "Poner esta ruleta en vivo",
-      "result": "Decir el último ganador"
+      "result": "Decir el último ganador",
+      "fill": "Reemplazar todos los premios con una lista",
+      "clear": "Quitar todos los premios",
+      "create": "Crear otra ruleta",
+      "delete": "Eliminar esta ruleta"
     },
+    "cmdMore": "Crear o eliminar una ruleta",
+    "cmdNewName": "Ruleta nueva",
+    "cmdDeleteWarn": "Eliminar borra la ruleta, sus premios y su configuración, y no se puede deshacer. Cualquiera que pueda usar el comando puede ejecutarlo, así que déjalo solo para ti y tus mods.",
     "copyAria": "Copiar: {{name}}",
     "copied": "Copiado al portapapeles.",
     "copyError": "Portapapeles no disponible. Selecciona y copia el texto manualmente.",
