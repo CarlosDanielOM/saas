@@ -27,7 +27,7 @@ To remove an event, open its configuration and select **Delete Event**.
 ## Turn off, delete, or silence
 
 - **Off** (the toggle) keeps the Twitch subscription. Turn it on again any time.
-- **Delete Event** removes the subscription. You can add the event back later.
+- **Delete Event** removes the subscription, except for Poll ended and Prediction ended. You can add the event back later.
 - **Stream online** and **Stream offline** can't be turned off or deleted. To silence them, clear their message.
 
 Leave a message empty if you don't want the bot to say anything for that event.
@@ -56,6 +56,26 @@ Use the placeholder shown by each control. If a control doesn't list a variable,
 
 Incoming and outgoing raids have separate cards and settings. Outgoing raid tracking does not run incoming raid announcements, clips, or shoutouts. See [Follow Defense](/follow-defense/) for follow protection during incoming raids.
 
+## Poll and prediction ended
+
+The **Poll ended** and **Prediction ended** cards appear under **Your stream**, are available on Free, and need full Twitch access, including poll and prediction permissions.
+
+**Poll ended** runs its message once when a poll finishes with a result: after its full time, when ended early on Twitch, or with `$(end.poll)`. It does not run if canceled with `$(cancel.poll)` or deleted on Twitch. Default message:
+
+```bash
+*($(poll.tied) ? "The poll ended in a tie!" : "${$(poll.result)} won the poll!")
+```
+
+**Prediction ended** runs once when the streamer chooses the winning outcome, not when canceled. Default message:
+
+```bash
+$(prediction.result) won the prediction!
+```
+
+The message is a normal command script and can use any function, for example to fill and spin a roulette. The `poll.*` or `prediction.*` functions read the final numbers of the event that just ended. An empty message or a switched-off event sends nothing. Deleting either event only turns it off: its message is kept, and the Twitch connection stays because Overlay Studio's poll and prediction widgets share it. If you already use the poll widget, **Poll ended** appears on with an empty message until you write one. See the [tie-breaker recipe](/commands/advanced/recipes/#poll-results).
+
+These subscriptions are not on by default: they are enabled from this page, by Overlay Studio's poll or prediction widgets, or automatically the first time a command uses a poll or prediction read function.
+
 ## Bits rules
 
 Bits rules let you treat some amounts differently. Open the **Cheers** card and select **Configure**. The rules are below the default message.
@@ -82,7 +102,7 @@ Each card shows its plan requirement. The server checks the plan every time you 
 
 ## Events the bot listens for
 
-By default, the bot subscribes to these Twitch events: chat messages, follows, stream online and offline, raids, Hype Train, received shoutouts, ad breaks, subscriptions, gifted subscriptions, resubscriptions, Bits, poll and prediction progress, channel and user updates, and AutoMod held messages.
+By default, the bot subscribes to these Twitch events: chat messages, follows, stream online and offline, raids, Hype Train, received shoutouts, ad breaks, subscriptions, gifted subscriptions, resubscriptions, Bits, channel and user updates, and AutoMod held messages.
 
 Bits use the current `channel.bits.use` event. Older `channel.cheer` and `channel.bit.use` subscriptions appear on the same Bits card.
 

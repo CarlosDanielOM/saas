@@ -118,10 +118,28 @@ Pon entre comillas el argumento completo `título;opciones;segundos`, porque `;`
 |---------|----------|---------|
 | `$(start.poll "título;opción1/opción2;segundos")` | Inicia una encuesta nativa de Twitch con 2–5 opciones. Agrega una cuarta parte para los puntos del canal por voto, de `0` a `1000000` (por defecto `0`, desactivado) | `$(start.poll "¿Mejor mapa?;Nuke/Mirage;120")` |
 | `$(get.poll)` | Lee la encuesta activa, o la más reciente si no hay una activa. Incluye estado y número de votos | `$(get.poll)` |
-| `$(end.poll)` | Termina la encuesta activa y conserva sus resultados | `$(end.poll)` |
-| `$(cancel.poll)` | Termina la encuesta activa y descarta sus resultados | `$(cancel.poll)` |
+| `$(end.poll)` | Termina la encuesta activa ahora y conserva su resultado, que se puede leer con `poll.result` / `poll.tied` | `$(end.poll)` |
+| `$(cancel.poll)` | Cancela la encuesta activa: no hay resultado y el evento Fin de la encuesta no se ejecuta | `$(cancel.poll)` |
 
-`end.poll` y `cancel.poll` solo funcionan con una encuesta activa. Todas las funciones de encuesta requieren acceso de moderador en el chat de IA.
+`end.poll` y `cancel.poll` solo funcionan con una encuesta activa. Las funciones de la tabla anterior requieren acceso de moderador en el chat de IA.
+
+**Leer una encuesta**
+
+Estas funciones funcionan en comandos, timers, mensajes de eventos de chat y acciones de ganador de ruleta. Comparten una captura guardada de la encuesta activa, o de la más reciente si no hay una activa, así que las lecturas de un comando coinciden. Las notificaciones de Twitch mantienen los votos actualizados con unos segundos de retraso. Si no se puede consultar Twitch, devuelven texto vacío, excepto `poll.status`, que devuelve `unavailable`. No publican errores. Cualquiera puede usar estas funciones de lectura en el chat de IA.
+
+| Función | Devuelve |
+|---------|----------|
+| `$(poll.title)` | La pregunta |
+| `$(poll.status)` | `active`, `ended`, `canceled`, `none` (sin encuesta) o `unavailable` |
+| `$(poll.options)` | Las opciones como lista en el orden de Twitch |
+| `$(poll.values)` | Los votos en el mismo orden, incluidos los votos con puntos del canal |
+| `$(poll.votes option)` | Los votos de un título exacto (sin distinguir mayúsculas) o un número desde `1`; vacío si falta o no existe |
+| `$(poll.total)` | Total de votos, o `0` si nadie votó |
+| `$(poll.result)` | La opción que va adelante mientras está activa o la ganadora al terminar; vacío si hay empate, no hay votos o se canceló |
+| `$(poll.tied)` | Lista de opciones empatadas en primer lugar, o texto vacío si una va adelante o se canceló. Vacío es falso en una condición; la lista se puede usar en un bucle |
+
+Si no hay votos, todas las opciones están empatadas. Revisa `poll.total` primero si quieres tratar ese caso de otra manera. Una encuesta que cumple su tiempo, termina antes en Twitch o termina con `$(end.poll)` queda `ended`. Una encuesta cancelada con `$(cancel.poll)` o eliminada en Twitch queda `canceled`: sus opciones y votos siguen disponibles, pero `poll.result` y `poll.tied` quedan vacíos.
+
 
 ### Predicciones
 
@@ -136,6 +154,22 @@ Pon entre comillas el argumento completo `título;opciones;segundos`. Las opcion
 | `$(cancel.prediction)` | Cancela la predicción activa o bloqueada sin elegir ganador | `$(cancel.prediction)` |
 
 Usa `get.prediction` antes de `end.prediction` para revisar la pregunta y el orden de los números. `end.prediction` vuelve a consultar en Twitch la predicción actual cada vez. Rechaza un número que no existe y un título que coincide con más de una opción.
+
+
+**Leer una predicción**
+
+Estas funciones de lectura funcionan en los mismos contextos y comparten una captura guardada, como se describe arriba para las encuestas. Cualquiera puede usarlas en el chat de IA. Si no se puede consultar Twitch, devuelven texto vacío, excepto `prediction.status`, que devuelve `unavailable`; no publican errores.
+
+| Función | Devuelve |
+|---------|----------|
+| `$(prediction.title)` | La pregunta |
+| `$(prediction.status)` | `active`, `locked` (apuestas cerradas), `ended` (ganador elegido), `canceled` (puntos devueltos), `none` o `unavailable` |
+| `$(prediction.options)` | Las opciones como lista |
+| `$(prediction.values)` | Los puntos del canal apostados por cada opción, en el mismo orden |
+| `$(prediction.points option)` | Los puntos apostados por una opción, por título o número |
+| `$(prediction.users option)` | Los espectadores que apostaron por una opción, por título o número |
+| `$(prediction.total)` | Total de puntos del canal apostados |
+| `$(prediction.result)` | La opción ganadora después de elegirla; vacío mientras está activa o si se canceló |
 
 ## Funciones de disponibilidad
 
@@ -159,6 +193,10 @@ Estos controles están disponibles en Gratis, Premium y Pro. Identifica la rulet
 
 | Función | Qué hace | Ejemplo |
 |---------|----------|---------|
+| `$(roulette.create roulette_id ["Name"])` | Crea una ruleta vacía con el diseño predeterminado. Su ID empieza con una letra minúscula y usa letras, números, `_` o `-`; las mayúsculas se convierten en minúsculas. El nombre predeterminado es el ID. Hasta 20 por canal; un ID existente devuelve `Error: roulette.create: Roulette with that name already exists` | `$(roulette.create polls "Poll tie-breaker")` |
+| `$(roulette.delete roulette_id)` | Elimina la ruleta, sus premios y configuración; no se puede deshacer | — |
+| `$(roulette.clear roulette_id)` | Quita todos los premios y conserva la ruleta, su diseño, configuración e historial | — |
+| `$(roulette.fill roulette_id list)` | Reemplaza todos los premios en un guardado, con un espacio de peso `1` por entrada. Acepta un valor de lista, variable de lista, lista literal o etiquetas entre comillas. Una lista vacía se rechaza sin cambios | `$(roulette.fill polls $(poll.tied))` |
 | `$(roulette.add roulette_id "etiqueta" [multiplier] [weight])` | Agrega un elemento. El multiplicador es cuántas copias (por defecto `1`). El peso fija la probabilidad por copia (por defecto `1`) | `$(roulette.add giveaways "VIP por un día" 3 10)` |
 | `$(roulette.remove roulette_id item_id)` | Quita un elemento y todas sus copias | `$(roulette.remove giveaways item_id)` |
 | `$(roulette.update roulette_id item_id multiplier [weight])` | Cambia las copias de un elemento y, si quieres, su peso | `$(roulette.update giveaways item_id 3 10)` |
@@ -167,6 +205,10 @@ Estos controles están disponibles en Gratis, Premium y Pro. Identifica la rulet
 | `$(roulette.show)` / `$(roulette.hide)` | Muestra u oculta el overlay. Ocultarlo no cancela un sorteo | `$(roulette.show)` |
 | `$(roulette.start [roulette_id])` | Inicia un sorteo y registra un ganador | `$(roulette.start giveaways)` |
 | `$(roulette.result [roulette_id])` | Devuelve la etiqueta del ganador más reciente, o vacío si todavía no hay uno | `$(roulette.result giveaways)` |
+
+`delete`, `clear` y `fill` se rechazan mientras cualquier ruleta del canal está girando; `roulette.add` sigue permitido y cuenta para el siguiente sorteo. `roulette.start roulette_id` selecciona esa ruleta y, con la opción predeterminada de mostrar al iniciar, la muestra.
+
+Un comando guardado se ejecuta con la autoridad del streamer para cualquiera que tenga permiso de usarlo. Limita los comandos que eliminan o vacían una ruleta a moderadores o al streamer.
 
 En el chat de IA, cualquiera puede usar `roulette.result`; las demás funciones de ruleta requieren acceso de moderador.
 

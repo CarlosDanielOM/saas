@@ -27,7 +27,7 @@ Para quitar un evento, abre su configuración y pulsa **Eliminar Evento**.
 ## Desactivar, eliminar o silenciar
 
 - **Desactivado** (el interruptor) conserva la suscripción de Twitch. Puedes volver a activarla cuando quieras.
-- **Eliminar Evento** borra la suscripción. Más adelante puedes volver a agregar el evento.
+- **Eliminar Evento** borra la suscripción, excepto para Fin de la encuesta y Fin de la predicción. Más adelante puedes volver a agregar el evento.
 - **Inicio de stream** y **Fin de stream** no se pueden desactivar ni eliminar. Para silenciarlos, borra su mensaje.
 
 Deja un mensaje vacío si no quieres que el bot diga nada en ese evento.
@@ -56,6 +56,26 @@ Usa el marcador que muestra cada control. Si un control no indica una variable, 
 
 Los raids entrantes y salientes tienen tarjetas y ajustes separados. El registro de raids salientes no ejecuta anuncios, clips ni shoutouts de raids entrantes. Consulta [Follow Defense](/es/follow-defense/) para la protección de follows durante raids entrantes.
 
+## Fin de encuesta y predicción
+
+Las tarjetas **Fin de la encuesta** y **Fin de la predicción** aparecen en **Tu stream**, están disponibles en el plan Gratis y necesitan acceso completo de Twitch, incluidos los permisos de encuestas y predicciones.
+
+**Fin de la encuesta** ejecuta su mensaje una vez cuando la encuesta termina con un resultado: al cumplir su tiempo, terminar antes en Twitch o usar `$(end.poll)`. No se ejecuta si se cancela con `$(cancel.poll)` o se elimina en Twitch. Mensaje predeterminado:
+
+```bash
+*($(poll.tied) ? "The poll ended in a tie!" : "${$(poll.result)} won the poll!")
+```
+
+**Fin de la predicción** se ejecuta una vez cuando el streamer elige la opción ganadora, no cuando se cancela. Mensaje predeterminado:
+
+```bash
+$(prediction.result) won the prediction!
+```
+
+El mensaje es un script de comando normal y puede usar cualquier función, por ejemplo para llenar y girar una ruleta. Las funciones `poll.*` o `prediction.*` leen las cifras finales del evento que acaba de terminar. Si el mensaje está vacío o el evento está apagado, no se envía nada. Al eliminar cualquiera de estos eventos solo se apaga: su mensaje se conserva y la conexión de Twitch permanece porque los widgets de encuestas y predicciones de Overlay Studio la comparten. Si ya usas el widget de encuestas, **Fin de la encuesta** aparece activado con un mensaje vacío hasta que escribas uno. Consulta la [receta para desempatar](/es/commands/advanced/recipes/#resultados-de-encuestas).
+
+Estas suscripciones no están activadas por defecto: se activan desde esta página, desde los widgets de encuestas o predicciones de Overlay Studio, o automáticamente la primera vez que un comando usa una función de lectura de encuestas o predicciones.
+
 ## Reglas de Bits
 
 Las reglas de Bits te permiten tratar algunas cantidades de otra forma. Abre la tarjeta **Cheers** y selecciona **Configurar**. Las reglas están debajo del mensaje predeterminado.
@@ -82,7 +102,7 @@ Cada tarjeta muestra el plan que requiere. El servidor revisa el plan cada vez q
 
 ## Eventos que escucha el bot
 
-De forma predeterminada, el bot se suscribe a estos eventos de Twitch: mensajes del chat, follows, inicio y fin de stream, raids, Hype Train, shoutouts recibidos, pausas publicitarias, suscripciones, suscripciones regaladas, resuscripciones, Bits, avances de encuestas y predicciones, actualizaciones del canal y del usuario, y mensajes retenidos por AutoMod.
+De forma predeterminada, el bot se suscribe a estos eventos de Twitch: mensajes del chat, follows, inicio y fin de stream, raids, Hype Train, shoutouts recibidos, pausas publicitarias, suscripciones, suscripciones regaladas, resuscripciones, Bits, actualizaciones del canal y del usuario, y mensajes retenidos por AutoMod.
 
 Los Bits usan el evento actual `channel.bits.use`. Las suscripciones antiguas `channel.cheer` y `channel.bit.use` aparecen en la misma tarjeta de Bits.
 

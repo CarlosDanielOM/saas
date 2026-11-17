@@ -82,9 +82,13 @@ $(roulette.start giveaways)
 $(roulette.result giveaways)
 ```
 
-The functions are `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start`, and `roulette.result`. `add` accepts an alias, a quoted item label, optional multiplier, and optional weight. `remove` and `update` take the roulette alias and item ID; copy a prize's ID from its editor. The **Run it from chat** section lists each function with this roulette's alias and a copy button. `start` can omit the alias to use the active roulette. `result` returns the latest completed winner label, or empty text if no draw has completed.
+The functions are `roulette.create`, `roulette.delete`, `roulette.clear`, `roulette.fill`, `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start`, and `roulette.result`. `add` accepts an alias, a quoted item label, optional multiplier, and optional weight. `remove` and `update` take the roulette alias and item ID; copy a prize's ID from its editor. The **Run it from chat** section lists the prize and draw functions with this roulette's alias and a copy button; `create`, `delete`, `clear`, and `fill` are described in [Roulette functions](/commands/advanced/functions/#roulette-functions). `start` can omit the alias to use the active roulette. `result` returns the latest completed winner label, or empty text if no draw has completed.
 
 For a winning-item script, for example, `$(timer 300 $(user), you can speak again.)` schedules a reminder to the selected target. A timer reminder does not apply a timeout by itself; add the moderation action separately if that is your intent.
+
+## Break a poll tie
+
+You can fill a wheel with tied options and spin it when a poll ends. See the [poll results recipe](/commands/advanced/recipes/#poll-results) and set the message in [Chat Events](/chat-events/#poll-and-prediction-ended).
 
 ## Limits and troubleshooting
 

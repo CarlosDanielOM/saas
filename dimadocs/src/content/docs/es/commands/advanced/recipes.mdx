@@ -94,6 +94,57 @@ Luego un moderador escribe `!ganador Sí` o `!ganador 1`. `&t` mantiene junto un
 No pongas `$(end.prediction 1)` en la misma respuesta que `$(get.prediction)`. Así el ganador se elige sin que nadie lea antes las opciones. Mantén los dos pasos en comandos separados.
 </Aside>
 
+## Resultados de encuestas
+
+### Desempatar con la ruleta
+
+Ejecuta esto una vez, o crea la ruleta en la página Ruleta con el ID `polls`. Después agrégala a un overlay de OBS.
+
+```bash
+$(roulette.create polls "Poll tie-breaker")
+```
+
+Pon este mensaje en el evento [Fin de la encuesta](/es/chat-events/#fin-de-encuesta-y-predicción):
+
+```bash
+*($(poll.tied) ? "${$(roulette.fill polls $(poll.tied))}${$(roulette.start polls)}Tie! The wheel decides." : "${$(poll.result)} won the poll!")
+```
+
+Si hay empate, las opciones empatadas reemplazan los premios y la ruleta gira; si no, se anuncia al ganador. Dentro de texto entre comillas, `${ }` ejecuta una función. `roulette.fill` y `roulette.start` no publican texto, así que solo se envía la frase.
+
+### Anunciar el ganador de la ruleta después
+
+Este mensaje también anuncia el ganador ocho segundos después. Mantén el timer más largo que el giro (cuatro segundos por defecto). El texto del timer no está entre comillas, así que `roulette.result` se lee cuando se ejecuta el timer.
+
+```bash
+*($(poll.tied) ? "${$(roulette.fill polls $(poll.tied))}${$(roulette.start polls)}${$(timer 8 The wheel picked $(roulette.result polls)!)}Tie! The wheel decides." : "${$(poll.result)} won the poll!")
+```
+
+### Tratar una encuesta sin votos
+
+Sin votos, todas las opciones cuentan como empatadas. Este mensaje trata ese caso por separado:
+
+```bash
+*($(poll.total) == 0 ? "Nobody voted." : *($(poll.tied) ? "${$(roulette.fill polls $(poll.tied))}${$(roulette.start polls)}Tie! The wheel decides." : "${$(poll.result)} won the poll!"))
+```
+
+### Crear una ruleta ponderada por votos
+
+Configura este comando para moderadores. Cada voto es un espacio de la ruleta; las opciones sin votos se omiten.
+
+```bash
+$(roulette.clear polls)*(for #o in $(poll.options) { %(ids[] $(roulette.add polls #o 1 $(poll.votes #o))) })$(roulette.start polls)Every vote is a slice. Spinning!
+```
+
+### Consultar quién va adelante
+
+Este comando informa quién va adelante mientras la encuesta está activa. En un empate, el nombre queda vacío, así que usa una condición si hace falta.
+
+```bash
+*($(poll.tied) ? "It is a tie so far." : "${$(poll.result)} leads with ${$(poll.votes $(poll.result))} of ${$(poll.total)} votes.")
+```
+
+
 ## Dividir un comando grande en varios
 
 Cuando un comando se vuelve difícil de leer, pasa partes a sus propios comandos y llámalos con `#(nombreComando argumentos...)`.
@@ -124,6 +175,7 @@ Consulta [Ejecución, errores y límites](/es/commands/advanced/execution/) para
 | Condición | `*(condición ? SÍ : NO)` | Elegir uno de dos resultados |
 | Acción condicional | `*(condición ? ACCIÓN : "")` | Hacer algo solo si la condición es verdadera |
 | Acción con tiempo | `$(timer segundos "mensaje" $(acción))` | Ejecutar después, como máximo una vez |
+| Resultados de encuestas | `poll.result`, `poll.tied` | Consultar resultados o desempatar con una ruleta |
 | Llamar a otro comando | `#(nombreComando argumentos...)` | Ejecutar un comando separado después de la respuesta |
 
 <Aside type="tip">

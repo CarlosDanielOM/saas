@@ -94,6 +94,57 @@ Then a moderator types `!winner Yes` or `!winner 1`. `&t` keeps a title with sev
 Don't put `$(end.prediction 1)` in the same reply as `$(get.prediction)`. The winner is then picked without anyone reading the choices first. Keep the two steps in separate commands.
 </Aside>
 
+## Poll results
+
+### Break a tie with the wheel
+
+Run this once, or create the roulette on the Roulette page with ID `polls`. Then add it to an OBS overlay.
+
+```bash
+$(roulette.create polls "Poll tie-breaker")
+```
+
+Put this message in the [Poll ended](/chat-events/#poll-and-prediction-ended) event:
+
+```bash
+*($(poll.tied) ? "${$(roulette.fill polls $(poll.tied))}${$(roulette.start polls)}Tie! The wheel decides." : "${$(poll.result)} won the poll!")
+```
+
+On a tie, the tied options replace the prizes and the wheel spins; otherwise the winner is announced. Inside quoted text, `${ }` runs a function. `roulette.fill` and `roulette.start` post nothing, so only the sentence is sent.
+
+### Announce the wheel winner later
+
+This message also announces the winner eight seconds later. Keep the timer longer than the spin (four seconds by default). The timer text is not quoted, so `roulette.result` is read when the timer runs.
+
+```bash
+*($(poll.tied) ? "${$(roulette.fill polls $(poll.tied))}${$(roulette.start polls)}${$(timer 8 The wheel picked $(roulette.result polls)!)}Tie! The wheel decides." : "${$(poll.result)} won the poll!")
+```
+
+### Handle a poll with no votes
+
+With no votes, every option counts as tied. This message handles that case separately:
+
+```bash
+*($(poll.total) == 0 ? "Nobody voted." : *($(poll.tied) ? "${$(roulette.fill polls $(poll.tied))}${$(roulette.start polls)}Tie! The wheel decides." : "${$(poll.result)} won the poll!"))
+```
+
+### Make a wheel weighted by votes
+
+Set this command to moderator access. Each vote is a slice; options with no votes are left out.
+
+```bash
+$(roulette.clear polls)*(for #o in $(poll.options) { %(ids[] $(roulette.add polls #o 1 $(poll.votes #o))) })$(roulette.start polls)Every vote is a slice. Spinning!
+```
+
+### Say who is ahead
+
+This command reports the leader while the poll runs. On a tie the name is blank, so use a condition if needed.
+
+```bash
+*($(poll.tied) ? "It is a tie so far." : "${$(poll.result)} leads with ${$(poll.votes $(poll.result))} of ${$(poll.total)} votes.")
+```
+
+
 ## Split a large command into smaller ones
 
 When one command gets hard to read, move parts into their own commands and call them with `#(commandName args...)`.
@@ -124,6 +175,7 @@ See [Execution, Errors & Limits](/commands/advanced/execution/#command-reference
 | Condition | `*(condition ? YES : NO)` | Choose one of two results |
 | Conditional action | `*(condition ? ACTION : "")` | Do something only when a condition is true |
 | Timed action | `$(timer seconds "message" $(action))` | Run later, at most once |
+| Poll results | `poll.result`, `poll.tied` | Read results or break a tie with a wheel |
 | Call another command | `#(commandName args...)` | Run a separate command after the reply |
 
 <Aside type="tip">

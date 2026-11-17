@@ -120,10 +120,28 @@ Quote the whole `title;choices;seconds` argument, because `;` is reserved syntax
 |----------|--------------|---------|
 | `$(start.poll "title;choice1/choice2;seconds")` | Starts a native Twitch poll with 2–5 choices. Add a fourth part for Channel Points per vote, `0` to `1000000` (default `0`, off) | `$(start.poll "Best map?;Nuke/Mirage;120")` |
 | `$(get.poll)` | Reads the active poll, or the latest one if none is active. Includes status and vote counts | `$(get.poll)` |
-| `$(end.poll)` | Ends the active poll and keeps its results | `$(end.poll)` |
-| `$(cancel.poll)` | Ends the active poll and discards its results | `$(cancel.poll)` |
+| `$(end.poll)` | Ends the active poll now and keeps its result, readable with `poll.result` / `poll.tied` | `$(end.poll)` |
+| `$(cancel.poll)` | Cancels the active poll: no result, and the Poll ended chat event does not run | `$(cancel.poll)` |
 
-`end.poll` and `cancel.poll` only work on an active poll. All poll functions need moderator access in AI chat.
+`end.poll` and `cancel.poll` only work on an active poll. The functions in the table above need moderator access in AI chat.
+
+**Reading a poll**
+
+These functions work in commands, timers, chat event messages, and roulette winner actions. They share a saved snapshot of the running poll, or the latest poll when none is running, so reads in one command agree. Twitch notifications keep the vote counts current within a few seconds. If Twitch cannot be read, they return empty text, except `poll.status`, which returns `unavailable`. They do not post errors. Anyone can use these read functions in AI chat.
+
+| Function | Returns |
+|----------|---------|
+| `$(poll.title)` | The question |
+| `$(poll.status)` | `active`, `ended`, `canceled`, `none` (no poll), or `unavailable` |
+| `$(poll.options)` | The options as a list in Twitch order |
+| `$(poll.values)` | Vote counts in the same order, including Channel Points votes |
+| `$(poll.votes option)` | Votes for an exact title (case insensitive) or a number starting at `1`; empty if missing or unknown |
+| `$(poll.total)` | Total votes, or `0` when nobody voted |
+| `$(poll.result)` | The leader while active or winner when ended; empty for a tie, no votes, or cancellation |
+| `$(poll.tied)` | A list of options tied for first, or empty text if one leads or the poll was canceled. Empty is false in a condition; the list can be used in a loop |
+
+With no votes, every option is tied. Check `poll.total` first if that case needs different treatment. A poll that runs its full time, ends early on Twitch, or ends with `$(end.poll)` is `ended`. A poll canceled with `$(cancel.poll)` or deleted on Twitch is `canceled`: its options and votes remain readable, but `poll.result` and `poll.tied` are empty.
+
 
 ### Predictions
 
@@ -138,6 +156,22 @@ Quote the whole `title;choices;seconds` argument. Choices are separated by `/`.
 | `$(cancel.prediction)` | Cancels the active or locked prediction without choosing a winner | `$(cancel.prediction)` |
 
 Run `get.prediction` before `end.prediction` to check the question and the number order. `end.prediction` looks up the current prediction on Twitch each time. It rejects a number that doesn't exist and a title that matches more than one choice.
+
+
+**Reading a prediction**
+
+These read functions work in the same contexts and share a saved snapshot, as described for polls above. Anyone can use them in AI chat. If Twitch cannot be read, they return empty text, except `prediction.status`, which returns `unavailable`; they do not post errors.
+
+| Function | Returns |
+|----------|---------|
+| `$(prediction.title)` | The question |
+| `$(prediction.status)` | `active`, `locked` (betting closed), `ended` (winner chosen), `canceled` (points refunded), `none`, or `unavailable` |
+| `$(prediction.options)` | The outcomes as a list |
+| `$(prediction.values)` | Channel Points bet on each outcome, in the same order |
+| `$(prediction.points option)` | Points bet on an outcome by title or number |
+| `$(prediction.users option)` | Viewers who bet on an outcome by title or number |
+| `$(prediction.total)` | Total Channel Points bet |
+| `$(prediction.result)` | The winning outcome after it is chosen; empty while running or canceled |
 
 ## Availability functions
 
@@ -161,6 +195,10 @@ These controls are available on Free, Premium, and Pro. Identify a roulette by i
 
 | Function | What it does | Example |
 |----------|--------------|---------|
+| `$(roulette.create roulette_id ["Name"])` | Creates an empty roulette with the default wheel design. Its ID starts with a lowercase letter and uses letters, numbers, `_` or `-`; capitals are lowered. The name defaults to the ID. Up to 20 per channel; an existing ID returns `Error: roulette.create: Roulette with that name already exists` | `$(roulette.create polls "Poll tie-breaker")` |
+| `$(roulette.delete roulette_id)` | Deletes the roulette, prizes and settings; cannot be undone | — |
+| `$(roulette.clear roulette_id)` | Removes all prizes while keeping the roulette, design, settings and history | — |
+| `$(roulette.fill roulette_id list)` | Replaces all prizes in one save, with one slot of weight `1` per entry. Accepts a list value, list variable, literal list or quoted labels. An empty list is refused without changes | `$(roulette.fill polls $(poll.tied))` |
 | `$(roulette.add roulette_id "item label" [multiplier] [weight])` | Adds an item. Multiplier is how many copies (default `1`). Weight sets the chance per copy (default `1`) | `$(roulette.add giveaways "VIP for a day" 3 10)` |
 | `$(roulette.remove roulette_id item_id)` | Removes an item and all its copies | `$(roulette.remove giveaways item_id)` |
 | `$(roulette.update roulette_id item_id multiplier [weight])` | Changes an item's copies and, optionally, its weight | `$(roulette.update giveaways item_id 3 10)` |
@@ -169,6 +207,10 @@ These controls are available on Free, Premium, and Pro. Identify a roulette by i
 | `$(roulette.show)` / `$(roulette.hide)` | Shows or hides the overlay. Hiding doesn't cancel a draw | `$(roulette.show)` |
 | `$(roulette.start [roulette_id])` | Starts a draw and records one winner | `$(roulette.start giveaways)` |
 | `$(roulette.result [roulette_id])` | Returns the label of the most recent winner, or blank if there is none | `$(roulette.result giveaways)` |
+
+`delete`, `clear`, and `fill` are refused while any roulette on the channel is spinning; `roulette.add` is still allowed and counts for the next spin. `roulette.start roulette_id` selects that roulette and, with the default show on start setting, shows it.
+
+A saved command runs with the streamer’s authority for anyone allowed to use it. Limit commands that delete or empty a roulette to moderators or the streamer.
 
 In AI chat, `roulette.result` is open to everyone; the other roulette functions need moderator access.
 

@@ -70,7 +70,7 @@ Cuando un premio ejecuta un comando, aparece el campo **Sortear para** encima de
 
 La URL contiene un token privado de solo lectura. Trátala como una contraseña: cualquier persona que tenga el enlace puede ver la superposición de Roulette. El enlace se guarda para el canal; el streamer y los administradores autorizados usan el mismo enlace. Al reemplazarlo, se revoca el anterior y se desconectan las fuentes de OBS existentes, así que actualiza cada fuente con la URL nueva. Cambiar los ajustes de Roulette no invalida el enlace. El token no permite cambiar la configuración.
 
-La vista previa del panel puede ejecutar un sorteo sin OBS. OBS es necesario para mostrarlo en la transmisión. La superposición solo muestra la roulette activa, no toda la biblioteca guardada.
+La vista previa del panel puede ejecutar un sorteo sin OBS. OBS es necesario para mostrarlo en la transmisión. La superposición solo muestra la ruleta activa, no toda la biblioteca guardada.
 
 ## Automatizar Roulette con AST
 
@@ -82,9 +82,13 @@ $(roulette.start giveaways)
 $(roulette.result giveaways)
 ```
 
-Las funciones son `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start` y `roulette.result`. `add` acepta un alias, una etiqueta entre comillas, un multiplicador opcional y un peso opcional. `remove` y `update` reciben el alias y el ID del elemento; copia el ID de un premio desde su editor. La sección **Úsala desde el chat** muestra cada función con el alias de esta ruleta y un botón para copiarla. `start` puede omitir el alias para usar la roulette activa. `result` devuelve la etiqueta del último ganador cuyo sorteo terminó, o texto vacío si todavía no terminó ninguno.
+Las funciones son `roulette.create`, `roulette.delete`, `roulette.clear`, `roulette.fill`, `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start` y `roulette.result`. `add` acepta un alias, una etiqueta entre comillas, un multiplicador opcional y un peso opcional. `remove` y `update` reciben el alias y el ID del elemento; copia el ID de un premio desde su editor. La sección **Úsala desde el chat** muestra las funciones de premios y sorteos con el alias de esta ruleta y un botón para copiarlas; `create`, `delete`, `clear` y `fill` se explican en [Funciones de ruleta](/es/commands/advanced/functions/#funciones-de-ruleta). `start` puede omitir el alias para usar la ruleta activa. `result` devuelve la etiqueta del último ganador cuyo sorteo terminó, o texto vacío si todavía no terminó ninguno.
 
 Por ejemplo, un script del premio ganador puede usar `$(timer 300 $(user), puedes volver a hablar.)` para programar un recordatorio al objetivo seleccionado. El recordatorio de un temporizador no aplica un timeout por sí solo; agrega la acción de moderación por separado si eso es lo que quieres.
+
+## Desempatar una encuesta
+
+Puedes llenar una ruleta con las opciones empatadas y girarla cuando termine una encuesta. Consulta la [receta de resultados de encuestas](/es/commands/advanced/recipes/#resultados-de-encuestas) y configura el mensaje en [Eventos de chat](/es/chat-events/#fin-de-encuesta-y-predicción).
 
 ## Límites y solución de problemas
 
