@@ -16,7 +16,7 @@ import { CLIP_MOTION, clipPlaybackLimit } from './overlay-clip-motion';
         <div class="skin">
           <div class="skin__video">
             @if (media(); as value) {
-              <app-overlay-media [media]="value" [muted]="muted()" fit="contain" [playLabel]="language.translate('overlayStudio.tapToPlay')"
+              <app-overlay-media [media]="value" [muted]="muted()" [gain]="volume()" fit="contain" [playLabel]="language.translate('overlayStudio.tapToPlay')"
                 (started)="onStarted($event)" (ended)="onMediaEnded()" (failed)="onFailed()" (playbackBlocked)="onBlocked()" />
             } @else { <span class="clip-placeholder" aria-hidden="true"></span> }
           </div>
@@ -37,6 +37,8 @@ export class OverlayClipComponent {
   readonly design = input<ClipDesignVariant>('classic');
   readonly media = input<TestMedia | null>(null);
   readonly muted = input(false);
+  /** The clip layer's volume (0–1). */
+  readonly volume = input(1);
   readonly streamer = input('');
   readonly started = output<number | undefined>();
   readonly ended = output<void>();

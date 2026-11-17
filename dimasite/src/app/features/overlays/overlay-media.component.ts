@@ -1,5 +1,5 @@
 import type { ClipMetadata } from '../clips/clips.model';
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, effect, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, effect, input, output, signal, viewChild } from '@angular/core';
 export interface TestMedia { triggerId?: string; clip?: ClipMetadata; url: string; type: 'video' | 'audio' | 'image'; title: string; volume: number; duration?: number }
 export interface OverlaySpeechPlayback { phase: 'loading' | 'playing' | 'progress' | 'recovering'; position: number }
 
@@ -9,7 +9,7 @@ export interface OverlaySpeechPlayback { phase: 'loading' | 'playing' | 'progres
     @if (media().type === 'image') {
       <img [src]="media().url" [style.object-fit]="fit()" alt="" (load)="started.emit(undefined)" (error)="failed.emit()" />
     } @else {
-      <video #player [src]="media().url" [style.object-fit]="fit()" playsinline preload="auto" [muted]="muted()" [volume]="muted() ? 0 : media().volume"
+      <video #player [src]="media().url" [style.object-fit]="fit()" playsinline preload="auto" [muted]="muted()" [volume]="muted() ? 0 : level()"
         (canplay)="play()" (playing)="onPlaying()" (waiting)="recovering()" (stalled)="recovering()" (ended)="ended.emit()" (error)="failed.emit()"></video>
       @if (blocked()) { <button type="button" (pointerdown)="$event.stopPropagation()" (click)="$event.stopPropagation(); play()">{{ playLabel() }}</button> }
     }
@@ -25,6 +25,10 @@ export interface OverlaySpeechPlayback { phase: 'loading' | 'playing' | 'progres
 export class OverlayMediaComponent {
   readonly media = input.required<TestMedia>();
   readonly muted = input(false);
+  /** The placement's own volume (a clip layer's setting), applied on top of the event's volume. */
+  readonly gain = input(1);
+  /** A video's volume must stay inside 0–1, or the browser throws. */
+  readonly level = computed(() => { const value = this.media().volume * this.gain(); return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1; });
   readonly fit = input<'contain' | 'cover'>('contain');
   readonly playLabel = input.required<string>();
   readonly ended = output<void>();

@@ -8062,6 +8062,8 @@
     "noMatchingTriggers": "No configured triggers match these widgets. Choose triggers in Properties to test them.",
     "clipDesign": "Clip design",
     "clipDesignHint": "Choose the same designs as the Clips module. Classic and Third are free; paying users have all eight. Save your draft, then publish to update OBS.",
+    "clipVolume": "Clip volume",
+    "clipVolumeHint": "How loud clips play in this layer. Test a clip to hear it, then save and publish to update OBS.",
     "connectionsTitle": "OBS connection diagnostics",
     "connectionsScope": "Live browser sources for this overlay, including OBS and browser tabs. Updates every 5 seconds.",
     "connectionsRefresh": "Refresh status",

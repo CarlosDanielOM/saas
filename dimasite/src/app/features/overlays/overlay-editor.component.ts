@@ -29,6 +29,7 @@ import type { AlertTransport } from './overlay-sound.component';
 import { MAX_ALERT_SOUNDS, layoutSounds, type AlertSound } from './overlay-model.generated';
 import { OverlaySoundsComponent, type SoundEdit } from './overlay-sounds.component';
 import { OverlayVideoPlaybackComponent } from './overlay-video-playback.component';
+import { OverlayClipVolumeComponent } from './overlay-clip-volume.component';
 import { SOUND_ROW } from './overlay-timeline.component';
 import { defaultMotion } from './overlay-object-motion';
 import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay-model.generated';
@@ -98,7 +99,7 @@ const tenthsUp = (n: number) => Math.ceil(n * 10 - 1e-6) / 10;
 const NO_SOUNDS: readonly AlertSound[] = [];
 const tenthsDown = (n: number) => Math.floor(n * 10 + 1e-6) / 10;
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlaySoundsComponent, OverlayVideoPlaybackComponent, OverlayTriggerMediaPickerComponent, OverlayTriggerLooksComponent, OverlayLookPromptComponent, OverlayLookUserTokenComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
+  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlaySoundsComponent, OverlayVideoPlaybackComponent, OverlayClipVolumeComponent, OverlayTriggerMediaPickerComponent, OverlayTriggerLooksComponent, OverlayLookPromptComponent, OverlayLookUserTokenComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }

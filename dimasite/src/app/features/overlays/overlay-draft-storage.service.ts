@@ -50,7 +50,7 @@ function validWidgets(value: unknown, placement: WidgetPlacement): value is Over
     && validStyle(w) && validMotion(w['motion'])
     && (w['fontSize'] === undefined || finite(w['fontSize']))
     && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event)))
-    && (w['volume'] === undefined || placement === 'design' && w['kind'] === 'video' && finite(w['volume']) && w['volume'] >= 0 && w['volume'] <= 1)
+    && (w['volume'] === undefined || (placement === 'design' && w['kind'] === 'video' || placement === 'scene' && w['kind'] === 'clip') && finite(w['volume']) && w['volume'] >= 0 && w['volume'] <= 1)
     && (w['loop'] === undefined || placement === 'design' && w['kind'] === 'video' && typeof w['loop'] === 'boolean'));
 }
 function validSound(value: unknown): boolean {

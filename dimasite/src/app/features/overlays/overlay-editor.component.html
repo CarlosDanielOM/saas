@@ -552,6 +552,7 @@
             @for (design of clipDesigns(); track design.variant) { <option [value]="design.variant" [disabled]="design.isLocked" [selected]="design.variant === (item.clipDesign ?? 'classic')">{{ design.name }}{{ design.isLocked ? ' · ' + language.translate('clips.premiumRequired') : '' }}</option> }
           </select></label>
           <p class="lf-note">{{ t('clipDesignHint') }}</p>
+          <app-overlay-clip-volume [widget]="item" (changed)="patchSelected($event)" />
         }
         @if (item.kind === 'trigger') {
           <app-overlay-trigger-filter [channel]="channel" [ids]="item.triggerIds" (changed)="patchSelected({ triggerIds: $event })" />

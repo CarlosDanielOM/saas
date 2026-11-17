@@ -53,6 +53,14 @@ describe('module-aware local draft recovery', () => {
     storage.write('123', value);
     expect(storage.find('123')).toBeNull();
   });
+  it('recovers a clip layer volume and rejects one out of range or on another layer', () => {
+    const value = draft(); value.scenes[0].widgets.push({ ...createWidget('clip', { id: 'clip-a', placement: 'scene' })!, volume: .35 }); storage.write('123', value);
+    expect(storage.find('123')?.draft.scenes[0].widgets.find(widget => widget.kind === 'clip')?.volume).toBe(.35);
+    for (const edit of [(v: LocalOverlayDraft) => { v.scenes[0].widgets[2].volume = 1.5; }, (v: LocalOverlayDraft) => { v.scenes[0].widgets[2].loop = false; }, (v: LocalOverlayDraft) => { v.scenes[0].widgets[0].volume = .5; }]) {
+      const bad = structuredClone(value); edit(bad); local.clear(); storage.write('123', bad);
+      expect(storage.find('123')).toBeNull();
+    }
+  });
   it('leaves unsupported drafts intact and still offers the newest recoverable draft', () => {
     const old = draft(); storage.write('123', old);
     const unsupported = draft(); unsupported.updatedAt++; unsupported.scenes[0].widgets[0].configVersion = 2;
