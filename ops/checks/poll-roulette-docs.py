@@ -37,8 +37,8 @@ pages = {
         "only turns it off: its message is kept", "These subscriptions are not on by default"],
     "es/chat-events/index.txt": ["## Fin de encuesta y predicción", "**Fin de la encuesta**", "**Fin de la predicción**", DEFAULT, "$(prediction.result) won the prediction!",
         "solo se apaga: su mensaje se conserva", "Estas suscripciones no están activadas por defecto"],
-    "roulette/index.txt": ["## Break a poll tie", "`roulette.create`, `roulette.delete`, `roulette.clear`, `roulette.fill`", "lists the prize and draw functions"],
-    "es/roulette/index.txt": ["## Desempatar una encuesta", "`roulette.create`, `roulette.delete`, `roulette.clear`, `roulette.fill`", "muestra las funciones de premios y sorteos"],
+    "roulette/index.txt": ["## Break a poll tie", "`roulette.create`, `roulette.delete`, `roulette.clear`, `roulette.fill`", "lists each function with this roulette's alias and a copy button", "`create` and `delete` are under **Create or delete a roulette**"],
+    "es/roulette/index.txt": ["## Desempatar una encuesta", "`roulette.create`, `roulette.delete`, `roulette.clear`, `roulette.fill`", "muestra cada función con el alias de esta ruleta", "`create` y `delete` están en **Crear o eliminar una ruleta**"],
 }
 for path, texts in pages.items():
     page = get(path)
