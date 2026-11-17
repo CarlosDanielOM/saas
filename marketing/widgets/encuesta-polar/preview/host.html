@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encuesta Polar</title>
+<style>
+  :root { --bg: #0b0d12; --panel: #141821; --line: #262c3a; --text: #e8ecf4; --muted: #9aa4b8; --accent: #7dd3fc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: 18px; } p { margin: 0; color: var(--muted); }
+  .stage { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 16 / 9;
+    background: radial-gradient(60% 80% at 75% 30%, #2f3f5a, transparent 70%), radial-gradient(70% 90% at 20% 80%, #3a2f2a, transparent 70%), linear-gradient(135deg, #2a2f3a, #14161c); }
+  .stage::after { content: 'tu juego aquí'; position: absolute; right: 18px; bottom: 12px; color: rgba(255,255,255,.18); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+  .layer { position: absolute; outline: 1px dashed rgba(255,255,255,0.18); }
+  .layer iframe { width: 100%; height: 100%; border: 0; display: block; background: transparent; color-scheme: normal; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: #0c4a6e; border-color: #0369a1; }
+  .group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #10131a; }
+  .group > span { color: var(--muted); font-size: 12px; margin-right: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <div><h1>Encuesta Polar · encuesta de Twitch para UnOsitoPolar</h1><p>Vista previa con el Dima SDK real. Los votos llegan como en OBS: el estado de la encuesta cambia y el widget lo anima.</p></div>
+  <div class="stage" id="stage"><div class="layer" id="layer"><iframe id="frame" sandbox="allow-scripts" title="Widget"></iframe></div></div>
+  <div class="controls">
+    <div class="group"><span>Encuesta</span>
+      <button class="primary" data-begin="3">Empezar (3 opciones)</button>
+      <button data-begin="2">2 opciones</button>
+      <button data-begin="5">5 opciones</button>
+      <button class="primary" id="votes">Votos</button>
+      <button id="rain">Votos solos on/off</button>
+      <button id="end">Terminar</button>
+      <button id="tie">Empate</button>
+    </div>
+    <div class="group"><span>Capa</span>
+      <button data-layout="card">Tarjeta 480×640</button>
+      <button data-layout="wide">Ancha 1100×300</button>
+      <button data-layout="small">Chica 360×300</button>
+    </div>
+    <div class="group"><span>Estilo</span>
+      <button data-field="lang" data-value="es">Español</button>
+      <button data-field="lang" data-value="en">English</button>
+      <button id="bear">Osito on/off</button>
+      <button id="panel">Tarjeta on/off</button>
+    </div>
+  </div>
+</main>
+<script>
+const SRCDOC = __SRCDOC__;
+const EXEC = __EXEC__;
+let fields = __FIELDS__;
+const frame = document.getElementById('frame'), layer = document.getElementById('layer'), stage = document.getElementById('stage');
+window.__logs = [];
+const params = new URLSearchParams(location.search);
+const MODE = params.get('mode') || 'live';
+const SEND_POLLS = params.get('polls') !== 'none';
+const post = message => frame.contentWindow.postMessage(Object.assign({ dima: 1, exec: EXEC }, message), '*');
+const iso = time => new Date(time).toISOString();
+const QUESTIONS = { 2: ['¿Pizza o tacos?', ['Pizza', 'Tacos']], 3: ['¿Qué jugamos después?', ['Celeste', 'Hollow Knight', 'Minecraft']],
+  5: ['¿Qué osito dibujamos?', ['Osito polar', 'Panda', 'Osito café', 'Koala', 'Pingüino (no es oso)']] };
+
+// The channel's polls state, shaped like the API sends it (sanitized Twitch totals).
+let state = { poll: null, prediction: null };
+let revision = 0, receipt = 0;
+const send = () => post({ type: 'event', event: { type: 'state', data: { name: 'polls', value: state } } });
+function setPoll(poll) { state = { poll, prediction: null }; send(); }
+function patch(changes) {
+  if (!state.poll) return;
+  setPoll(Object.assign({}, state.poll, changes, { revision: ++revision, receipt: 'r' + (++receipt), occurredAt: iso(Date.now()) }));
+}
+function begin(count, seconds) {
+  const [title, names] = QUESTIONS[count] || QUESTIONS[3], now = Date.now();
+  setPoll({ kind: 'poll', id: 'poll-' + now, title, phase: 'active', startedAt: iso(now), deadline: iso(now + (seconds || 60) * 1000), endedAt: null, winnerId: null,
+    occurredAt: iso(now), receipt: 'r' + (++receipt), revision: ++revision,
+    choices: names.map((name, i) => ({ id: 'c' + i, title: name, votes: 0, channelPointsVotes: 0, users: 0, points: 0 })) });
+}
+function addVotes(list) {
+  if (!state.poll || state.poll.phase !== 'active') return;
+  patch({ choices: state.poll.choices.map((choice, i) => Object.assign({}, choice, { votes: choice.votes + (list ? list[i] || 0 : 0) })) });
+}
+function randomVotes() {
+  if (!state.poll) return;
+  const list = state.poll.choices.map((_, i) => Math.random() < 0.5 ? Math.floor(Math.random() * 4 / (i + 1)) : 0);
+  if (!list.some(Boolean)) list[0] = 1;
+  addVotes(list);
+}
+// Twitch ends a poll twice: "completed", then "archived" (same end time).
+function end(status) {
+  if (!state.poll) return;
+  const endedAt = iso(Date.now());
+  patch({ phase: status || 'completed', deadline: null, endedAt });
+  if (!status) setTimeout(() => { if (state.poll && state.poll.endedAt === endedAt) patch({ phase: 'archived' }); }, 1500);
+}
+function tie() {
+  if (!state.poll) return;
+  const max = Math.max(5, ...state.poll.choices.map(c => c.votes));
+  patch({ choices: state.poll.choices.map((choice, i) => Object.assign({}, choice, { votes: i < 2 ? max : Math.min(choice.votes, max - 2) })) });
+  setTimeout(() => end(), 800);
+}
+
+addEventListener('message', event => {
+  if (event.source !== frame.contentWindow) return;
+  const m = event.data;
+  if (!m || m.dima !== 1 || m.exec !== EXEC) return;
+  if (m.type === 'loaded') {
+    post({ type: 'init', context: { widget: { id: 'w1', layerId: 'l1', name: 'Encuesta Polar', revision: 1 }, channel: { id: '475816586', login: 'unositopolar', name: 'UnOsitoPolar' },
+      fields, mode: MODE, muted: false, goalSource: 'dima', session: null, states: SEND_POLLS ? { polls: state } : {} } });
+  } else if (m.type === 'log' || m.type === 'error') {
+    window.__logs.push(m);
+    if (m.type === 'error') console.error('[widget]', m.message, m.stack || '');
+  } else if (m.type === 'rpc') {
+    post({ type: 'rpc-result', id: m.id, ok: false, error: 'not available in preview' });
+  }
+});
+
+let rainTimer = 0;
+function rain(on) {
+  clearInterval(rainTimer);
+  rainTimer = on ? setInterval(randomVotes, 1100) : 0;
+}
+const LAYOUTS = { card: [480, 640], wide: [1100, 300], small: [360, 300] };
+let currentLayout = params.get('layout') || 'card';
+window.harness = {
+  begin, addVotes, randomVotes, end, tie, setPoll, patch, send, rain,
+  polls(value) { state = value; send(); },
+  button(field) { post({ type: 'event', event: { type: 'button', data: { field, value: field } } }); },
+  fields(changes) { fields = Object.assign({}, fields, changes); post({ type: 'fields', fields }); },
+  // A layer box in 1920×1080 overlay pixels, scaled into the stage like Studio's canvas.
+  layout(kind) {
+    currentLayout = kind;
+    const [w, h] = LAYOUTS[kind] || LAYOUTS.card, k = stage.clientWidth / 1920;
+    Object.assign(layer.style, { width: Math.round(w * k) + 'px', height: Math.round(h * k) + 'px', left: Math.round(40 * k) + 'px', top: Math.round(40 * k) + 'px' });
+  },
+  size(w, h) { Object.assign(layer.style, { width: w + 'px', height: h + 'px', left: '12px', top: '12px' }); },
+  get state() { return state; }
+};
+document.querySelectorAll('[data-begin]').forEach(b => b.addEventListener('click', () => { begin(Number(b.dataset.begin), 60); rain(true); }));
+document.getElementById('votes').addEventListener('click', () => addVotes(state.poll ? state.poll.choices.map(() => Math.floor(Math.random() * 6)) : null));
+document.getElementById('rain').addEventListener('click', () => rain(!rainTimer));
+document.getElementById('end').addEventListener('click', () => { rain(false); end(); });
+document.getElementById('tie').addEventListener('click', () => { rain(false); tie(); });
+document.querySelectorAll('[data-layout]').forEach(b => b.addEventListener('click', () => harness.layout(b.dataset.layout)));
+document.querySelectorAll('[data-field]').forEach(b => b.addEventListener('click', () => harness.fields({ [b.dataset.field]: b.dataset.value })));
+document.getElementById('bear').addEventListener('click', () => harness.fields({ bear: fields.bear === false }));
+document.getElementById('panel').addEventListener('click', () => harness.fields({ panel: fields.panel === false }));
+addEventListener('resize', () => harness.layout(currentLayout));
+harness.layout(currentLayout);
+frame.srcdoc = SRCDOC;
+</script>
+</body>
+</html>

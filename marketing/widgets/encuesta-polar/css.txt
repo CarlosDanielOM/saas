@@ -1,0 +1,321 @@
+/* Encuesta Polar. Colours, size and each bar's share (--p, 0..1) are set by the script, so settings apply without a reload. */
+@property --orbit { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+:root {
+  --bg-rgb: 11, 37, 69;
+  --bg2-rgb: 4, 15, 33;
+  --ice-rgb: 125, 211, 252;
+  --frost-rgb: 224, 242, 254;
+  --deep-rgb: 59, 130, 246;
+  --text: #f0f9ff;
+  --font: 'Fredoka', 'Segoe UI', system-ui, sans-serif;
+  --cols: 1;
+  --pad-top: 4.1em;
+  --pad-bottom: 1.6em;
+}
+* { box-sizing: border-box; }
+body { font-family: var(--font); color: var(--text); -webkit-font-smoothing: antialiased; }
+h1, p, ol { margin: 0; }
+.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.stage {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: var(--pad-top) 0.6em var(--pad-bottom);
+}
+.stage[data-state="hidden"] { visibility: hidden; }
+
+/* ---------- Card ---------- */
+/* No max-width or shrinking: the script measures the card at its natural size and scales the font to fit the layer. */
+.card { position: relative; z-index: 1; flex: none; width: 21em; padding: 1.15em 1.3em 1em; border-radius: 1.5em; }
+.stage[data-cols="2"] .card { width: 34em; }
+.stage[data-cols="3"] .card { width: 46em; }
+.card__bg {
+  position: absolute; inset: 0; border-radius: inherit; overflow: hidden;
+  background:
+    radial-gradient(110% 70% at 50% -10%, rgba(var(--ice-rgb), 0.18), transparent 62%),
+    radial-gradient(80% 60% at 100% 110%, rgba(var(--frost-rgb), 0.10), transparent 65%),
+    linear-gradient(172deg, rgba(var(--bg-rgb), 0.93), rgba(var(--bg2-rgb), 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(var(--frost-rgb), 0.18),
+    inset 0 -0.6em 1.4em rgba(var(--ice-rgb), 0.07),
+    0 0.8em 2.4em rgba(2, 8, 23, 0.55),
+    0 0 2em rgba(var(--ice-rgb), 0.14);
+}
+/* Frost creeping in from the corners of a cold window. */
+.frost {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(55% 38% at 0% 0%, rgba(var(--frost-rgb), 0.15), transparent 72%),
+    radial-gradient(45% 32% at 100% 100%, rgba(var(--frost-rgb), 0.12), transparent 72%),
+    radial-gradient(30% 22% at 100% 0%, rgba(var(--frost-rgb), 0.08), transparent 72%),
+    repeating-linear-gradient(125deg, rgba(255, 255, 255, 0) 0 1.4em, rgba(255, 255, 255, 0.025) 1.4em 1.5em);
+}
+.aurora { position: absolute; inset: 0; mix-blend-mode: screen; }
+.aurora i {
+  position: absolute; left: -30%; width: 160%; height: 46%; border-radius: 50%; opacity: 0.5; filter: blur(1.5em);
+  background: linear-gradient(90deg, transparent 4%, rgba(var(--ice-rgb), 0.75) 26%, rgba(94, 234, 212, 0.5) 48%, rgba(165, 180, 252, 0.55) 70%, transparent 94%);
+  animation: aurora 19s ease-in-out infinite alternate;
+}
+.aurora i:nth-child(1) { top: -22%; }
+.aurora i:nth-child(2) { top: -6%; height: 30%; opacity: 0.32; animation-duration: 27s; animation-delay: -9s; }
+.aurora i:nth-child(3) { top: 62%; height: 40%; opacity: 0.14; animation-duration: 33s; animation-delay: -17s; }
+@keyframes aurora {
+  0% { transform: translate3d(-8%, 0, 0) rotate(-5deg) scaleY(0.8); }
+  50% { transform: translate3d(4%, 6%, 0) rotate(3deg) scaleY(1.15); }
+  100% { transform: translate3d(9%, -3%, 0) rotate(-2deg) scaleY(0.9); }
+}
+.snow { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Cold light gliding around the border. */
+.card::before {
+  content: ''; position: absolute; inset: 0; z-index: 3; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--orbit), transparent 0deg 250deg, rgba(var(--ice-rgb), 0.35) 300deg, rgba(255, 255, 255, 0.9) 340deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: orbit 9s linear infinite;
+}
+@keyframes orbit { to { --orbit: 360deg; } }
+.card.glory::before { animation-duration: 1.8s; }
+.card.glory .card__bg { animation: glory 3s ease-out; }
+@keyframes glory { 0% { filter: brightness(1); } 18% { filter: brightness(1.35); } 100% { filter: brightness(1); } }
+
+.stage[data-panel="off"] .card__bg, .stage[data-panel="off"] .card::before, .stage[data-panel="off"] .cap, .stage[data-panel="off"] .icicles { display: none; }
+.stage[data-aurora="off"] .aurora, .stage[data-snow="off"] .snow { display: none; }
+
+/* ---------- Snow on the top edge and icicles below ---------- */
+.cap { position: absolute; z-index: 2; left: 0; top: -0.62em; width: 100%; height: 1.5em; overflow: visible; pointer-events: none; }
+.cap__shadow { fill: rgba(2, 10, 30, 0.45); transform: translateY(0.14em); }
+.cap__glints path { fill: #fff; transform-box: fill-box; transform-origin: center; opacity: 0; animation: glint 4.8s ease-in-out infinite; }
+@keyframes glint { 0%, 70%, 100% { opacity: 0; transform: scale(0.3); } 82% { opacity: 1; transform: scale(1); } }
+.stop-cap-shade { stop-color: rgb(var(--frost-rgb)); }
+.icicles { position: absolute; z-index: 0; left: 0; top: calc(100% - 0.12em); width: 100%; height: 1.6em; overflow: visible; pointer-events: none; }
+.icicles path { fill: url(#iceGrad); stroke: rgba(255, 255, 255, 0.55); stroke-width: 0.6; }
+.icicles circle { fill: #fff; opacity: 0; animation: drip 6s ease-in infinite; }
+@keyframes drip { 0%, 78% { opacity: 0; transform: translateY(0); } 84% { opacity: 0.95; transform: translateY(0); } 100% { opacity: 0; transform: translateY(0.5em); } }
+.stop-ice-top { stop-color: rgb(var(--frost-rgb)); stop-opacity: 0.95; }
+.stop-ice-tip { stop-color: rgb(var(--ice-rgb)); stop-opacity: 0.25; }
+
+/* ---------- Polar bear ---------- */
+/* No z-index on .bear itself: its head goes behind the snow and its paws in front of it. */
+.bear { position: absolute; top: 0; right: 1.5em; width: 4.9em; height: 0; }
+.stage[data-bear="off"] .bear, .stage[data-panel="off"] .bear { display: none; }
+.bear__peek { position: absolute; z-index: 1; left: -0.6em; right: -0.6em; bottom: -0.3em; height: 4.9em; overflow: hidden; }
+.bear__head {
+  position: absolute; left: 0.6em; bottom: 0.1em; width: 4.9em; height: 4.2em; overflow: visible;
+  transform-origin: 50% 100%; animation: bob 6s ease-in-out infinite;
+}
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-0.08em) rotate(1.5deg); } }
+.bear__paws { position: absolute; z-index: 4; left: 0; top: -0.62em; width: 4.9em; height: 1.08em; overflow: visible; }
+.bear__fur { stroke: rgba(148, 178, 214, 0.55); stroke-width: 0.9; }
+.stop-fur-shade { stop-color: rgb(var(--frost-rgb)); }
+.bear__inner { fill: #f6c9d6; opacity: 0.85; }
+.bear__cheek { fill: #f9a8c0; opacity: 0.32; transition: opacity 0.6s ease; }
+.bear__eye circle:first-child { fill: #0f1d33; }
+.bear__glint { fill: #fff; }
+.bear__eye { transform-box: fill-box; transform-origin: center; }
+.bear__look { transform: translate(var(--lx, 0px), var(--ly, 0px)); transition: transform 0.9s cubic-bezier(0.3, 0.8, 0.3, 1); }
+.bear__happy { fill: none; stroke: #0f1d33; stroke-width: 3; stroke-linecap: round; opacity: 0; }
+.bear__muzzle { fill: #fff; stroke: rgba(148, 178, 214, 0.45); stroke-width: 0.8; }
+.bear__nose { fill: #13233d; }
+.bear__nose-glint { fill: none; stroke: rgba(255, 255, 255, 0.75); stroke-width: 1.3; stroke-linecap: round; }
+.bear__mouth { fill: none; stroke: #13233d; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.bear__toes { fill: none; stroke: rgba(120, 150, 190, 0.7); stroke-width: 1.3; stroke-linecap: round; }
+.bear__ear, .bear__paw { transform-box: fill-box; transform-origin: 50% 90%; }
+
+.bear.blink .bear__eye { animation: blink 0.2s ease-in-out; }
+@keyframes blink { 50% { transform: scaleY(0.1); } }
+.bear.perk .bear__ear--l { animation: ear-l 0.55s ease-out; }
+.bear.perk .bear__ear--r { animation: ear-r 0.55s ease-out 0.05s; }
+@keyframes ear-l { 35% { transform: rotate(-16deg); } 70% { transform: rotate(6deg); } }
+@keyframes ear-r { 35% { transform: rotate(16deg); } 70% { transform: rotate(-6deg); } }
+.stage[data-mood="happy"] .bear__eyes { opacity: 0; }
+.stage[data-mood="happy"] .bear__happy { opacity: 1; }
+.stage[data-mood="happy"] .bear__cheek { opacity: 0.6; }
+.bear.cheer .bear__head { animation: hop 0.6s cubic-bezier(0.3, 0.7, 0.4, 1) 3; }
+@keyframes hop { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-0.45em) scale(1.03, 0.98); } 70% { transform: translateY(0) scale(1.04, 0.95); } }
+.bear.cheer .bear__paw--l { animation: wave-l 0.6s ease-in-out 3; }
+.bear.cheer .bear__paw--r { animation: wave-r 0.6s ease-in-out 0.12s 3; }
+@keyframes wave-l { 45% { transform: translateY(-0.5em) rotate(-14deg); } }
+@keyframes wave-r { 45% { transform: translateY(-0.5em) rotate(14deg); } }
+
+/* ---------- Text ---------- */
+.content { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 0.75em; }
+.head { display: flex; flex-direction: column; gap: 0.3em; padding-right: 0.2em; }
+.eyebrow {
+  display: flex; align-items: center; gap: 0.4em; min-height: 1.5em;
+  font-size: 0.74em; font-weight: 600; letter-spacing: 0.13em; font-kerning: none; text-transform: uppercase; color: rgba(var(--frost-rgb), 0.88);
+  text-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.55);
+}
+.eyebrow__flake { width: 1.25em; height: 1.25em; flex: none; stroke: rgb(var(--ice-rgb)); fill: rgb(var(--ice-rgb)); stroke-width: 5.5; stroke-linecap: round;
+  filter: drop-shadow(0 0 0.3em rgba(var(--ice-rgb), 0.9)); animation: turn 14s linear infinite; }
+@keyframes turn { to { transform: rotate(360deg); } }
+.eyebrow__text { white-space: nowrap; }
+.eyebrow__text.pop { animation: soft-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+
+.timer {
+  display: inline-flex; align-items: center; gap: 0.35em; margin-left: auto; padding: 0.15em 0.55em 0.15em 0.2em; border-radius: 999px;
+  letter-spacing: 0.04em; font-variant-numeric: tabular-nums; color: var(--text);
+  background: rgba(var(--bg2-rgb), 0.55); box-shadow: inset 0 0 0 1px rgba(var(--frost-rgb), 0.22);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.timer__ring { width: 1.35em; height: 1.35em; transform: rotate(-90deg); }
+.timer__track { fill: none; stroke: rgba(var(--frost-rgb), 0.18); stroke-width: 4; }
+.timer__arc { fill: none; stroke: rgb(var(--ice-rgb)); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 94.25; stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 2px rgba(var(--ice-rgb), 0.9)); }
+.timer.low { color: #fff; box-shadow: inset 0 0 0 1px rgba(var(--ice-rgb), 0.75), 0 0 0.8em rgba(var(--ice-rgb), 0.5); }
+.timer.tick { animation: tick 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+@keyframes tick { 30% { transform: scale(1.14); } }
+.timer.off { opacity: 0; transform: scale(0.7); }
+
+.title {
+  font-size: 1.22em; font-weight: 700; line-height: 1.2; letter-spacing: 0.01em; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  text-shadow: 0 0 0.7em rgba(var(--ice-rgb), 0.45), 0 0.06em 0.2em rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Choices ---------- */
+.choices { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 0.62em 1.4em; }
+/* "backwards", not "both": a finished intro must not hold opacity/filter over the results styles. */
+.choice { --p: 0; position: relative; animation: row-in 0.75s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards; animation-delay: calc(0.32s + var(--i, 0) * 0.09s); transition: opacity 0.8s ease, filter 0.8s ease; }
+@keyframes row-in { from { opacity: 0; transform: translateY(0.7em); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+.choice__line { display: flex; align-items: baseline; gap: 0.4em; min-height: 1.3em; }
+.choice__badge {
+  flex: none; align-self: center; width: 0; height: 1em; margin-right: -0.4em; fill: #fff; opacity: 0; transform: scale(0.2) rotate(-25deg);
+  filter: drop-shadow(0 0 0.25em rgba(var(--ice-rgb), 1));
+  transition: width 0.45s ease, margin 0.45s ease, opacity 0.45s ease, transform 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.5);
+}
+.choice.lead .choice__badge { width: 1em; margin-right: 0; opacity: 1; transform: scale(1) rotate(-12deg); }
+.choice__name {
+  flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.98em; font-weight: 600;
+  color: rgba(var(--frost-rgb), 0.95); text-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.6); transition: color 0.5s ease;
+}
+.choice.lead .choice__name { color: #fff; }
+.choice__stats { flex: none; display: flex; align-items: baseline; gap: 0.4em; font-variant-numeric: tabular-nums; text-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.6); }
+.choice__pct { font-size: 1.02em; font-weight: 700; color: #fff; }
+.choice.lead .choice__pct { text-shadow: 0 0 0.5em rgba(var(--ice-rgb), 0.9), 0 0.06em 0.2em rgba(0, 0, 0, 0.6); }
+.choice__votes { font-size: 0.74em; font-weight: 500; color: rgba(var(--frost-rgb), 0.72); }
+.stage[data-numbers="percent"] .choice__votes, .stage[data-numbers="votes"] .choice__pct { display: none; }
+.stage[data-numbers="votes"] .choice__votes { font-size: 0.95em; font-weight: 700; color: #fff; }
+
+.bar {
+  position: relative; height: 0.88em; margin-top: 0.32em; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(2, 8, 23, 0.62), rgba(var(--bg-rgb), 0.55));
+  box-shadow: inset 0 0.08em 0.22em rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(var(--frost-rgb), 0.16);
+}
+.bar::before {
+  /* Frozen specks in the empty track. */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0.55;
+  background-image:
+    radial-gradient(circle at 9% 40%, rgba(255, 255, 255, 0.7) 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 31% 66%, rgba(255, 255, 255, 0.45) 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 54% 34%, rgba(255, 255, 255, 0.55) 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 77% 62%, rgba(255, 255, 255, 0.45) 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 93% 38%, rgba(255, 255, 255, 0.6) 0 0.05em, transparent 0.09em);
+}
+.bar__fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p) * 100%); min-width: 0; border-radius: inherit; overflow: hidden;
+  background: linear-gradient(90deg, rgba(var(--deep-rgb), 0.95) 0%, rgb(var(--ice-rgb)) 62%, rgb(var(--frost-rgb)) 100%);
+  box-shadow: inset 0 0.1em 0 rgba(255, 255, 255, 0.55), inset 0 -0.12em 0.2em rgba(var(--deep-rgb), 0.5), 0 0 0.7em rgba(var(--ice-rgb), 0.35);
+  opacity: 0.82; transition: opacity 0.6s ease, box-shadow 0.6s ease, filter 0.6s ease;
+}
+.bar__fill::before {
+  /* Ice facets drifting along the bar. */
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(118deg, rgba(255, 255, 255, 0) 0 0.75em, rgba(255, 255, 255, 0.22) 0.75em 0.86em, rgba(255, 255, 255, 0) 0.86em 1.5em, rgba(255, 255, 255, 0.1) 1.5em 1.56em, rgba(255, 255, 255, 0) 1.56em 2.2em);
+  background-size: 2.2em 100%; animation: facets 7s linear infinite;
+}
+.bar__fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.6) 50%, transparent 62%);
+  background-size: 280% 100%; animation: sheen 4.4s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.7s);
+}
+@keyframes facets { to { background-position: 2.2em 0; } }
+@keyframes sheen { 0% { background-position: 140% 0; } 55%, 100% { background-position: -140% 0; } }
+.choice.lead .bar__fill { opacity: 1; box-shadow: inset 0 0.1em 0 rgba(255, 255, 255, 0.65), inset 0 -0.12em 0.2em rgba(var(--deep-rgb), 0.5), 0 0 1em rgba(var(--ice-rgb), 0.6); }
+.bar__tip {
+  position: absolute; z-index: 1; top: 50%; left: calc(var(--p) * 100%); width: 1.55em; height: 1.55em; margin: -0.775em 0 0 -0.775em;
+  stroke: #fff; fill: #fff; stroke-width: 6; stroke-linecap: round; overflow: visible; pointer-events: none;
+  opacity: min(1, calc(var(--p) * 30)); filter: drop-shadow(0 0 0.16em rgba(var(--frost-rgb), 1)) drop-shadow(0 0 0.45em rgba(var(--ice-rgb), 0.95));
+  animation: tip-turn 11s linear infinite;
+}
+@keyframes tip-turn { from { transform: rotate(0deg) scale(0.86); } 50% { transform: rotate(180deg) scale(1); } to { transform: rotate(360deg) scale(0.86); } }
+.choice.flare .bar__tip { animation: tip-flare 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+@keyframes tip-flare { 0% { transform: scale(0.9); } 30% { transform: scale(1.9) rotate(60deg); } 100% { transform: scale(0.9) rotate(120deg); } }
+.choice.bump .bar { animation: bump 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+@keyframes bump { 35% { transform: scaleY(1.32); } }
+
+/* Results */
+.stage[data-phase="results"] .choice.lose { opacity: 0.5; filter: saturate(0.55); }
+.stage[data-phase="results"] .choice.win .bar__fill { opacity: 1; filter: brightness(1.12);
+  box-shadow: inset 0 0.1em 0 rgba(255, 255, 255, 0.75), 0 0 0.6em rgba(var(--frost-rgb), 0.9), 0 0 1.6em rgba(var(--ice-rgb), 0.7); }
+.stage[data-phase="results"] .choice.win .choice__name {
+  background: linear-gradient(90deg, #fff 0%, rgb(var(--frost-rgb)) 30%, #fff 45%, rgb(var(--ice-rgb)) 50%, #fff 55%, rgb(var(--frost-rgb)) 70%, #fff 100%);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+  filter: drop-shadow(0 0 0.3em rgba(var(--ice-rgb), 0.8)); animation: shimmer 3s linear infinite;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+/* On the line, not the row: a row animation would replay the row's intro when it ends. */
+.choice.crown .choice__line { transform-origin: 0 50%; animation: crown 1.2s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+@keyframes crown { 30% { transform: scale(1.06); } 100% { transform: none; } }
+
+/* ---------- Footer ---------- */
+.foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.8em; min-height: 1.3em; margin-top: 0.05em;
+  font-size: 0.78em; font-weight: 600; color: rgba(var(--frost-rgb), 0.9); text-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.6);
+}
+.total { flex: none; font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+.note { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: right; }
+.note b { color: #fff; font-weight: 700; }
+.note__flake { display: inline-block; width: 1.05em; height: 1.05em; margin-right: 0.35em; vertical-align: -0.15em; stroke: #fff; fill: #fff; stroke-width: 6; stroke-linecap: round;
+  filter: drop-shadow(0 0 0.3em rgba(var(--ice-rgb), 1)); }
+.note.pop { animation: soft-pop 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+@keyframes soft-pop { 0% { opacity: 0; transform: translateY(0.5em) scale(0.94); } 100% { opacity: 1; transform: none; } }
+
+/* Panel off: text floats on the stream, so it gets a stronger outline. */
+.stage[data-panel="off"] .title, .stage[data-panel="off"] .eyebrow, .stage[data-panel="off"] .choice__line, .stage[data-panel="off"] .foot {
+  text-shadow: 0 0.05em 0.12em rgba(0, 0, 0, 0.95), 0 0 0.45em rgba(var(--bg2-rgb), 0.95);
+}
+
+/* ---------- Coming and going ---------- */
+.stage.intro .card { animation: card-in 1s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+@keyframes card-in {
+  0% { opacity: 0; transform: translateY(1.1em) scale(0.955); filter: blur(6px) brightness(1.6); }
+  60% { filter: blur(0) brightness(1.15); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+.stage.intro .bear__peek .bear__head { animation: peek 0.95s cubic-bezier(0.25, 0.9, 0.3, 1.25) 0.5s both, bob 6s ease-in-out 1.45s infinite; }
+@keyframes peek { from { transform: translateY(105%); } to { transform: translateY(0); } }
+.stage.intro .bear__paw { animation: paw-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.5) both; }
+.stage.intro .bear__paw--l { animation-delay: 1.05s; }
+.stage.intro .bear__paw--r { animation-delay: 1.18s; }
+@keyframes paw-in { from { opacity: 0; transform: translateY(0.4em) scale(0.4); } to { opacity: 1; transform: none; } }
+.stage.intro .cap { animation: cap-in 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.1) 0.15s both; }
+@keyframes cap-in { from { opacity: 0; transform: translateY(-0.35em) scaleY(0.6); } to { opacity: 1; transform: none; } }
+.stage.intro .icicles path { animation: grow 1.1s cubic-bezier(0.2, 0.9, 0.3, 1) both; animation-delay: calc(0.45s + var(--d, 0s)); transform-box: fill-box; transform-origin: 50% 0; }
+@keyframes grow { from { transform: scaleY(0); } to { transform: none; } }
+
+.stage[data-state="leaving"] .card { animation: card-out 0.9s cubic-bezier(0.5, 0, 0.75, 0) both; }
+@keyframes card-out { to { opacity: 0; transform: translateY(0.8em) scale(0.97); filter: blur(5px); } }
+.stage[data-state="leaving"] .bear__peek .bear__head { animation: duck 0.4s cubic-bezier(0.5, 0, 0.75, 0) both; }
+@keyframes duck { to { transform: translateY(105%); } }
+
+/* ---------- Effects layer ---------- */
+.fx { position: absolute; inset: 0; z-index: 5; width: 100%; height: 100%; pointer-events: none; }
+/* "+3" chip that pops out next to a bar's snowflake and slides along the bar (never over the choice names). */
+.floater {
+  position: absolute; z-index: 6; pointer-events: none; white-space: nowrap; padding: 0.06em 0.5em; border-radius: 999px;
+  font-size: 0.72em; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, rgba(var(--bg-rgb), 0.94), rgba(var(--bg2-rgb), 0.94));
+  box-shadow: inset 0 0 0 1px rgba(var(--frost-rgb), 0.6), 0 0 0.9em rgba(var(--ice-rgb), 0.7), 0 0.2em 0.6em rgba(0, 0, 0, 0.45);
+  text-shadow: 0 0 0.4em rgba(var(--ice-rgb), 0.9);
+  --dir: 1; --from: 0%; transform: translate(var(--from), -50%); animation: slide 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.floater.left { --dir: -1; --from: -100%; }
+@keyframes slide {
+  0% { opacity: 0; transform: translate(var(--from), -50%) scale(0.4); }
+  16% { opacity: 1; transform: translate(calc(var(--from) + var(--dir) * 0.5em), -50%) scale(1.12); }
+  26% { transform: translate(calc(var(--from) + var(--dir) * 0.55em), -50%) scale(1); }
+  75% { opacity: 1; transform: translate(calc(var(--from) + var(--dir) * 1.4em), -50%) scale(1); }
+  100% { opacity: 0; transform: translate(calc(var(--from) + var(--dir) * 2em), -50%) scale(0.95); }
+}

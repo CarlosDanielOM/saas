@@ -1,0 +1,833 @@
+// Encuesta Polar: a Twitch poll made with the Dima SDK (v1), for UnOsitoPolar.
+// Data: Dima.state('polls').poll, the channel's current or last Twitch poll (totals only, never who voted).
+// A polar bear peeks over a snowy card of ice, votes land on frozen bars and the winner gets a snowfall.
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), card = $('card'), list = $('choices'), bear = $('bear');
+const snowCanvas = $('snow'), fxCanvas = $('fx');
+const snowCtx = snowCanvas.getContext('2d'), fx = fxCanvas.getContext('2d');
+const ui = { eyebrow: $('eyebrow'), title: $('title'), timer: $('timer'), clock: $('clock'), arc: $('timerArc'), total: $('total'), note: $('note'), cap: $('cap'), icicles: $('icicles') };
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const TEXTS = {
+  es: { locale: 'es-MX', poll: 'Encuesta', closing: 'Cerrando…', results: 'Resultados', hint: '¡Vota en el chat de Twitch!', won: 'Ganó', tie: '¡Empate!',
+    none: 'Nadie votó', vote: 'voto', votes: 'votos', example: 'Ejemplo · empieza una encuesta en Twitch', sample: ['¿Qué jugamos hoy?', 'Algo tranquilo', 'De terror', 'Minecraft'] },
+  en: { locale: 'en-US', poll: 'Poll', closing: 'Closing…', results: 'Results', hint: 'Vote in Twitch chat!', won: 'Winner', tie: "It's a tie!",
+    none: 'No votes', vote: 'vote', votes: 'votes', example: 'Example · start a poll on Twitch', sample: ['What should we play?', 'Something cozy', 'Horror', 'Minecraft'] }
+};
+const MOTION = {
+  calm: { snow: 0.55, burst: 0.6, trickle: 1.2 },
+  normal: { snow: 1, burst: 1, trickle: 3 },
+  lots: { snow: 1.7, burst: 1.6, trickle: 6 }
+};
+const RING = 94.25;           // timer circle length (r = 15)
+const STALE_MS = 120000;      // still "active" this long after its deadline: the end never arrived, so hide it
+const SIM_MS = 24000;         // the "Probar una encuesta" button runs a poll this long
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const when = value => { const time = Date.parse(value); return Number.isFinite(time) ? time : null; };
+const iso = time => new Date(time).toISOString();
+
+let settings = {};
+let motion = MOTION.normal;
+let T = TEXTS.es;
+let numbers = new Intl.NumberFormat(T.locale);
+let mode = null;              // 'editor' (Studio) or 'live' (OBS)
+let polls;                    // Dima.state('polls'): undefined until known
+let sim = null;               // Studio test poll from the buttons (never saved anywhere)
+let simTimers = [];
+let example = null;           // Studio only: shown while the channel has no poll to show
+let shown = null;             // the poll on screen (latest copy)
+let shownSignature = null;    // id + texts: another signature builds the card again
+let rows = [];
+let leadRows = [], leaderKey = null, resultFor = null, noteKey = null, shownTotal = -1, lastSecs = -1;
+let hideTimer = 0, introTimer = 0, lastPerk = 0;
+// Keyed by keyOf(poll). Only a poll seen here while voting was open can celebrate its end.
+const openSeen = new Set(), celebrated = new Set();
+const endTimes = new Map();       // when it ended, in this computer's time
+const openFirstSeen = new Map();  // when this overlay first saw it open
+let effectTimers = [];
+
+// ---------- Colours and fonts ----------
+const colorProbe = document.createElement('canvas').getContext('2d');
+function rgbOf(color, fallback) {
+  colorProbe.fillStyle = fallback;
+  colorProbe.fillStyle = String(color || '');   // invalid colours leave the fallback
+  const value = colorProbe.fillStyle;
+  if (value[0] === '#') return [1, 3, 5].map(i => parseInt(value.slice(i, i + 2), 16));
+  const parts = value.match(/[\d.]+/g) || [];
+  return [0, 1, 2].map(i => Math.round(Number(parts[i]) || 0));
+}
+const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+const css = rgb => rgb.join(', ');
+let palette = { ice: [125, 211, 252], frost: [224, 242, 254] };
+
+let fontName = null, fontLink = null;
+function loadFont(name) {
+  name = String(name || '').trim();
+  if (name === fontName) return;
+  fontName = name;
+  if (fontLink) fontLink.remove();
+  fontLink = null;
+  const safe = name.replace(/['"\\;{}<>]/g, '');
+  document.documentElement.style.setProperty('--font', (safe ? `'${safe}', ` : '') + "'Segoe UI', system-ui, sans-serif");
+  if (!safe) return;
+  const family = encodeURIComponent(safe).replace(/%20/g, '+');
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${family}:wght@500;600;700&display=swap`;
+  // Fonts without those weights make Google answer 400: ask for the plain family instead.
+  link.onerror = () => { if (fontLink === link && !link.dataset.plain) { link.dataset.plain = '1'; link.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`; } };
+  link.onload = () => { if (document.fonts) document.fonts.ready.then(layout); };
+  document.head.append(link);
+  fontLink = link;
+}
+
+// ---------- Settings ----------
+function applySettings(next) {
+  settings = next || {};
+  motion = MOTION[settings.motion] || MOTION.normal;
+  T = TEXTS[settings.lang] || TEXTS.es;
+  numbers = new Intl.NumberFormat(T.locale);
+  const bg = rgbOf(settings.bgColor, '#0b2545');
+  const ice = rgbOf(settings.iceColor, '#7dd3fc');
+  const frost = rgbOf(settings.frostColor, '#e0f2fe');
+  palette = { ice, frost };
+  const root = document.documentElement.style;
+  root.setProperty('--bg-rgb', css(bg));
+  root.setProperty('--bg2-rgb', css(mix(bg, [0, 2, 12], 0.6)));
+  root.setProperty('--ice-rgb', css(ice));
+  root.setProperty('--frost-rgb', css(frost));
+  root.setProperty('--deep-rgb', css(mix(ice, [37, 99, 235], 0.62)));
+  root.setProperty('--text', `rgb(${css(rgbOf(settings.textColor, '#f0f9ff'))})`);
+  loadFont(settings.font);
+  stage.dataset.panel = settings.panel === false ? 'off' : 'on';
+  stage.dataset.aurora = settings.aurora === false ? 'off' : 'on';
+  stage.dataset.snow = settings.snow === false ? 'off' : 'on';
+  stage.dataset.bear = settings.bear === false ? 'off' : 'on';
+  stage.dataset.numbers = ['percent', 'votes'].includes(settings.numbers) ? settings.numbers : 'both';
+  sprites = makeSprites();
+  example = null;   // its texts follow the language
+  for (const row of rows) row.shownV = row.shownS = -1;
+  shownTotal = -1; lastSecs = -1; noteKey = null; resultFor = null;   // texts follow a language change
+  sync();
+  layout();
+}
+const resultMs = () => clamp(Number(settings.resultSeconds) || 20, 3, 120) * 1000;
+
+// ---------- Which poll ----------
+const isPoll = poll => !!poll && typeof poll === 'object' && poll.kind !== 'prediction' && typeof poll.id === 'string'
+  && Array.isArray(poll.choices) && poll.choices.length >= 2 && poll.choices.every(choice => choice && typeof choice.id === 'string');
+const isOpen = poll => poll.phase === 'active';
+// Studio's Test drawer sample: made on the Studio computer, and it never ends by itself.
+const isSample = poll => poll.receipt === 'test' || poll.id.startsWith('test-');
+// Twitch poll IDs are unique (and start times may come formatted differently); the Test drawer sample reuses one ID.
+const keyOf = poll => isSample(poll) ? poll.id + '@' + poll.startedAt : poll.id;
+
+// The OBS computer's clock can be off, and poll times are server times. The offset is learned from updates that arrive
+// after the first one: arrival time minus the update's time. The smallest recent value has the least delivery delay.
+let clockSamples = [], clockOffset = 0, lastUpdate = null, seenState = false;
+const MAX_OFFSET = 600000;
+function learnClock(poll) {
+  if (isSample(poll)) return;
+  const key = poll.id + ':' + poll.revision;
+  if (key === lastUpdate) return;
+  lastUpdate = key;
+  const at = when(poll.occurredAt);
+  // The first state is a snapshot that can be old: it says nothing about this computer's clock.
+  if (!seenState || at === null) return;
+  clockSamples.push(Date.now() - at);
+  if (clockSamples.length > 12) clockSamples.shift();
+  const offset = Math.min(...clockSamples);
+  clockOffset = Math.abs(offset) > 3000 ? clamp(offset, -MAX_OFFSET, MAX_OFFSET) : 0;   // a second or two is delivery time
+}
+// "Now" on the clock this poll's times use.
+const nowFor = poll => poll.local || isSample(poll) ? Date.now() : Date.now() - clockOffset;
+
+// Newest wins. After the startup state, the host replays updates that came in while the frame loaded, and they can be
+// older: an older poll, an older revision or a finished poll "reopening" is dropped.
+let newest = null;
+function accept(poll) {
+  if (isSample(poll)) return true;
+  const started = when(poll.startedAt) ?? 0, revision = Number(poll.revision) || 0, same = !!newest && newest.id === poll.id;
+  if (same && (revision < newest.revision || (newest.ended && isOpen(poll)))) return false;
+  if (newest && !same && started < newest.started) return false;
+  newest = { id: poll.id, started, revision, ended: !isOpen(poll) || (same && newest.ended) };
+  return true;
+}
+
+function currentPoll() {
+  if (sim) return sim;
+  let poll = polls && isPoll(polls.poll) ? polls.poll : null;
+  // The Test drawer sample ends at its deadline here, so its results show too.
+  if (poll && isSample(poll) && isOpen(poll) && when(poll.deadline) !== null && Date.now() >= when(poll.deadline)) {
+    poll = Object.assign({}, poll, { phase: 'completed', deadline: null, endedAt: poll.deadline });
+  }
+  if (poll) {
+    if (isOpen(poll)) { if (!stale(poll)) return poll; }
+    else if (Date.now() < endedLocal(poll) + resultMs()) return poll;
+  }
+  if (mode === 'editor' && polls !== undefined) return examplePoll(Date.now());
+  return null;
+}
+// Still "active" two minutes after its deadline: its end never arrived. Until an update has checked this computer's
+// clock, it must also have been open here that long, so a fast clock alone never hides a running poll.
+function stale(poll) {
+  const key = keyOf(poll), now = Date.now(), deadline = when(poll.deadline);
+  if (!openFirstSeen.has(key)) openFirstSeen.set(key, now);
+  if (deadline === null || nowFor(poll) < deadline + STALE_MS) return false;
+  if (poll.local || isSample(poll) || clockSamples.length) return true;
+  return now - openFirstSeen.get(key) > Math.max(0, deadline - (when(poll.startedAt) ?? deadline)) + STALE_MS;
+}
+// When it ended, in this computer's time: the server's end time (never later than now), so an end that arrives late
+// doesn't bring back old results.
+function endedLocal(poll) {
+  const key = keyOf(poll);
+  if (!endTimes.has(key)) {
+    const now = Date.now(), end = when(poll.endedAt);
+    endTimes.set(key, end === null ? now : Math.min(now, end + (poll.local || isSample(poll) ? 0 : clockOffset)));
+  }
+  return endTimes.get(key);
+}
+function examplePoll(now) {
+  if (!example || when(example.deadline) - now < 1000) {   // starts over before it reads 0:00
+    const s = T.sample;
+    example = { kind: 'poll', id: 'example', example: true, local: true, title: s[0], phase: 'active', startedAt: iso(now), deadline: iso(now + 90000), endedAt: null,
+      choices: [{ id: 'e0', title: s[1], votes: 12 }, { id: 'e1', title: s[2], votes: 7 }, { id: 'e2', title: s[3], votes: 4 }] };
+  }
+  return example;
+}
+const titleOf = poll => String(settings.title || '').trim() || String(poll.title || '') || T.poll;
+
+// ---------- Rendering ----------
+function sync() {
+  let poll = null;
+  try { poll = currentPoll(); } catch (error) { console.error('Encuesta Polar (poll):', error); }
+  if (!poll) { hide(); return; }
+  const signature = [poll.id, poll.title, ...poll.choices.map(choice => choice.id + '\u0001' + choice.title)].join('\u0002');
+  const fresh = signature !== shownSignature || stage.dataset.state !== 'showing';
+  if (fresh) show(poll, signature);
+  shown = poll;
+  const open = isOpen(poll);
+  if (open) openSeen.add(keyOf(poll));
+  setTargets(poll, fresh);
+  setPhase(poll, open, fresh);
+  setText(ui.title, titleOf(poll));
+  setNote(poll, open);
+}
+function setText(element, text) { if (element.textContent !== text) element.textContent = text; }
+
+function show(poll, signature) {
+  clearTimeout(hideTimer);
+  clearEffects();   // nothing from the previous poll carries over
+  shownSignature = signature;
+  resultFor = null; noteKey = null; shownTotal = -1; lastSecs = -1;
+  buildRows(poll);
+  stage.dataset.phase = 'open';
+  stage.dataset.mood = 'idle';
+  stage.dataset.state = 'showing';
+  ui.timer.classList.add('off');
+  setText(ui.eyebrow, T.poll);
+  setText(ui.title, titleOf(poll));   // before fitting: a new title can take two lines
+  layout();
+  kick();
+  stage.classList.remove('intro');
+  void stage.offsetWidth;
+  stage.classList.add('intro');
+  clearTimeout(introTimer);
+  introTimer = setTimeout(() => stage.classList.remove('intro'), 7450);   // after one full bob of the bear, so nothing jumps
+}
+function hide() {
+  if (stage.dataset.state !== 'showing') return;
+  stage.dataset.state = 'leaving';
+  stage.classList.remove('intro');
+  shownSignature = null;
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    stage.dataset.state = 'hidden';
+    stage.classList.remove('intro');
+    list.textContent = '';
+    rows = []; leadRows = []; shown = null;
+    clearEffects();
+  }, 950);
+}
+// Effects waiting to start (a celebration's later rings, falling snow) belong to the poll on screen.
+function later(fn, ms) {
+  const id = setTimeout(() => { effectTimers = effectTimers.filter(item => item !== id); fn(); }, ms);
+  effectTimers.push(id);
+}
+function clearEffects() {
+  effectTimers.forEach(clearTimeout);
+  effectTimers = [];
+  particles = []; rings = [];
+  for (const element of stage.querySelectorAll('.floater')) element.remove();
+}
+
+function buildRows(poll) {
+  list.textContent = '';
+  rows = poll.choices.map((choice, i) => {
+    const li = document.createElement('li');
+    li.className = 'choice';
+    li.style.setProperty('--i', String(i));
+    li.innerHTML = '<div class="choice__line"><svg class="choice__badge"><use href="#paw"/></svg><span class="choice__name"></span>'
+      + '<span class="choice__stats"><b class="choice__pct">0%</b><span class="choice__votes"></span></span></div>'
+      + '<div class="bar"><div class="bar__fill"></div><svg class="bar__tip"><use href="#flake"/></svg></div>';
+    li.querySelector('.choice__name').textContent = String(choice.title ?? '');   // viewer-facing text, never HTML
+    list.append(li);
+    return { id: choice.id, el: li, pct: li.querySelector('.choice__pct'), votes: li.querySelector('.choice__votes'), bar: li.querySelector('.bar'),
+      view: { v: 0, s: 0, fromV: 0, toV: 0, fromS: 0, toS: 0, start: 0, dur: 0 }, shownV: -1, shownS: -1, shownP: -1, boostUntil: 0, rect: null };
+  });
+  leadRows = []; leaderKey = null;
+}
+
+function setTargets(poll, intro) {
+  const votes = poll.choices.map(choice => Math.max(0, Math.round(Number(choice.votes) || 0)));
+  const total = votes.reduce((sum, value) => sum + value, 0);
+  const now = performance.now();
+  rows.forEach((row, i) => {
+    const value = votes[i], share = total ? value / total : 0, view = row.view;
+    if (!intro && value === view.toV && share === view.toS) return;
+    const delta = value - view.toV;
+    view.fromV = intro ? 0 : view.v; view.fromS = intro ? 0 : view.s;
+    view.toV = value; view.toS = share;
+    view.start = now + (intro ? 450 + i * 90 : 0);
+    view.dur = intro ? 1600 : delta < 0 ? 700 : 1150;
+    if (!intro && delta > 0) voteArrived(row, delta);
+  });
+  const max = Math.max(...votes);
+  const lead = total ? rows.filter((_, i) => votes[i] === max) : [];
+  const key = lead.map(row => row.id).join(',');
+  if (key === leaderKey) return;
+  leaderKey = key;
+  leadRows = lead;
+  for (const row of rows) row.el.classList.toggle('lead', lead.includes(row));
+  markResults();
+  look();
+}
+function setPhase(poll, open, fresh) {
+  if (open) {
+    if (stage.dataset.phase !== 'open') { stage.dataset.phase = 'open'; resultFor = null; lastSecs = -1; markResults(); }
+    return;
+  }
+  if (resultFor === poll.id) return;
+  resultFor = poll.id;
+  stage.dataset.phase = 'results';
+  ui.timer.classList.add('off');
+  ui.timer.classList.remove('low');
+  setText(ui.eyebrow, T.results);
+  pop(ui.eyebrow, 'pop', 700);
+  markResults();
+  // Only an end seen here as it happened celebrates: not a reload, a replayed update or a late reconnect.
+  const key = keyOf(poll);
+  if (fresh || !openSeen.has(key) || celebrated.has(key) || Date.now() - endedLocal(poll) > 8000) return;
+  celebrated.add(key);
+  later(() => { if (shown && keyOf(shown) === key) celebrate(leadRows.slice()); }, 250);   // the winner as it is then
+}
+function markResults() {
+  const results = stage.dataset.phase === 'results';
+  for (const row of rows) {
+    row.el.classList.toggle('win', results && leadRows.includes(row));
+    row.el.classList.toggle('lose', results && leadRows.length > 0 && !leadRows.includes(row));
+  }
+  stage.dataset.mood = results && leadRows.length ? 'happy' : 'idle';
+}
+function setNote(poll, open) {
+  let key, parts;
+  if (!open) {
+    if (leadRows.length === 1) {
+      const choice = poll.choices.find(item => item.id === leadRows[0].id);
+      const name = document.createElement('b');
+      name.textContent = String(choice ? choice.title : '');
+      key = 'won:' + leadRows[0].id; parts = [flakeIcon(), `${T.won}: `, name];
+    } else if (leadRows.length > 1) { key = 'tie'; parts = [flakeIcon(), T.tie]; }
+    else { key = 'none'; parts = [T.none]; }
+  } else if (poll.example) { key = 'example'; parts = [T.example]; }
+  else { const hint = String(settings.hint || '').trim() || T.hint; key = 'hint:' + hint; parts = [hint]; }
+  key += '|' + T.locale;
+  if (key === noteKey) return;
+  const first = noteKey === null;
+  noteKey = key;
+  ui.note.textContent = '';
+  ui.note.append(...parts);
+  if (!first) pop(ui.note, 'pop', 800);
+}
+function flakeIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg'), use = document.createElementNS(SVG_NS, 'use');
+  svg.setAttribute('class', 'note__flake');
+  use.setAttribute('href', '#flake');
+  svg.append(use);
+  return svg;
+}
+function pop(element, className, ms) {
+  element.classList.remove(className);
+  void element.getBoundingClientRect();
+  element.classList.add(className);
+  clearTimeout(element[className + 'Timer']);
+  element[className + 'Timer'] = setTimeout(() => element.classList.remove(className), ms);
+}
+
+// Every frame: bars, numbers and the clock follow their targets smoothly.
+function stepRows(time) {
+  let total = 0;
+  for (const row of rows) {
+    const view = row.view;
+    const k = view.dur ? clamp((time - view.start) / view.dur, 0, 1) : 1;   // rAF time can be older than performance.now()
+    const eased = easeOut(k);
+    view.v = view.fromV + (view.toV - view.fromV) * eased;
+    view.s = view.fromS + (view.toS - view.fromS) * eased;
+    const p = Math.round(view.s * 10000);
+    if (p !== row.shownP) { row.shownP = p; row.el.style.setProperty('--p', (p / 10000).toFixed(4)); }
+    const votes = Math.round(view.v), pct = Math.round(view.s * 100);
+    if (votes !== row.shownV) { row.shownV = votes; row.votes.textContent = `${numbers.format(votes)} ${votes === 1 ? T.vote : T.votes}`; }
+    if (pct !== row.shownS) { row.shownS = pct; row.pct.textContent = pct + '%'; }
+    total += votes;
+  }
+  if (total !== shownTotal) { shownTotal = total; ui.total.textContent = `${numbers.format(total)} ${total === 1 ? T.vote : T.votes}`; }
+}
+function stepClock() {
+  if (!shown || stage.dataset.phase !== 'open') return;
+  const deadline = when(shown.deadline), started = when(shown.startedAt);
+  if (deadline === null) { ui.timer.classList.add('off'); return; }
+  const left = Math.max(0, deadline - nowFor(shown));
+  const secs = Math.ceil(left / 1000);
+  if (secs !== lastSecs) {
+    lastSecs = secs;
+    setText(ui.clock, `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`);
+    const low = secs > 0 && secs <= 10;
+    ui.timer.classList.toggle('low', low);
+    if (low) pop(ui.timer, 'tick', 500);
+    setText(ui.eyebrow, secs === 0 ? T.closing : T.poll);
+    ui.timer.classList.remove('off');
+  }
+  const span = started !== null && deadline > started ? deadline - started : 60000;
+  ui.arc.style.strokeDashoffset = (RING * (1 - clamp(left / span, 0, 1))).toFixed(2);
+}
+
+// ---------- Layout ----------
+let dpr = 1, frameW = 0, frameH = 0, snowW = 0, snowH = 0, em = 20, unit = 1;
+let cardRect = null, bearRect = null, capKey = '', fitHeight = 0;   // fitHeight: the card's height (em) when it was fitted
+// Offsets ignore transforms, so positions are right even while the intro animations run.
+function offsetRect(element) {
+  let x = 0, y = 0;
+  // The stage's offsets (parent: body) are already page coordinates; body's own margin must not count twice.
+  for (let node = element; node && node !== document.body; node = node.offsetParent) { x += node.offsetLeft; y += node.offsetTop; }
+  return { left: x, top: y, width: element.offsetWidth, height: element.offsetHeight };
+}
+// Everything is sized in em: measure the card at 20px (one, two, three columns), then pick the size that fits the layer box.
+function layout() {
+  frameW = innerWidth; frameH = innerHeight;
+  const root = document.documentElement.style, REF = 20, padX = 0.6;
+  const panel = stage.dataset.panel === 'on';
+  // Room above for the bear's ears (even mid-hop) and below for the icicles.
+  const padTop = panel && stage.dataset.bear === 'on' ? 4.1 : panel ? 1 : 0.4, padBottom = panel ? 1.7 : 0.4;
+  root.setProperty('--pad-top', padTop + 'em');
+  root.setProperty('--pad-bottom', padBottom + 'em');
+  root.fontSize = REF + 'px';
+  let best = null;
+  for (let cols = 1; cols <= clamp(rows.length, 1, 3); cols++) {
+    stage.dataset.cols = String(cols);
+    root.setProperty('--cols', String(cols));
+    const fit = Math.min(frameH / (card.offsetHeight / REF + padTop + padBottom), frameW / (card.offsetWidth / REF + padX * 2));
+    if (!best || fit > best.fit * 1.1) best = { cols, fit };   // more columns only when they are clearly bigger
+  }
+  stage.dataset.cols = String(best.cols);
+  root.setProperty('--cols', String(best.cols));
+  em = Math.max(5, best.fit * clamp(Number(settings.scale) || 100, 30, 100) / 100);
+  root.fontSize = em + 'px';
+  unit = em / REF;
+  fitHeight = card.offsetHeight / em;
+  measure();
+}
+const MAX_CANVAS_PIXELS = 4e6;   // a huge layer gets softer effects instead of a huge canvas
+function measure() {
+  dpr = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(MAX_CANVAS_PIXELS / Math.max(1, frameW * frameH)));
+  fxCanvas.width = Math.round(frameW * dpr); fxCanvas.height = Math.round(frameH * dpr);
+  const width = card.offsetWidth, height = card.offsetHeight;
+  if (width !== snowW || height !== snowH) {
+    snowW = width; snowH = height;
+    snowCanvas.width = Math.round(width * dpr); snowCanvas.height = Math.round(height * dpr);
+    makeFlakes();
+  }
+  cardRect = offsetRect(card);
+  bearRect = offsetRect(bear);
+  for (const row of rows) row.rect = offsetRect(row.bar);
+  const key = width + ':' + em.toFixed(2);
+  if (key !== capKey && width) { capKey = key; buildCap(width); buildIcicles(width); }
+  look();
+}
+// Seeded, so the snow and icicles keep their shape when the layer is resized.
+function seeded(seed) {
+  return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function smoothClosed(points) {
+  // Quadratic curves through the midpoints: soft, round snow.
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], f = value => value.toFixed(1), n = points.length;
+  const start = mid(points[n - 1], points[0]);
+  let d = `M ${f(start[0])} ${f(start[1])}`;
+  for (let i = 0; i < n; i++) {
+    const p = points[i], m = mid(p, points[(i + 1) % n]);
+    d += ` Q ${f(p[0])} ${f(p[1])} ${f(m[0])} ${f(m[1])}`;
+  }
+  return d + ' Z';
+}
+function buildCap(width) {
+  const e = em, H = 1.5 * e, base = 0.62 * e, random = seeded(17);   // base: the card's top edge inside the cap's box
+  ui.cap.setAttribute('viewBox', `0 0 ${width} ${H.toFixed(1)}`);
+  const x0 = 0.3 * e, x1 = width - 0.3 * e, top = [[x0 - 0.05 * e, base + 0.5 * e], [x0 + 0.25 * e, base - 0.2 * e]], peaks = [];
+  let x = x0 + 0.75 * e, peak = true;
+  while (x < x1 - 0.9 * e) {
+    const y = base - (peak ? 0.3 + random() * 0.28 : 0.1 + random() * 0.09) * e;
+    top.push([x, y]);
+    if (peak) peaks.push([x, y]);
+    x += (0.45 + random() * 0.5) * e;
+    peak = !peak;
+  }
+  top.push([x1 - 0.25 * e, base - 0.2 * e], [x1 + 0.05 * e, base + 0.5 * e]);
+  const bottom = [];
+  x = x1 - 0.55 * e;
+  while (x > x0 + 0.55 * e) {
+    const drip = random() < 0.2;
+    bottom.push([x, base + (drip ? 0.5 + random() * 0.24 : 0.22 + random() * 0.12) * e]);
+    x -= (drip ? 0.32 : 0.45 + random() * 0.5) * e;
+  }
+  const d = smoothClosed(top.concat(bottom));
+  ui.cap.querySelector('.cap__shadow').setAttribute('d', d);
+  ui.cap.querySelector('.cap__snow').setAttribute('d', d);
+  const glints = ui.cap.querySelector('.cap__glints');
+  glints.textContent = '';
+  for (let i = 0; i < Math.min(4, peaks.length); i++) {
+    const [px, py] = peaks[Math.floor(random() * peaks.length)];
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', sparkleD(px, py + 0.12 * e, 0.17 * e));
+    path.style.animationDelay = (-random() * 4.8).toFixed(2) + 's';
+    glints.append(path);
+  }
+}
+// A four-point sparkle as an SVG path.
+function sparkleD(x, y, r) {
+  const k = r * 0.12, f = value => value.toFixed(1);
+  return `M ${f(x)} ${f(y - r)} Q ${f(x + k)} ${f(y - k)} ${f(x + r)} ${f(y)} Q ${f(x + k)} ${f(y + k)} ${f(x)} ${f(y + r)} Q ${f(x - k)} ${f(y + k)} ${f(x - r)} ${f(y)} Q ${f(x - k)} ${f(y - k)} ${f(x)} ${f(y - r)} Z`;
+}
+function buildIcicles(width) {
+  const e = em, H = 1.6 * e, random = seeded(29), svg = ui.icicles;
+  svg.setAttribute('viewBox', `0 0 ${width} ${H.toFixed(1)}`);
+  svg.textContent = '';
+  let x = 1.7 * e, i = 0;
+  while (x < width - 1.7 * e) {
+    const length = (0.3 + random() * random() * 1.05) * e, w = (0.2 + random() * 0.2) * e;
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', `M ${x - w / 2} 0 Q ${x - w * 0.12} ${length * 0.55} ${x} ${length} Q ${x + w * 0.12} ${length * 0.55} ${x + w / 2} 0 Z`);
+    path.style.setProperty('--d', (i * 0.05).toFixed(2) + 's');
+    svg.append(path);
+    if (length > 0.75 * e && random() < 0.6) {
+      const drop = document.createElementNS(SVG_NS, 'circle');
+      drop.setAttribute('cx', String(x)); drop.setAttribute('cy', String(length)); drop.setAttribute('r', String(0.07 * e));
+      drop.style.animationDelay = (-random() * 6).toFixed(2) + 's';
+      svg.append(drop);
+    }
+    x += (0.55 + random() * 1.3) * e;
+    i++;
+  }
+}
+
+// ---------- The bear ----------
+function look() {
+  if (!bearRect || !cardRect) return;
+  const eye = { x: bearRect.left + bearRect.width / 2, y: bearRect.top - 1.85 * em };
+  const lead = leadRows[0];
+  const target = lead && lead.rect ? tipAt(lead, lead.view.toS) : { x: cardRect.left + cardRect.width * 0.4, y: cardRect.top + cardRect.height * 0.6 };
+  const dx = target.x - eye.x, dy = target.y - eye.y, length = Math.hypot(dx, dy) || 1;
+  bear.style.setProperty('--lx', (dx / length * 3.2).toFixed(2) + 'px');
+  bear.style.setProperty('--ly', (dy / length * 2.6).toFixed(2) + 'px');
+}
+function perk() {
+  const now = performance.now();
+  if (now - lastPerk < 700) return;
+  lastPerk = now;
+  pop(bear, 'perk', 650);
+}
+function blinkLater() {
+  setTimeout(() => {
+    if (stage.dataset.state === 'showing') {
+      pop(bear, 'blink', 220);
+      if (Math.random() < 0.25) setTimeout(() => pop(bear, 'blink', 220), 330);
+    }
+    blinkLater();
+  }, rand(2600, 6200));
+}
+
+// ---------- Effects ----------
+let sprites = null;
+function sprite(rgb) {
+  const size = 64, canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.2, `rgba(${css(rgb)},0.9)`);
+  gradient.addColorStop(0.48, `rgba(${css(rgb)},0.3)`);
+  gradient.addColorStop(1, `rgba(${css(rgb)},0)`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  return canvas;
+}
+function makeSprites() { return { ice: sprite(palette.ice), frost: sprite(palette.frost), white: sprite([255, 255, 255]) }; }
+
+let flakes = [], particles = [], rings = [];
+let snowBoostUntil = 0;
+function flake(anywhere) {
+  const depth = Math.random();
+  return { x: Math.random() * snowW, y: anywhere ? Math.random() * snowH : -6 * unit, depth, r: (0.5 + depth * 1.5) * unit, vy: (7 + depth * 15) * unit,
+    sway: (3 + depth * 9) * unit, freq: rand(0.25, 0.8), phase: rand(0, Math.PI * 2), a: 0.2 + depth * 0.55, crystal: depth > 0.93, rot: rand(0, Math.PI), spin: rand(-0.5, 0.5) };
+}
+function makeFlakes() {
+  const count = Math.min(150, Math.round(snowW * snowH / (2300 * unit * unit) * motion.snow));
+  flakes = Array.from({ length: count }, () => flake(true));
+}
+// A six-armed snow crystal.
+function crystal(ctx, x, y, r, rotation, width) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rotation);
+  ctx.lineWidth = width; ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    ctx.moveTo(0, 0); ctx.lineTo(0, -r);
+    ctx.moveTo(0, -r * 0.5); ctx.lineTo(-r * 0.25, -r * 0.75);
+    ctx.moveTo(0, -r * 0.5); ctx.lineTo(r * 0.25, -r * 0.75);
+    ctx.rotate(Math.PI / 3);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function sparklePath(ctx, x, y, r, rotation) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rotation);
+  ctx.beginPath(); ctx.moveTo(0, -r);
+  ctx.quadraticCurveTo(r * 0.1, -r * 0.1, r, 0); ctx.quadraticCurveTo(r * 0.1, r * 0.1, 0, r);
+  ctx.quadraticCurveTo(-r * 0.1, r * 0.1, -r, 0); ctx.quadraticCurveTo(-r * 0.1, -r * 0.1, 0, -r);
+  ctx.fill(); ctx.restore();
+}
+const tipAt = (row, share) => row.rect ? { x: row.rect.left + row.rect.width * clamp(share, 0, 1), y: row.rect.top + row.rect.height / 2 } : { x: frameW / 2, y: frameH / 2 };
+function particle(point, options) {
+  if (particles.length > 520) return;
+  const angle = options.angle ?? rand(0, Math.PI * 2), speed = (options.speed ?? rand(40, 160)) * unit;
+  const kinds = ['dot', 'dot', 'sparkle', 'crystal'];
+  particles.push({ x: point.x, y: point.y, vx: Math.cos(angle) * speed + (options.vx || 0) * unit, vy: Math.sin(angle) * speed + (options.vy || 0) * unit,
+    age: -(options.delay || 0), life: options.life ?? rand(0.6, 1.4), size: (options.size ?? rand(1.3, 3)) * unit, drag: options.drag ?? 0.93,
+    gravity: (options.gravity || 0) * unit, sway: (options.sway || 0) * unit, freq: rand(1.5, 3), phase: rand(0, Math.PI * 2),
+    kind: options.kind || kinds[Math.floor(Math.random() * kinds.length)], rot: rand(0, Math.PI), spin: rand(-2.5, 2.5),
+    tint: options.tint || (Math.random() < 0.5 ? 'frost' : 'ice') });
+}
+function burst(point, count, power) {
+  const n = Math.round(count * motion.burst);
+  for (let i = 0; i < n; i++) particle(point, { speed: rand(40, 180) * power, life: rand(0.6, 1.5) });
+}
+function ring(point, radius, ms, rgb) { rings.push({ x: point.x, y: point.y, radius, born: performance.now(), ms, rgb: rgb || palette.frost }); }
+function floater(row, text) {
+  const point = tipAt(row, row.view.toS);
+  const element = document.createElement('div');
+  // Right of the snowflake, over the empty ice; near the end of the bar it goes left, over the filled part.
+  const left = !!row.rect && point.x > row.rect.left + row.rect.width - 4.2 * em;
+  element.className = left ? 'floater left' : 'floater';
+  element.textContent = text;
+  element.style.left = (point.x + (left ? -1 : 1) * 0.95 * em) + 'px';
+  element.style.top = point.y + 'px';
+  element.addEventListener('animationend', () => element.remove());
+  stage.append(element);
+}
+function voteArrived(row, delta) {
+  floater(row, '+' + numbers.format(delta));
+  pop(row.el, 'flare', 900);
+  pop(row.el, 'bump', 600);
+  burst(tipAt(row, row.view.s), Math.min(6 + delta * 2, 18), 0.8);
+  row.boostUntil = performance.now() + 1300;
+  perk();
+}
+// Snow crystals falling over the card.
+function snowfall(count) {
+  if (!cardRect) return;
+  const n = Math.round(count * motion.burst);
+  for (let i = 0; i < n; i++) {
+    particle({ x: rand(cardRect.left, cardRect.left + cardRect.width), y: cardRect.top - rand(0, 1.6) * em }, { angle: Math.PI / 2, speed: rand(28, 64), drag: 1,
+      gravity: 9, sway: rand(14, 34), life: rand(2.6, 4), size: rand(1.4, 2.8), delay: rand(0, 1.5), kind: Math.random() < 0.55 ? 'crystal' : 'sparkle', tint: 'frost' });
+  }
+}
+function celebrate(winners) {
+  stage.classList.remove('intro');
+  pop(card, 'glory', 3000);
+  if (winners.length) pop(bear, 'cheer', 1900);
+  for (const row of winners) {
+    pop(row.el, 'crown', 1200);
+    const tip = tipAt(row, row.view.toS);
+    ring(tip, 34 * unit, 900);
+    later(() => ring(tip, 58 * unit, 1150, palette.ice), 160);
+    burst(tip, 30, 1.3);
+    row.boostUntil = performance.now() + 3000;
+  }
+  snowfall(winners.length ? 70 : 24);
+  snowBoostUntil = performance.now() + 3500;
+}
+
+function drawSnow(time, dt) {
+  if (stage.dataset.snow !== 'on' || stage.dataset.panel !== 'on' || !snowW) return;
+  const ctx = snowCtx, boost = time < snowBoostUntil ? 2.2 : 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, snowW, snowH);
+  for (const f of flakes) {
+    f.y += f.vy * dt * boost; f.rot += f.spin * dt;
+    if (f.y > snowH + 8 * unit) Object.assign(f, flake(false));
+    const x = f.x + Math.sin(time * 0.001 * f.freq + f.phase) * f.sway;
+    ctx.globalAlpha = f.a;
+    if (f.crystal) { ctx.strokeStyle = '#fff'; crystal(ctx, x, f.y, f.r * 3, f.rot, Math.max(0.6, f.r * 0.4)); }
+    else if (f.depth > 0.6) { const size = f.r * 5; ctx.drawImage(sprites.white, x - size / 2, f.y - size / 2, size, size); }
+    else { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+let fxClean = true;
+function drawFx(time, dt) {
+  const ctx = fx;
+  const showing = stage.dataset.state === 'showing';
+  const emitters = showing ? rows.filter(row => row.view.s > 0.004 && (leadRows.includes(row) || time < row.boostUntil)) : [];
+  // Nothing moving: leave the cleared canvas alone.
+  if (!emitters.length && !particles.length && !rings.length) {
+    if (!fxClean) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxCanvas.width, fxCanvas.height); fxClean = true; }
+    return;
+  }
+  fxClean = false;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, frameW, frameH);
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Ice dust trailing behind the leading bar's snowflake (more right after votes).
+  for (const row of emitters) {
+    row.debt = (row.debt || 0) + motion.trickle * (time < row.boostUntil ? 4 : 1) * dt;
+    const at = tipAt(row, row.view.s);
+    while (row.debt >= 1) {
+      row.debt -= 1;
+      particle({ x: at.x + rand(-2, 2) * unit, y: at.y + rand(-2, 2) * unit }, { angle: Math.PI + rand(-0.9, 0.9), speed: rand(12, 50), vy: rand(-12, 6), life: rand(0.7, 1.5), size: rand(0.9, 2.1), drag: 0.97 });
+    }
+  }
+
+  for (const r of rings) {
+    const k = clamp((time - r.born) / r.ms, 0, 1);   // rAF time can be older than performance.now(): start at 0
+    if (k >= 1) continue;
+    ctx.globalAlpha = (1 - k) * 0.85;
+    ctx.strokeStyle = `rgb(${css(r.rgb)})`;
+    ctx.lineWidth = (2.6 * (1 - k) + 0.4) * unit;
+    ctx.beginPath(); ctx.arc(r.x, r.y, r.radius * easeOut(k), 0, Math.PI * 2); ctx.stroke();
+  }
+  rings = rings.filter(r => time - r.born < r.ms);
+
+  for (const q of particles) {
+    q.age += dt;
+    if (q.age < 0) continue;
+    q.vx *= Math.pow(q.drag, dt * 60); q.vy *= Math.pow(q.drag, dt * 60);
+    q.vy += q.gravity * dt;
+    q.x += q.vx * dt + Math.cos(q.age * q.freq + q.phase) * q.sway * dt;
+    q.y += q.vy * dt; q.rot += q.spin * dt;
+    const k = q.age / q.life;
+    if (k >= 1) continue;
+    ctx.globalAlpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
+    if (q.kind === 'crystal') {
+      const size = q.size * 4;
+      ctx.drawImage(sprites[q.tint], q.x - size / 2, q.y - size / 2, size, size);
+      ctx.strokeStyle = '#fff';
+      crystal(ctx, q.x, q.y, q.size * 2.3, q.rot, Math.max(0.5, q.size * 0.32));
+    } else if (q.kind === 'sparkle') {
+      const size = q.size * 5;
+      ctx.drawImage(sprites[q.tint], q.x - size / 2, q.y - size / 2, size, size);
+      ctx.fillStyle = '#fff';
+      sparklePath(ctx, q.x, q.y, q.size * 2.1, q.rot);
+    } else {
+      const size = q.size * 4;
+      ctx.drawImage(sprites[q.tint], q.x - size / 2, q.y - size / 2, size, size);
+    }
+  }
+  particles = particles.filter(q => q.age < q.life);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+
+let lastTime = 0, rafId = 0;
+function kick() { if (!rafId) { lastTime = 0; rafId = requestAnimationFrame(frame); } }
+function frame(time) {
+  const visible = stage.dataset.state !== 'hidden';
+  // First, so one bad frame never stops the widget. Hidden with nothing left to draw: stop until the next kick().
+  rafId = visible || particles.length || rings.length || !fxClean ? requestAnimationFrame(frame) : 0;
+  const dt = lastTime ? clamp((time - lastTime) / 1000, 0, 0.05) : 0;
+  lastTime = time;
+  try { if (visible) { stepRows(time); stepClock(); } } catch (error) { console.error('Encuesta Polar (poll):', error); }
+  try {
+    if (visible) drawSnow(time, dt);
+    drawFx(time, dt);
+  } catch (error) { particles = []; rings = []; console.error('Encuesta Polar (effects):', error); }
+}
+
+// ---------- Studio tests (never saved, never sent anywhere) ----------
+function stopSim() { simTimers.forEach(clearTimeout); simTimers = []; sim = null; }
+// base: the poll on screen to continue from (its texts and votes), or null for the sample poll.
+function startSim(base, endAfter) {
+  stopSim();
+  const now = Date.now(), id = 'test-' + now, s = T.sample;
+  const source = base || { title: s[0], choices: s.slice(1).map(title => ({ title, votes: 0 })) };
+  sim = { kind: 'poll', id, test: true, local: true, title: String(source.title || s[0]), phase: 'active', startedAt: iso(now), deadline: iso(now + (endAfter || SIM_MS)), endedAt: null,
+    choices: source.choices.map((choice, i) => ({ id: 'c' + i, title: String(choice.title ?? ''), votes: Math.max(0, Math.round(Number(choice.votes) || 0)) })) };
+  sync();
+  // The first choices get more votes, so a winner shows up.
+  const weights = sim.choices.map((_, i) => 1 / (i + 1.3)), sum = weights.reduce((a, b) => a + b, 0);
+  const vote = () => {
+    if (!sim || sim.id !== id || sim.phase !== 'active') return;
+    const choices = sim.choices.map(choice => Object.assign({}, choice));
+    const n = 1 + Math.floor(Math.random() * Math.random() * 6);
+    for (let k = 0; k < n; k++) {
+      let r = Math.random() * sum, i = 0;
+      while (i < weights.length - 1 && r > weights[i]) { r -= weights[i]; i++; }
+      choices[i].votes++;
+    }
+    sim = Object.assign({}, sim, { choices });
+    sync();
+    simTimers.push(setTimeout(vote, rand(500, 1500)));
+  };
+  if (!endAfter) simTimers.push(setTimeout(vote, 1800));
+  simTimers.push(setTimeout(() => endSim(id), endAfter || SIM_MS));
+}
+function endSim(id) {
+  if (!sim || sim.id !== id || sim.phase !== 'active') return;
+  sim = Object.assign({}, sim, { phase: 'completed', deadline: null, endedAt: iso(Date.now()) });
+  sync();
+  simTimers.push(setTimeout(() => { if (sim && sim.id === id) { sim = null; sync(); } }, resultMs()));
+}
+
+// ---------- Wiring ----------
+applySettings(Dima.fields);
+Dima.on('fields', applySettings);   // changed in Studio: applies without a reload
+addEventListener('resize', layout);
+// The card grew or shrank (a title on more lines): fit it again. Otherwise only positions moved.
+if (window.ResizeObserver) new ResizeObserver(() => { if (Math.abs(card.offsetHeight / em - fitHeight) > 0.05) layout(); else measure(); }).observe(card);
+Dima.state('polls', value => {
+  const next = value && typeof value === 'object' ? value : null;
+  if (next && isPoll(next.poll)) {
+    if (!accept(next.poll)) return;   // an older update replayed after a newer one
+    learnClock(next.poll);
+  }
+  seenState = true;
+  polls = next;
+  sync();
+});
+// Settings buttons (Studio only): a whole test poll, or the results of the poll on screen.
+Dima.on('button', event => {
+  if (!event) return;
+  if (event.field === 'testPoll') startSim(null, 0);
+  if (event.field === 'testResult') {
+    if (sim && sim.phase === 'active') { endSim(sim.id); return; }
+    startSim(shown, 1300);
+  }
+});
+setInterval(sync, 250);   // results run out, stale polls hide, the example's clock starts over
+blinkLater();
+
+Dima.ready().then(context => {
+  mode = context.mode;
+  sync();
+  // Studio: show the example if the poll state hasn't arrived (it may not exist yet).
+  if (mode === 'editor') setTimeout(() => { if (polls === undefined) { polls = null; sync(); } }, 1500);
+});
+kick();

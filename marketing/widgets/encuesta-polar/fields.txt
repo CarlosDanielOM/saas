@@ -1,0 +1,20 @@
+{
+  "lang": { "type": "dropdown", "label": "Idioma de los textos", "value": "es", "options": { "es": "Español (México)", "en": "English" }, "group": "Encuesta" },
+  "title": { "type": "text", "label": "Título (vacío = la pregunta de la encuesta)", "value": "", "group": "Encuesta" },
+  "hint": { "type": "text", "label": "Texto mientras se vota (vacío = «¡Vota en el chat de Twitch!»)", "value": "", "group": "Encuesta" },
+  "numbers": { "type": "dropdown", "label": "Números", "value": "both", "options": { "both": "Porcentaje y votos", "percent": "Solo porcentaje", "votes": "Solo votos" }, "group": "Encuesta" },
+  "resultSeconds": { "type": "slider", "label": "Segundos mostrando el resultado", "value": 20, "min": 5, "max": 60, "step": 1, "group": "Encuesta" },
+  "bear": { "type": "checkbox", "label": "Osito polar", "value": true, "group": "Estilo" },
+  "panel": { "type": "checkbox", "label": "Tarjeta de hielo con nieve", "value": true, "group": "Estilo" },
+  "aurora": { "type": "checkbox", "label": "Aurora boreal", "value": true, "group": "Estilo" },
+  "snow": { "type": "checkbox", "label": "Nieve cayendo", "value": true, "group": "Estilo" },
+  "bgColor": { "type": "colorpicker", "label": "Fondo (azul frío)", "value": "#0b2545", "group": "Estilo" },
+  "iceColor": { "type": "colorpicker", "label": "Hielo (brillo)", "value": "#7dd3fc", "group": "Estilo" },
+  "frostColor": { "type": "colorpicker", "label": "Escarcha (luz)", "value": "#e0f2fe", "group": "Estilo" },
+  "textColor": { "type": "colorpicker", "label": "Texto", "value": "#f0f9ff", "group": "Estilo" },
+  "font": { "type": "googleFont", "label": "Letra", "value": "Fredoka", "group": "Estilo" },
+  "scale": { "type": "slider", "label": "Tamaño dentro de la capa (%)", "value": 100, "min": 50, "max": 100, "step": 5, "group": "Estilo" },
+  "motion": { "type": "dropdown", "label": "Animaciones", "value": "normal", "options": { "calm": "Tranquilas", "normal": "Normales", "lots": "Muchas" }, "group": "Animaciones" },
+  "testPoll": { "type": "button", "label": "Probar una encuesta", "value": "poll", "group": "Probar" },
+  "testResult": { "type": "button", "label": "Probar el resultado", "value": "result", "group": "Probar" }
+}

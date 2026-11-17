@@ -1,0 +1,9 @@
+{
+  "engine": "dima",
+  "api": 1,
+  "name": "Encuesta Polar",
+  "author": "DomDimaBot",
+  "version": "1.0.0",
+  "description": "Encuesta de Twitch helada: un osito polar se asoma sobre la nieve, los votos llegan a barras de hielo y el resultado cae como nevada.",
+  "uses": ["polls"]
+}
