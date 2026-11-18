@@ -28,6 +28,7 @@ const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
   ['app', null],
   ['roulette', null],
   ['widgets', new Set(['dbd', 'duel'])],
+  ['chat-sound', null],
   ['overlays', null],
   ['clips', null],
   ['chat-events', null],

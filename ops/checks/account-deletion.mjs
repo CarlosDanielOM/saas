@@ -158,6 +158,11 @@ await db.collection('moderation_decisions').insertMany([
   reviewed('mod-owner-plain', owner), reviewed('mod-owner-labelled', owner, { label: 'violation', reviewerID: 'admin', reviewedAt: new Date() }),
   reviewed('mod-other', other)
 ]);
+// Chat sound settings hold the channel's private OBS link.
+await db.collection('chat_sound_channels').insertMany([
+  { _id: owner, revision: 2, settings: { enabled: true }, tokenHash: 'a'.repeat(64) },
+  { _id: other, revision: 0, settings: { enabled: true }, tokenHash: null }
+]);
 
 const counts = async channelID => ({
   items: await db.collection('channelextensionitems').countDocuments({ channelID }),
@@ -186,6 +191,8 @@ assert.deepEqual(await counts(other), { items: 1, wallets: 2, transactions: 2, p
 assert.equal(await db.collection('users').countDocuments({ 'accounts.id': owner }), 0, 'account deleted');
 assert.equal(await db.collection('moderation_decisions').countDocuments({ channelID: owner }), 0, 'reviewed chat messages go with the account, labelled ones too');
 assert.equal(await db.collection('moderation_decisions').countDocuments({ channelID: other }), 1, "another channel's reviews are untouched");
+assert.equal(await db.collection('chat_sound_channels').countDocuments({ _id: owner }), 0, 'chat sound settings and its OBS link go with the account');
+assert.equal(await db.collection('chat_sound_channels').countDocuments({ _id: other }), 1, "another channel's chat sound is untouched");
 console.log('PASS DELETE /auth/account removed the channel\'s DimaFX items, wallets, purchase log and playbacks; other channels untouched; 401 without auth');
 
 // 4. Polar subscriptions are revoked before anything is deleted.

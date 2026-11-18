@@ -1,0 +1,110 @@
+<div class="lf"><main class="lf-main" data-testid="chat-sound-page">
+  <header class="lf-head">
+    <a class="back" [routerLink]="['/', streamer, 'modules']"><app-lf-icon name="back" />{{ t('back') }}</a>
+    <h1>{{ t('title') }}</h1>
+    <p>{{ t('subtitle') }}</p>
+    @if (state()) {
+      <div class="head-chips" data-testid="chat-sound-chips">
+        <span class="chip" [class.on-air]="health() === 'playing' || health() === 'tab'" [class.warn]="health() === 'silent' || health() === 'missing'" data-testid="health-chip" [attr.data-health]="health()">
+          <span class="dot" [class.on]="health() === 'playing' || health() === 'tab'"></span>{{ t('chip.' + health()) }}</span>
+        <span class="chip ok">{{ t('chip.free') }}</span>
+      </div>
+    }
+  </header>
+
+  @if (loading()) { <section class="lf-tile" role="status">{{ t('loading') }}</section> }
+  @else {
+    @if (error()) { <div class="message error" role="alert"><span>{{ error() }}</span>@if (!state()) { <button type="button" (click)="reload()">{{ t('retry') }}</button> }</div> }
+    @if (state(); as current) { @if (draft(); as d) {
+      <div class="cs-grid">
+        <div class="col main">
+          <!-- 1. Is it playing? The answer, the OBS link and both tests in one place. -->
+          <section class="lf-tile setup" [class.attention]="health() === 'silent' || health() === 'missing'" data-testid="chat-sound-setup" aria-labelledby="cs-setup-title">
+            <div class="tile-head"><h2 id="cs-setup-title">{{ t('setup.title') }}</h2>
+              @if (current.status.sources > 1) { <span class="chip" data-testid="sources-chip">{{ t('setup.sources', {n: current.status.sources}) }}</span> }</div>
+            <p class="answer" [attr.data-health]="health()" data-testid="chat-sound-answer">{{ t('answer.' + health()) }}</p>
+            @if (current.status.outdated > 0) { <p class="hint warn">{{ t('setup.outdated') }}</p> }
+            @if (current.status.sources > 1) { <p class="hint" data-testid="copies-hint">{{ t('setup.copies') }}</p> }
+            <app-overlay-link kind="chat-sound" [channel]="channel" [streamer]="streamer" [disabled]="busy()" (changed)="refresh()" />
+            <div class="test-row">
+              <button type="button" (click)="hear()" data-testid="hear-button"><app-lf-icon name="play" />{{ t('hear') }}</button>
+              <button type="button" (appThrottleClick)="testObs()" [disabled]="testing()" data-testid="test-obs-button"><app-lf-icon name="monitor" />{{ t(testing() ? 'testing' : 'testObs') }}</button>
+            </div>
+            @if (testNotice()) { <p class="notice" role="status" data-testid="test-notice">{{ testNotice() }}</p> }
+          </section>
+
+          <!-- 2. What plays and when. -->
+          <form class="lf-tile settings" (submit)="$event.preventDefault(); save()" data-testid="chat-sound-settings" aria-labelledby="cs-settings-title">
+            <h2 id="cs-settings-title">{{ t('settings') }}</h2>
+            <fieldset [disabled]="busy()">
+              <label class="switch"><span>{{ t('enabled') }}<small>{{ t('enabledHint') }}</small></span>
+                <input type="checkbox" [checked]="d.enabled" (change)="patch({ enabled: checked($event) })" data-testid="enabled-switch" /></label>
+
+              <div class="volume">
+                <label for="cs-volume">{{ t('volume') }}</label>
+                <output for="cs-volume" data-testid="volume-value">{{ d.volume }}%</output>
+                <input id="cs-volume" class="lf-range" type="range" min="0" max="100" step="5" [value]="d.volume" [style.--pct]="d.volume / 100" [attr.aria-valuetext]="d.volume + '%'" (input)="patch({ volume: numberOf($event) })" data-testid="volume-slider" />
+                <small>{{ t('volumeHint') }}</small>
+              </div>
+
+              <fieldset class="when" data-testid="chat-sound-mode">
+                <legend><strong>{{ t('when.title') }}</strong></legend>
+                <div class="choices">
+                  <label class="choice" [class.selected]="mode() === 'every'"><input type="radio" name="cs-mode" value="every" [checked]="mode() === 'every'" (change)="setMode('every')" data-testid="mode-every" />
+                    <span class="choice-name">{{ t('when.every') }}</span><small>{{ t('when.everyHint') }}</small></label>
+                  <label class="choice" [class.selected]="mode() === 'quiet'"><input type="radio" name="cs-mode" value="quiet" [checked]="mode() === 'quiet'" (change)="setMode('quiet')" data-testid="mode-quiet" />
+                    <span class="choice-name">{{ t('when.quiet') }}</span><small>{{ t('when.quietHint') }}</small></label>
+                </div>
+                @if (mode() === 'every') {
+                  <div class="field"><label for="cs-cooldown">{{ t('cooldown') }}</label>
+                    <select id="cs-cooldown" aria-describedby="cs-cooldown-hint" (change)="patch({ cooldownSeconds: numberOf($event) })" data-testid="cooldown-select">
+                      @for (value of cooldowns(); track value) { <option [value]="value" [selected]="value === d.cooldownSeconds">{{ seconds(value) }}</option> }
+                    </select><small id="cs-cooldown-hint">{{ t('cooldownHint') }}</small></div>
+                } @else {
+                  <div class="field"><label for="cs-quiet">{{ t('quiet') }}</label>
+                    <select id="cs-quiet" aria-describedby="cs-quiet-hint" (change)="patch({ quietMinutes: numberOf($event) })" data-testid="quiet-select">
+                      @for (value of quietOptions(); track value) { <option [value]="value" [selected]="value === d.quietMinutes">{{ minutes(value) }}</option> }
+                    </select><small id="cs-quiet-hint">{{ t('quietHint') }}</small></div>
+                }
+              </fieldset>
+
+              <details class="filters" data-testid="chat-sound-filters">
+                <summary><span class="sum-text"><strong>{{ t('filters.title') }}</strong><small>{{ filterSummary() }}</small></span></summary>
+                @for (key of filters; track key) {
+                  <label class="switch"><span>{{ t('filters.' + key) }}<small>{{ t('filters.' + key + 'Hint') }}</small></span>
+                    <input type="checkbox" [checked]="d[key]" (change)="toggle(key, $event)" [attr.data-testid]="'filter-' + key" /></label>
+                }
+              </details>
+            </fieldset>
+
+            <div class="lf-save-bar" [class.dirty]="dirty()" data-testid="save-bar">
+              <p class="save-status" role="status">{{ notice() || t(dirty() ? 'unsaved' : 'allSaved') }}</p>
+              <div class="save-actions">
+                @if (dirty()) { <button type="button" (click)="discard()" [disabled]="busy()">{{ t('discard') }}</button> }
+                <button class="primary" type="submit" [disabled]="!dirty() || busy()" data-testid="save-button">{{ t(busy() ? 'saving' : 'save') }}</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- How to add it to OBS, and the two tips people ask about. -->
+        <div class="col side">
+          <section class="lf-tile how" aria-labelledby="cs-how-title" data-testid="chat-sound-how">
+            <h2 id="cs-how-title">{{ t('how.title') }}</h2>
+            <ol>
+              <li>{{ t('how.step1') }}</li>
+              <li>{{ t('how.step2') }}</li>
+              <li>{{ t('how.step3') }}</li>
+            </ol>
+            <h3>{{ t('how.onlyYouTitle') }}</h3>
+            <p>{{ t('how.onlyYou') }}</p>
+            <h3>{{ t('how.scenesTitle') }}</h3>
+            <p>{{ t('how.scenes') }}</p>
+            <h3>{{ t('how.tabTitle') }}</h3>
+            <p>{{ t('how.tab') }}</p>
+          </section>
+        </div>
+      </div>
+    } }
+  }
+</main></div>

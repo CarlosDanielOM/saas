@@ -262,8 +262,18 @@ export function feedTestEvent(channel: string, publicId: string, type: string, d
   return sent;
 }
 let chatFeed: Promise<void> | undefined;
+/**
+ * Other API features that read the same chat (chat sound). PubSubManager keeps one handler per topic, so they listen
+ * here instead of subscribing to WIDGET_FEED_CHANNEL a second time (that would replace this handler).
+ */
+const chatListeners = new Set<(channel: string, chat: object, test: boolean) => void>();
+/** `test` marks chat from a manual EventSub test (the API's test route), not from Twitch. */
+export function onWidgetChat(listener: (channel: string, chat: object, test: boolean) => void): () => void {
+  chatListeners.add(listener);
+  return () => { chatListeners.delete(listener); };
+}
 export function subscribeChatFeed(): void {
-  chatFeed ??= pubSubManager.subscribe(WIDGET_FEED_CHANNEL, (message: { channel?: unknown; type?: unknown; data?: unknown }) => {
+  chatFeed ??= pubSubManager.subscribe(WIDGET_FEED_CHANNEL, (message: { channel?: unknown; type?: unknown; data?: unknown; test?: unknown }) => {
     if (typeof message?.channel !== 'string' || !message.data || typeof message.data !== 'object') return;
     if (message.type === 'signal') { if (validSignal(message.data)) feedSignal(message.channel, message.data); return; }
     // Goal progress or settings changed (cron worker / goals route): StreamElements "*-goal" values follow them.
@@ -274,6 +284,7 @@ export function subscribeChatFeed(): void {
     if (message.type === 'pet') { const pet = validPet(message.data); if (pet && (pet.phase === 'done' || !seenEvents.has(`pet:${pet.id}:done`)) && firstTime(`pet:${pet.id}:${pet.phase}`)) feedWidgets(message.channel, 'pets', 'pet', pet); return; }
     if (message.type === 'duel') { const duel = validDuel(message.data); if (duel && firstTime(`duel:${duel.id}:${duel.phase}`)) feedWidgets(message.channel, 'duels', 'duel', duel); return; }
     if (!['chat', 'chat.delete', 'chat.clear'].includes(String(message.type))) return;
+    if (message.type === 'chat') for (const listener of chatListeners) { try { listener(message.channel, message.data, message.test === true); } catch { /* A listener never blocks widget chat. */ } }
     feedWidgets(message.channel, 'chat', String(message.type), message.data);
   }).catch(() => { chatFeed = undefined; });
 }

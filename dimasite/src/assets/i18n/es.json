@@ -1,5 +1,7 @@
 {
   "pageTitles": {
+    "chatSound": "Sonido del chat",
+    "chatSoundOverlay": "Sonido del chat",
     "dimaApp": "Dima App",
     "pet": "Mascota",
     "connectApplication": "Conectar una aplicación",
@@ -405,7 +407,120 @@
     "overlayRecoverError": "No se pudo recuperar esta URL. Comprueba que sigue siendo la URL activa de la mascota.",
     "reloadUrl": "Recargar URL de la fuente"
   },
+  "chatSound": {
+    "title": "Sonido del chat",
+    "subtitle": "Suena un pop suave en OBS cuando alguien escribe en el chat, como el sonido de mensajes de Discord.",
+    "back": "Módulos",
+    "loading": "Cargando sonido del chat…",
+    "loadError": "No se pudo cargar el sonido del chat. Revisa tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "chip": {
+      "playing": "Sonando en OBS",
+      "tab": "Sonando en una pestaña",
+      "silent": "Todavía no puede sonar",
+      "missing": "Aún no está en OBS",
+      "off": "Apagado",
+      "free": "Gratis en todos los planes"
+    },
+    "setup": {
+      "title": "Agrégalo a OBS",
+      "sources": "{{n}} fuentes abiertas",
+      "outdated": "Una fuente abierta tiene una versión anterior. Actualízala en OBS: clic derecho en la fuente y luego Actualizar.",
+      "copies": "Cada copia abierta reproduce el pop. Si lo escuchas dos veces, deja una sola fuente y agrega esa misma fuente a tus otras escenas."
+    },
+    "answer": {
+      "playing": "Ya funciona: los mensajes del chat suenan con un pop en OBS.",
+      "tab": "Ya funciona en una pestaña del navegador de tu computadora. Para que suene en OBS, agrega el mismo enlace como fuente de Navegador.",
+      "silent": "La fuente está abierta, pero no puede reproducir sonido. En OBS, revisa que la fuente esté visible en tu escena actual y luego dale clic derecho y elige Actualizar. En una pestaña del navegador, haz clic una vez en la página.",
+      "missing": "Todavía no suena en ningún lado. Crea el enlace de abajo y agrégalo a OBS como fuente de Navegador.",
+      "off": "El sonido del chat está apagado, así que no suena nada. Activa “Reproducir el pop” abajo y guarda."
+    },
+    "hear": "Escúchalo aquí",
+    "hearBlocked": "Tu navegador bloqueó el sonido. Haz clic otra vez o revisa que esta pestaña no esté silenciada.",
+    "testObs": "Probar en OBS",
+    "testing": "Enviando…",
+    "testSentOne": "Se envió un pop a 1 fuente abierta. ¿Lo escuchaste en OBS?",
+    "testSent": "Se envió un pop a {{n}} fuentes abiertas. ¿Lo escuchaste en OBS?",
+    "testNone": "No hay ninguna fuente abierta. Primero agrega el enlace a OBS (o ábrelo en una pestaña) y vuelve a probar.",
+    "testError": "No se pudo enviar la prueba. Inténtalo de nuevo en un momento.",
+    "settings": "Configuración",
+    "enabled": "Reproducir el pop",
+    "enabledHint": "Si lo apagas, la fuente de OBS sigue conectada pero en silencio.",
+    "volume": "Volumen",
+    "volumeHint": "Las dos pruebas usan este volumen al instante; guarda para conservarlo.",
+    "when": {
+      "title": "Cuándo suena",
+      "every": "Cada mensaje",
+      "everyHint": "Un pop por mensaje, con una pausa corta para que un chat muy activo no se vuelva ruido.",
+      "quiet": "Después de un chat en calma",
+      "quietHint": "Solo el primer mensaje después de que el chat estuvo en calma un rato. Útil cuando no estás viendo el chat."
+    },
+    "cooldown": "Pausa mínima entre pops",
+    "cooldownHint": "Los mensajes dentro de la pausa no suenan.",
+    "quiet": "El chat estuvo en calma por",
+    "quietHint": "Los mensajes que se saltan (bots, comandos) no cuentan.",
+    "seconds": "{{n}} segundos",
+    "oneSecond": "1 segundo",
+    "minutes": "{{n}} minutos",
+    "oneMinute": "1 minuto",
+    "filters": {
+      "title": "Qué mensajes suenan",
+      "skipping": "Se saltan: {{list}}",
+      "none": "Todos los mensajes suenan",
+      "ignoreBots": "Saltar bots",
+      "ignoreBotsHint": "DomDimaBot y bots comunes como Nightbot, StreamElements y Streamlabs.",
+      "ignoreSelf": "Saltar tus propios mensajes",
+      "ignoreSelfHint": "Los mensajes que escribes en tu chat.",
+      "ignoreCommands": "Saltar comandos",
+      "ignoreCommandsHint": "Mensajes que empiezan con “!”, como !duel.",
+      "ignoreSharedChat": "Saltar otros canales del chat compartido",
+      "ignoreSharedChatHint": "Durante un Chat compartido de Twitch, los mensajes de los chats de los otros streamers no suenan.",
+      "short": {
+        "ignoreBots": "bots",
+        "ignoreSelf": "tus mensajes",
+        "ignoreCommands": "comandos",
+        "ignoreSharedChat": "chat compartido"
+      }
+    },
+    "unsaved": "Cambios sin guardar",
+    "allSaved": "Todo está guardado",
+    "saved": "Guardado. Las fuentes abiertas lo usan de inmediato.",
+    "merged": "Alguien cambió esta configuración en otro lado. Tus cambios sin guardar se quedan encima; guarda para conservarlos.",
+    "discard": "Descartar",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saveError": "No se pudo guardar. Tus cambios siguen aquí; inténtalo de nuevo.",
+    "conflict": "Alguien más acaba de guardar la configuración del sonido del chat. Tus cambios siguen aquí; revísalos y guarda otra vez.",
+    "how": {
+      "title": "Configúralo en OBS",
+      "step1": "Crea el enlace de arriba y cópialo.",
+      "step2": "En OBS, agrega una fuente: + → Navegador. Pega el enlace como URL. Cualquier tamaño funciona; no se ve nada en pantalla.",
+      "step3": "En las propiedades de la fuente, activa “Controlar audio vía OBS” para que el pop aparezca en tu Mezclador de audio.",
+      "onlyYouTitle": "¿Solo tú lo quieres escuchar?",
+      "onlyYou": "En el Mezclador de audio, abre el menú ⋮ de la fuente → Propiedades de audio avanzadas y pon la Monitorización de audio en “Solo monitorización (salida silenciada)”. Tú lo escuchas en tus audífonos; tu stream no.",
+      "scenesTitle": "Escúchalo en todas las escenas",
+      "scenes": "OBS solo reproduce las fuentes de la escena que está al aire. Para escucharlo en todas, agrega la misma fuente a cada escena: en + → Navegador, elige la fuente del sonido del chat que ya existe en vez de crear una nueva. Una copia, un pop.",
+      "tabTitle": "¿No usas OBS?",
+      "tab": "Abre el enlace en una pestaña del navegador y haz clic una vez para permitir el sonido. Deja la pestaña abierta mientras transmites."
+    },
+    "tab": {
+      "title": "Sonido del chat",
+      "status": {
+        "connecting": "Conectando…",
+        "invalid": "Este enlace ya no funciona. Copia el enlace actual en la página Sonido del chat de DomDimaBot.",
+        "offline": "Reconectando…",
+        "off": "Conectado, pero el sonido del chat está apagado en DomDimaBot.",
+        "on": "Activado: suena un pop cuando alguien escribe en el chat.",
+        "blocked": "Conectado. Haz clic en “Permitir sonido” para que tu navegador deje sonar el pop."
+      },
+      "allow": "Permitir sonido",
+      "try": "Reproducir un pop de prueba",
+      "obsTip": "Deja esta pestaña abierta mientras transmites. Si prefieres que suene en OBS, agrega este enlace como fuente de Navegador."
+    }
+  },
   "overlayLinks": {
+    "openChatSound": "Abrir en una pestaña del navegador",
+    "replaceChatSoundWarning": "Esto reemplaza el enlace del sonido del chat de {{streamer}} y desconecta las fuentes abiertas. Todos deberán pegar el nuevo enlace en OBS. Cambiar la configuración no requiere hacerlo.",
     "open": "Abrir overlay",
     "loading": "Cargando enlaces guardados…",
     "privateLink": "Enlace privado del overlay",
@@ -739,6 +854,7 @@
   },
   "modules": {
     "names": {
+      "chat-sound": "Sonido del chat",
       "clips": "Clips",
       "chat-events": "Eventos de chat",
       "triggers": "Triggers",
@@ -767,6 +883,9 @@
     },
     "clipRecommendations": {
       "description": "Deja que la IA revise tu último VOD para encontrar hype, gritos, risas, sustos y otros momentos buenos para clip."
+    },
+    "chatSound": {
+      "description": "Reproduce un pop suave en OBS cuando alguien escribe en el chat, con filtros para bots, comandos y chats muy activos."
     },
     "chatEvents": {
       "description": "Activa o desactiva eventos de chat como follows, Bits, subs y establece sus mensajes y umbrales."
@@ -1832,6 +1951,7 @@
       "insightsHint": "Conoce a tu audiencia y revisa lo que pasó en el stream."
     },
     "taglines": {
+      "chat-sound": "Un pop cuando alguien escribe",
       "pet": "Un compañero con personalidad",
       "overlays": "Diseña tu escena de OBS y las alertas",
       "roulette": "Gira una ruleta de premios en vivo",

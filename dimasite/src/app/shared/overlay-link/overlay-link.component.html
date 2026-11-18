@@ -8,6 +8,7 @@
       <div class="copy-row"><input [id]="fieldId() + '-board'" type="text" readonly [value]="boardUrl()" /><button type="button" (click)="copy(true)" [attr.aria-label]="t('copyLeaderboard')"><app-lf-icon name="copy" />{{ t('copy') }}</button></div>
     }
     @if (kind() === 'roulette') { <div class="actions"><a [href]="url()" target="_blank" rel="noopener noreferrer">{{ t('open') }}</a></div> }
+    @if (kind() === 'chat-sound') { <div class="actions"><a [href]="url()" target="_blank" rel="noopener noreferrer" data-testid="chat-sound-open-tab">{{ t('openChatSound') }}</a></div> }
     <p>{{ t('sharedHint') }}</p>
   } @else if (state()?.exists) {
     <p>{{ t('legacyHint') }}</p>
@@ -25,6 +26,6 @@
 @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
 <dialog #replacement [attr.aria-labelledby]="fieldId() + '-title'" [attr.aria-describedby]="fieldId() + '-warning'">
   <h2 [id]="fieldId() + '-title'">{{ t('replace') }}</h2>
-  <p [id]="fieldId() + '-warning'">{{ t(kind() === 'duel' ? 'replaceDuelWarning' : 'replaceWarning') }}</p>
+  <p [id]="fieldId() + '-warning'">{{ t(kind() === 'duel' ? 'replaceDuelWarning' : kind() === 'chat-sound' ? 'replaceChatSoundWarning' : 'replaceWarning') }}</p>
   <div class="actions"><button type="button" (click)="closeReplacement()" [disabled]="busy()">{{ t('cancel') }}</button><button type="button" class="primary" (click)="replace()" [disabled]="blocked()">{{ t('confirmReplace') }}</button></div>
 </dialog>

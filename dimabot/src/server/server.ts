@@ -1,6 +1,7 @@
 import { httpTelemetry } from '../utils/observability/telemetry.js';
 import { observabilityRoute } from './routes/observability.route.js';
 import { widgetsRoute } from './routes/widgets.route.js';
+import { chatSoundRoute } from './routes/chat-sound.route.js';
 import { goalsRoute } from './routes/goals.route.js';
 import { overlayStudioRoute } from './routes/overlay-studio.route.js';
 import { assetLibraryRoute } from './routes/asset-library.route.js';
@@ -154,6 +155,7 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/timers', timerRoute);
         app.use('/roulettes', rouletteRoute);
         app.use('/widgets', widgetsRoute);
+        app.use('/chat-sound', chatSoundRoute);
         app.use('/goals', goalsRoute);
         app.use('/overlay-studio', overlayStudioRoute);
         app.use('/asset-library', assetLibraryRoute);

@@ -1,0 +1,55 @@
+---
+title: Chat sound
+description: Play a soft pop for chat messages in OBS or a browser tab and choose when it sounds.
+---
+
+Chat sound plays a soft pop when someone sends a chat message, using the same pop as DomDimaBot’s demo videos. Nothing appears on screen in OBS. The bot needs to be in your channel’s chat to receive the messages.
+
+Chat sound is **Beta** and free on every plan. The channel owner and helpers with full access can open **Modules → Chat Sound**.
+
+## Set it up in OBS
+
+1. Open **Modules → Chat Sound**, create the overlay link, and copy it.
+2. In OBS, add a source with **+ → Browser** and paste the link as its URL. Any size works.
+3. In the source properties, turn on **Control audio via OBS** so the pop appears in the **Audio Mixer**.
+4. Choose **Test in OBS** on the Chat sound page and listen for the pop.
+
+Keep the link private. Replacing it disconnects old sources; update each source with the new link.
+
+You can instead open the link in a normal browser tab. Click **Allow sound** once and keep the tab open while you stream.
+
+## Choose when it plays
+
+In **Settings**, turn **Play the pop** on or off. Off keeps the source connected but silent. Set **Volume** from 0–100%; the default is 70%.
+
+Under **When it plays**, choose:
+
+- **Every message**: choose a **Shortest gap between pops** from 0.25–30 seconds; the default is 1 second. Messages within the gap stay silent.
+- **After a quiet chat**: only the first message after the chat has been quiet for the chosen time pops. **Chat was quiet for** offers 1–60 minutes and starts at 5 minutes when you choose this mode.
+
+Under **Which messages pop**, choose which messages to skip:
+
+- **Skip bots** is on by default and skips DomDimaBot and common service bots such as Nightbot, StreamElements, and Streamlabs.
+- **Skip your own messages** is on by default.
+- **Skip commands** is off by default; it skips messages starting with `!`.
+- **Skip other channels in shared chat** is off by default; it skips messages from other channels in a Twitch Shared Chat.
+
+Skipped messages do not end the quiet time. Choose **Save** to apply settings; open sources use them right away.
+
+**Hear it here** plays the pop in your browser. **Test in OBS** sends one pop to every open source, including browser tabs. Both tests use the current slider volume before saving, and the OBS test works even when **Play the pop** is off.
+
+## Hear it yourself or in every scene
+
+To hear the pop in your headphones without sending it to your stream, open the source’s **⋮** menu in the **Audio Mixer**, choose **Advanced Audio Properties**, and set **Audio Monitoring** to **Monitor Only (mute output)**.
+
+OBS plays sources in the live scene. To hear the pop in every scene, add the same source to each scene: in **+ → Browser**, pick the existing chat sound source instead of creating a new one. Each separate copy of the link plays its own pop, so one source means one pop.
+
+## Troubleshooting
+
+The status shows **Playing in OBS**, **Playing in a browser tab**, **Can't play sound yet**, **Not in OBS yet**, or **Off**.
+
+- **Can't play sound yet:** make sure the OBS source is visible in the current scene, then right-click it and choose **Refresh**. In a browser tab, click **Allow sound**.
+- **Not in OBS yet:** create the link and add it as a Browser source, or open it in a browser tab.
+- **Off:** turn on **Play the pop** and save.
+- **You hear the pop twice:** more than one copy of the link is open (the page then shows how many). Keep one source, add that same source to your other scenes, and close extra browser tabs.
+- If an old link no longer works, copy the current link and update the source. Check that the bot is in your chat and that your filters allow the message you are testing.

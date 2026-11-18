@@ -26,6 +26,7 @@ import { revokePolarSubscriptionsForAccount } from './polar_account_cancellation
 import { ModerationDecision } from '../schemas/moderation_decision.schema.js';
 import { InteractionDisposition } from '../schemas/interaction_disposition.schema.js';
 import { purgeChannelActivity } from './activity_log.js';
+import { ChatSoundChannel } from '../chat_sound/service.js';
 
 export interface IDeleteAccountOptions {
     channelID: string;
@@ -158,7 +159,8 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         dimafxDelete,
         siteAgentDelete,
         moderationDecisionsDelete,
-        activityLogsDelete
+        activityLogsDelete,
+        chatSoundDelete
     ] = await Promise.all([
         cleanupChannelMediaOwnership({ channelID, userID }),
         TriggerFileSchema.deleteMany({ channelID }),
@@ -180,7 +182,9 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         // The owner's debug trail for this channel (commands, chat lines, alerts), including rows other processes still hold.
         purgeChannelActivity(channelID),
         // Which finished polls and predictions were already announced or canceled.
-        InteractionDisposition.deleteMany({ channelID })
+        InteractionDisposition.deleteMany({ channelID }),
+        // Chat sound settings and the channel's private OBS link.
+        ChatSoundChannel.deleteOne({ _id: channelID })
     ]);
 
     console.log('[ACCOUNT_DELETION] Phase 2 complete - additional deletions', {
@@ -191,6 +195,7 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         assistantChangesDeleted: siteAgentDelete.changesDeleted,
         moderationDecisionsDeleted: moderationDecisionsDelete.deletedCount ?? 0,
         activityLogsDeleted: activityLogsDelete,
+        chatSoundDeleted: chatSoundDelete.deletedCount ?? 0,
         ...dimafxDelete
     });
 

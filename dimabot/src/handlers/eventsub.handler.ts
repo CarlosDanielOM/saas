@@ -64,7 +64,7 @@ export const eventsubHandler = async (
     // Shared-chat receiver copies belong in the visual feed, but must never run bot actions.
     if (isForeignSharedChatEvent(subscriptionData.type, eventData)) {
         if (subscriptionData.type === 'channel.chat.message') {
-            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat', eventData);
+            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat', eventData, { test: !options.messageId });
         }
         return;
     }
@@ -78,9 +78,10 @@ export const eventsubHandler = async (
 
     // Feed-only events bypass announcement configuration and all command/history side effects.
     // Chat reaches custom widgets even when the bot's chat handling is turned off for this channel.
+    // Twitch notifications always carry a message ID; only the API's manual test route calls without one.
     switch (subscriptionData.type) {
         case 'channel.chat.message':
-            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat', eventData);
+            void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat', eventData, { test: !options.messageId });
             break;
         case 'channel.chat.message_delete':
             void publishWidgetChatEvent(eventData.broadcaster_user_id ?? '', 'chat.delete', eventData);

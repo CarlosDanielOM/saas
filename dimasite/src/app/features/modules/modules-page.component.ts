@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 import {
+  BellRing,
   Bot,
   Brain,
   ArrowRight,
@@ -97,6 +98,7 @@ const MODULE_GOALS: Readonly<Record<ModuleId, Goal>> = {
   overlays: 'stream',
   roulette: 'stream',
   widgets: 'stream',
+  'chat-sound': 'stream',
   clips: 'stream',
   triggers: 'stream',
   dimafx: 'stream',
@@ -149,6 +151,7 @@ const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
   overlays: null,
   roulette: '*',
   widgets: '*',
+  'chat-sound': '*',
   clips: 'clips:view',
   'chat-events': 'eventsubs:view',
   triggers: 'triggers:view',
@@ -172,6 +175,7 @@ const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
   pet: PawPrint,
   roulette: Dices,
   widgets: MonitorPlay,
+  'chat-sound': BellRing,
   overlays: Layers,
   'chat-events': MessagesSquare,
   moderation: Hammer,
@@ -252,6 +256,7 @@ export class ModulesPageComponent {
       this.buildModule('overlays', this.t('overlayStudio.studio'), 'overlayStudio.description', streamerName, userPlanTier),
       this.buildModule('widgets', this.t('widgets.title'), 'widgets.subtitle', streamerName, userPlanTier),
       this.buildModule('roulette', this.t('roulette.title'), 'roulette.subtitle', streamerName, userPlanTier),
+      this.buildModule('chat-sound', this.t('modules.names.chat-sound'), 'modules.chatSound.description', streamerName, userPlanTier),
       this.buildModule('clips', this.t('modules.names.clips'), 'modules.clips.description', streamerName, userPlanTier),
       this.buildModule(
         'chat-events',

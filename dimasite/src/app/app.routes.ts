@@ -21,6 +21,7 @@ export const routes: Routes = [
   { path: 'overlays/duel/:channelID', loadComponent: () => import('./features/widgets/duel/duel-overlay.component').then(m => m.DuelOverlayComponent), title: 'pageTitles.duelOverlay' },
   { path: 'overlays/widgets/:channelID', loadComponent: () => import('./features/widgets/widgets-overlay.component').then(m => m.WidgetsOverlayComponent), title: 'pageTitles.widgetsOverlay' },
   { path: 'overlays/roulette/:channelID', loadComponent: () => import('./features/roulette/roulette-overlay.component').then(m => m.RouletteOverlayComponent), title: 'pageTitles.rouletteOverlay' },
+  { path: 'overlays/chat-sound/:channelID', loadComponent: () => import('./features/chat-sound/chat-sound-overlay.component').then(m => m.ChatSoundOverlayComponent), title: 'pageTitles.chatSoundOverlay' },
   {
     path: '',
     loadComponent: () =>
@@ -951,6 +952,7 @@ export const routes: Routes = [
           { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-hub.component').then(m => m.WidgetsHubComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.widgetsAlpha' },
           { path: 'widgets/duel', loadComponent: () => import('./features/widgets/duel/duel-page.component').then(m => m.DuelPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.duelWidget' },
           { path: 'widgets/dbd', loadComponent: () => import('./features/widgets/widgets-page.component').then(m => m.WidgetsPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.deadByDaylightWidget' },
+          { path: 'chat-sound', loadComponent: () => import('./features/chat-sound/chat-sound-page.component').then(m => m.ChatSoundPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'pageTitles.chatSound' },
           {
             path: 'roulette',
             loadComponent: () => import('./features/roulette/roulette-page.component').then(m => m.RoulettePageComponent),

@@ -11,4 +11,4 @@ export { publishStudioMedia, publishStudioTrigger, publishTest, eventFor, fileFo
 export type { ClipMetadata, LiveMedia, LiveEvent } from './delivery.live.js';
 export { bitsRuleFor, publishStudioAlert } from './alerts.live.js';
 export { publishStudioReadTts, endStudioReadTts, studioTtsStatus, controlStudioTts } from './tts.live.js';
-export { ensureWidgetModeration, feedSignal, feedTestAlert, feedTestEvent, interactionKinds, publicWidgetStateFor, interactionsFor } from './widget_feeds.live.js';
+export { ensureWidgetModeration, feedSignal, feedTestAlert, feedTestEvent, interactionKinds, publicWidgetStateFor, interactionsFor, onWidgetChat, subscribeChatFeed } from './widget_feeds.live.js';

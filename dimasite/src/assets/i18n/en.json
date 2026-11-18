@@ -1,5 +1,7 @@
 {
   "pageTitles": {
+    "chatSound": "Chat Sound",
+    "chatSoundOverlay": "Chat Sound",
     "dimaApp": "Dima App",
     "pet": "Pet",
     "connectApplication": "Connect an application",
@@ -405,7 +407,120 @@
     "overlayRecoverError": "This URL could not be recovered. Check that it is still the active pet URL.",
     "reloadUrl": "Reload source URL"
   },
+  "chatSound": {
+    "title": "Chat sound",
+    "subtitle": "A soft pop plays in OBS when someone sends a chat message, like Discord's message sound.",
+    "back": "Modules",
+    "loading": "Loading chat sound…",
+    "loadError": "Could not load chat sound. Check your connection and retry.",
+    "retry": "Retry",
+    "chip": {
+      "playing": "Playing in OBS",
+      "tab": "Playing in a browser tab",
+      "silent": "Can't play sound yet",
+      "missing": "Not in OBS yet",
+      "off": "Off",
+      "free": "Free on every plan"
+    },
+    "setup": {
+      "title": "Add it to OBS",
+      "sources": "{{n}} sources open",
+      "outdated": "An open source runs an older version. Refresh it in OBS: right-click the source, then Refresh.",
+      "copies": "Each open copy plays the pop. If you hear it twice, keep one source and add that same source to your other scenes."
+    },
+    "answer": {
+      "playing": "It's working: chat messages make a pop in OBS.",
+      "tab": "It's working in a browser tab on your computer. To play it through OBS, add the same link as a Browser source.",
+      "silent": "The source is open but can't play sound. In OBS, make sure the source is visible in your current scene, then right-click it and choose Refresh. In a browser tab, click the page once.",
+      "missing": "Not playing anywhere yet. Create the link below and add it to OBS as a Browser source.",
+      "off": "Chat sound is off, so nothing plays. Turn on “Play the pop” below and save."
+    },
+    "hear": "Hear it here",
+    "hearBlocked": "Your browser blocked the sound. Click again, or check that this tab isn't muted.",
+    "testObs": "Test in OBS",
+    "testing": "Sending…",
+    "testSentOne": "Sent a pop to 1 open source. Did you hear it in OBS?",
+    "testSent": "Sent a pop to {{n}} open sources. Did you hear it in OBS?",
+    "testNone": "No source is open. Add the link to OBS first (or open it in a browser tab), then test again.",
+    "testError": "Could not send the test. Retry in a moment.",
+    "settings": "Settings",
+    "enabled": "Play the pop",
+    "enabledHint": "Off keeps the OBS source connected but silent.",
+    "volume": "Volume",
+    "volumeHint": "Both tests use this volume right away; save to keep it.",
+    "when": {
+      "title": "When it plays",
+      "every": "Every message",
+      "everyHint": "A pop for each message, with a short gap so a busy chat doesn't turn into noise.",
+      "quiet": "After a quiet chat",
+      "quietHint": "Only the first message after chat was quiet for a while. Handy when you're not watching chat."
+    },
+    "cooldown": "Shortest gap between pops",
+    "cooldownHint": "Messages inside the gap stay silent.",
+    "quiet": "Chat was quiet for",
+    "quietHint": "Skipped messages (bots, commands) don't end the quiet time.",
+    "seconds": "{{n}} seconds",
+    "oneSecond": "1 second",
+    "minutes": "{{n}} minutes",
+    "oneMinute": "1 minute",
+    "filters": {
+      "title": "Which messages pop",
+      "skipping": "Skipping: {{list}}",
+      "none": "Every message pops",
+      "ignoreBots": "Skip bots",
+      "ignoreBotsHint": "DomDimaBot and common bots like Nightbot, StreamElements and Streamlabs.",
+      "ignoreSelf": "Skip your own messages",
+      "ignoreSelfHint": "Messages you type in your chat.",
+      "ignoreCommands": "Skip commands",
+      "ignoreCommandsHint": "Messages that start with “!”, like !duel.",
+      "ignoreSharedChat": "Skip other channels in shared chat",
+      "ignoreSharedChatHint": "During a Twitch Shared Chat, messages from the other streamers' chats stay silent.",
+      "short": {
+        "ignoreBots": "bots",
+        "ignoreSelf": "your messages",
+        "ignoreCommands": "commands",
+        "ignoreSharedChat": "shared chat"
+      }
+    },
+    "unsaved": "Unsaved changes",
+    "allSaved": "All changes saved",
+    "saved": "Saved. Open sources use it right away.",
+    "merged": "Someone changed these settings somewhere else. Your unsaved edits stay on top; save to keep them.",
+    "discard": "Discard",
+    "save": "Save",
+    "saving": "Saving…",
+    "saveError": "Could not save. Your changes are still here; retry.",
+    "conflict": "Someone else saved chat sound settings just now. Your changes are still here; review them and save again.",
+    "how": {
+      "title": "Set it up in OBS",
+      "step1": "Create the link above and copy it.",
+      "step2": "In OBS, add a source: + → Browser. Paste the link as the URL. Any size works; nothing shows on screen.",
+      "step3": "In the source's properties, turn on “Control audio via OBS” so the pop shows up in your Audio Mixer.",
+      "onlyYouTitle": "Only you should hear it?",
+      "onlyYou": "In the Audio Mixer, open the source's ⋮ menu → Advanced Audio Properties and set Audio Monitoring to “Monitor Only (mute output)”. You hear it in your headphones; your stream doesn't.",
+      "scenesTitle": "Hear it in every scene",
+      "scenes": "OBS only plays sources in the scene that's live. To hear it in every scene, add the same source to each one: in + → Browser, pick the existing chat sound source instead of making a new one. One copy means one pop.",
+      "tabTitle": "Not using OBS?",
+      "tab": "Open the link in a browser tab and click it once to allow sound. Keep the tab open while you stream."
+    },
+    "tab": {
+      "title": "Chat sound",
+      "status": {
+        "connecting": "Connecting…",
+        "invalid": "This link no longer works. Copy the current link from the Chat sound page on DomDimaBot.",
+        "offline": "Reconnecting…",
+        "off": "Connected, but chat sound is turned off on DomDimaBot.",
+        "on": "On: a pop plays when someone chats.",
+        "blocked": "Connected. Click “Allow sound” so your browser lets the pop play."
+      },
+      "allow": "Allow sound",
+      "try": "Play a test pop",
+      "obsTip": "Keep this tab open while you stream. To play it through OBS instead, add this link as a Browser source."
+    }
+  },
   "overlayLinks": {
+    "openChatSound": "Open in a browser tab",
+    "replaceChatSoundWarning": "This replaces {{streamer}}’s chat sound link and disconnects open sources. Everyone must paste the new link in OBS. Changing settings does not require this.",
     "open": "Open overlay",
     "loading": "Loading saved links…",
     "privateLink": "Private overlay link",
@@ -739,6 +854,7 @@
   },
   "modules": {
     "names": {
+      "chat-sound": "Chat Sound",
       "clips": "Clips",
       "chat-events": "Chat Events",
       "triggers": "Triggers",
@@ -767,6 +883,9 @@
     },
     "clipRecommendations": {
       "description": "Let AI scan your latest VOD for hype, screams, laughs, scares, and other moments worth clipping."
+    },
+    "chatSound": {
+      "description": "Play a soft pop in OBS when someone chats, with filters for bots, commands and busy chats."
     },
     "chatEvents": {
       "description": "Enable or disable chat events like follows, bits, subs, and set their messages and thresholds."
@@ -1832,6 +1951,7 @@
       "insightsHint": "Understand your audience and review what happened on stream."
     },
     "taglines": {
+      "chat-sound": "A pop when someone chats",
       "pet": "A companion with character",
       "overlays": "Design your OBS scene and alert layouts",
       "roulette": "Spin a prize wheel live on stream",

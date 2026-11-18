@@ -6,7 +6,7 @@ import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { LfIconComponent } from '../lf-icon/lf-icon.component';
 
-type Kind = 'widgets' | 'duel' | 'roulette';
+type Kind = 'widgets' | 'duel' | 'roulette' | 'chat-sound';
 interface LinkState { token: string | null; exists: boolean; version: string | null }
 
 /** Channel-owned OBS links, shared by every authorized account. */
@@ -37,7 +37,7 @@ export class OverlayLinkComponent {
   readonly url = computed(() => this.state()?.token ? `${location.origin}/overlays/${this.kind()}/${this.channel()}#${this.state()!.token}` : '');
   readonly boardUrl = computed(() => this.url().replace('#', '/leaderboard#'));
   readonly fieldId = computed(() => `overlay-link-${this.kind()}-${this.channel()}`);
-  private readonly endpoint = computed(() => this.api + (this.kind() === 'roulette' ? `/roulettes/${this.channel()}` : `/widgets/${this.channel()}${this.kind() === 'duel' ? '/duel' : ''}`) + '/overlay-token');
+  private readonly endpoint = computed(() => this.api + (this.kind() === 'roulette' ? `/roulettes/${this.channel()}` : this.kind() === 'chat-sound' ? `/chat-sound/${this.channel()}` : `/widgets/${this.channel()}${this.kind() === 'duel' ? '/duel' : ''}`) + '/overlay-token');
 
   constructor() {
     effect(() => { this.channel(); this.kind(); void this.load(); });
@@ -54,6 +54,8 @@ export class OverlayLinkComponent {
     } catch { return null; }
   }
   private cachedLink(): string {
+    // Chat sound links never lived in browser storage (they started on the channel-owned link).
+    if (this.kind() === 'chat-sound') return '';
     try { return this.kind() === 'roulette' ? localStorage.getItem(`roulette.overlay.${this.channel()}`) ?? '' : sessionStorage.getItem(`${this.kind() === 'duel' ? 'duel' : 'widgets'}-overlay-${this.channel()}`) ?? ''; } catch { return ''; }
   }
   async load(showLoading = true): Promise<void> {

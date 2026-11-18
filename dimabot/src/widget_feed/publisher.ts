@@ -32,7 +32,7 @@ export function createWidgetChatPublisher(deps: PublisherDependencies) {
     void request.finally(() => inFlight.delete(channel)).catch(() => {});
     return request;
   }
-  return async (channel: string, type: WidgetFeedMessage['type'], rawEvent: unknown): Promise<void> => {
+  return async (channel: string, type: WidgetFeedMessage['type'], rawEvent: unknown, meta: { test?: boolean } = {}): Promise<void> => {
     try {
       if (!channel) return;
       if (!await hasDemand(channel)) return;
@@ -46,7 +46,7 @@ export function createWidgetChatPublisher(deps: PublisherDependencies) {
         } else if (type === 'chat.delete') data = normalizeChatDelete(rawEvent);
         else data = normalizeChatClear(rawEvent && typeof rawEvent === 'object' && 'target_user_id' in rawEvent
           ? 'channel.chat.clear_user_messages' : 'channel.chat.clear', rawEvent);
-        await deps.publish(WIDGET_FEED_CHANNEL, { channel, type, data });
+        await deps.publish(WIDGET_FEED_CHANNEL, { channel, type, data, ...(meta.test ? { test: true as const } : {}) });
       }).catch(() => {});
       deliveries.set(channel, delivery);
       await delivery;

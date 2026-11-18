@@ -1,0 +1,55 @@
+---
+title: Sonido del chat
+description: Reproduce un pop suave para los mensajes del chat en OBS o en una pestaña y elige cuándo suena.
+---
+
+Sonido del chat reproduce un pop suave cuando alguien escribe en el chat, con el mismo sonido de los videos de demostración de DomDimaBot. En OBS no aparece nada en pantalla. El bot debe estar en el chat de tu canal para recibir los mensajes.
+
+Sonido del chat está en **Beta** y es gratis en todos los planes. El propietario del canal y los ayudantes con acceso total pueden abrir **Módulos → Sonido del chat**.
+
+## Configúralo en OBS
+
+1. Abre **Módulos → Sonido del chat**, crea el enlace del overlay y cópialo.
+2. En OBS, agrega una fuente con **+ → Navegador** y pega el enlace como URL. Cualquier tamaño funciona.
+3. En las propiedades de la fuente, activa **Controlar audio vía OBS** para que el pop aparezca en el **Mezclador de audio**.
+4. Elige **Probar en OBS** en la página Sonido del chat y escucha el pop.
+
+Mantén privado el enlace. Al reemplazarlo se desconectan las fuentes anteriores; actualiza cada fuente con el enlace nuevo.
+
+También puedes abrir el enlace en una pestaña normal del navegador. Haz clic una vez en **Permitir sonido** y deja abierta la pestaña mientras transmites.
+
+## Elige cuándo suena
+
+En **Configuración**, activa o desactiva **Reproducir el pop**. Si lo apagas, la fuente sigue conectada pero en silencio. Ajusta el **Volumen** de 0 a 100 %; el valor predeterminado es 70 %.
+
+En **Cuándo suena**, elige:
+
+- **Cada mensaje**: elige una **Pausa mínima entre pops** de 0.25 a 30 segundos; el valor predeterminado es 1 segundo. Los mensajes durante la pausa no suenan.
+- **Después de un chat en calma**: solo suena el primer mensaje después de que el chat estuvo en calma durante el tiempo elegido. **El chat estuvo en calma por** ofrece de 1 a 60 minutos y comienza en 5 minutos al elegir este modo.
+
+En **Qué mensajes suenan**, elige qué mensajes saltar:
+
+- **Saltar bots** está activado por defecto y omite a DomDimaBot y bots comunes como Nightbot, StreamElements y Streamlabs.
+- **Saltar tus propios mensajes** está activado por defecto.
+- **Saltar comandos** está desactivado por defecto; omite mensajes que empiezan con `!`.
+- **Saltar otros canales del chat compartido** está desactivado por defecto; omite mensajes de otros canales durante un Chat compartido de Twitch.
+
+Los mensajes que se saltan no terminan el tiempo de calma. Elige **Guardar** para aplicar la configuración; las fuentes abiertas la usan de inmediato.
+
+**Escúchalo aquí** reproduce el pop en tu navegador. **Probar en OBS** envía un pop a cada fuente abierta, incluidas las pestañas del navegador. Ambas pruebas usan el volumen actual del control antes de guardar, y la prueba en OBS funciona incluso si **Reproducir el pop** está apagado.
+
+## Escúchalo tú o en todas las escenas
+
+Para escuchar el pop en tus audífonos sin enviarlo a tu transmisión, abre el menú **⋮** de la fuente en el **Mezclador de audio**, elige **Propiedades de audio avanzadas** y ajusta **Monitorización de audio** a **Solo monitorización (salida silenciada)**.
+
+OBS reproduce las fuentes de la escena que está en vivo. Para escuchar el pop en todas las escenas, agrega la misma fuente a cada una: en **+ → Navegador**, elige la fuente del sonido del chat que ya existe en vez de crear una nueva. Cada copia del enlace reproduce su propio pop, así que una sola fuente significa un solo pop.
+
+## Solución de problemas
+
+El estado muestra **Sonando en OBS**, **Sonando en una pestaña**, **Todavía no puede sonar**, **Aún no está en OBS** o **Apagado**.
+
+- **Todavía no puede sonar:** comprueba que la fuente de OBS esté visible en la escena actual, haz clic derecho sobre ella y elige **Actualizar**. En una pestaña del navegador, haz clic en **Permitir sonido**.
+- **Aún no está en OBS:** crea el enlace y agrégalo como fuente de Navegador, o ábrelo en una pestaña del navegador.
+- **Apagado:** activa **Reproducir el pop** y guarda.
+- **Escuchas el pop dos veces:** hay más de una copia del enlace abierta (la página muestra cuántas). Deja una sola fuente, agrega esa misma fuente a tus otras escenas y cierra las pestañas que sobren.
+- Si un enlace anterior ya no funciona, copia el enlace actual y actualiza la fuente. Comprueba que el bot esté en tu chat y que los filtros permitan el mensaje de prueba.

@@ -45,6 +45,7 @@ const sidebar = [
       page('triggers', 'Triggers & media', 'Disparadores y medios'),
       page('media-library', 'Media library', 'Biblioteca de medios'),
       page('tts', 'Text to speech', 'Texto a voz'),
+      page('chat-sound', 'Chat sound', 'Sonido del chat', { badge: { text: { en: 'Beta · Free', es: 'Beta · Gratis' }, variant: 'caution' } }),
       page('overlay-studio', 'Overlay Studio', 'Estudio de overlays', { badge: alpha }),
       page('custom-widgets', 'Custom widgets', 'Widgets personalizados'),
       page('building-custom-widgets-dima-sdk', 'Building widgets (Dima SDK)', 'Cómo crear widgets (SDK de Dima)'),

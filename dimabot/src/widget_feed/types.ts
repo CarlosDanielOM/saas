@@ -24,6 +24,8 @@ export type WidgetFeedMessage = {
   channel: string;
   type: 'chat' | 'chat.delete' | 'chat.clear';
   data: DimaChat | DimaChatDelete | DimaChatClear;
+  /** Chat from a manual EventSub test, not from Twitch. Widgets still get it; chat sound skips it. */
+  test?: true;
 };
 export const WIDGET_FEED_CHANNEL = 'widget-feed';
 export const widgetFeedDemandKey = (channel: string): string => 'widget-feed:demand:' + channel;
